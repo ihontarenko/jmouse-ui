@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# The Tessera mirror — notes about issues, never committed. See TESSERA.md.
+/.tessera/

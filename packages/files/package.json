@@ -1,0 +1,40 @@
+{
+  "name": "@jmouse/files",
+  "version": "0.1.0",
+  "description": "The file composites three products share — looking at a file without leaving the page, and the decisions about what a media type means.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "@jmouse/ui": ">=0.1.0",
+    "lucide-react": ">=1.0.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@jmouse/ui": "*",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "lucide-react": "^1.25.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "~6.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

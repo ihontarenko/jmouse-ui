@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# ⚠️ `dist/` is ignored on purpose, and it is the decision `MD-3` had to make.
+# A git dependency installs the *repository*, so the build has to happen somewhere: either the
+# artefact is committed, or `prepare` builds it on install. `prepare` wins because a committed build
+# is a second copy of the source that is correct only while somebody remembers to rebuild it — which
+# is the same failure this package exists to end.
+
+# The WiQ page mirror — deliberately not committed. See WIQ.md.
+/.wiq/

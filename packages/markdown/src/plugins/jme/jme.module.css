@@ -1,0 +1,184 @@
+.block {
+    margin: 16px 0;
+    padding: 14px 16px;
+    border: 1px solid var(--markdown-line, color-mix(in srgb, var(--markdown-ink) 12%, transparent));
+    border-radius: var(--markdown-r-md);
+    background: color-mix(in srgb, var(--markdown-teal, #0f766e) 4%, var(--markdown-paper));
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.badge {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--markdown-teal, #0f766e);
+    background: color-mix(in srgb, var(--markdown-teal, #0f766e) 12%, transparent);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.mode {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--markdown-ink-3, #6b7280);
+}
+
+.spinner {
+    width: 11px;
+    height: 11px;
+    margin-left: auto;
+    border: 2px solid color-mix(in srgb, var(--markdown-ink) 20%, transparent);
+    border-top-color: var(--markdown-teal, #0f766e);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+.inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px 14px;
+    margin-bottom: 14px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.fieldLabel {
+    font-family: var(--markdown-font-mono, monospace);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--markdown-ink-2, #374151);
+}
+
+.input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--markdown-line, color-mix(in srgb, var(--markdown-ink) 15%, transparent));
+    border-radius: var(--markdown-r);
+    background: var(--markdown-paper);
+    color: var(--markdown-ink);
+    font-size: 14px;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--markdown-teal, #0f766e);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--markdown-teal, #0f766e) 15%, transparent);
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 33px;
+    font-size: 14px;
+    color: var(--markdown-ink);
+    cursor: pointer;
+}
+
+.checkbox input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--markdown-teal, #0f766e);
+    cursor: pointer;
+}
+
+/* ── The declaration did not parse ───────────────────────────────────────────
+   Loud, and where the inputs would have been. A calculator whose bindings are
+   wrong is better off visibly broken than quietly computing something else. */
+.problems {
+    margin-bottom: 12px;
+    padding: 9px 11px;
+    border: 1px solid var(--markdown-danger, #b91c1c);
+    border-radius: var(--markdown-r);
+    background: color-mix(in srgb, var(--markdown-danger, #b91c1c) 5%, transparent);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.problemsTitle {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: var(--markdown-ink);
+}
+
+.problem {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    margin-top: 4px;
+}
+
+.problemLine {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--markdown-ink) 8%, transparent);
+    font-family: var(--markdown-font-mono, monospace);
+    font-size: 12px;
+    color: var(--markdown-ink);
+}
+
+.problemReason {
+    color: var(--markdown-ink-3, #6b7280);
+}
+
+.output {
+    padding: 9px 11px;
+    border-radius: var(--markdown-r);
+    background: var(--markdown-paper);
+    border: 1px dashed var(--markdown-line, color-mix(in srgb, var(--markdown-ink) 12%, transparent));
+    font-family: var(--markdown-font-mono, monospace);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.value {
+    color: var(--markdown-ink);
+    font-weight: 600;
+}
+
+/* Rendered HTML from a template result — normal flow, not the mono/pre of a scalar value. */
+.htmlBody {
+    white-space: normal;
+    font-family: var(--markdown-font-sans, inherit);
+    color: var(--markdown-ink);
+}
+
+.htmlBody > :first-child {
+    margin-top: 0;
+}
+
+.htmlBody > :last-child {
+    margin-bottom: 0;
+}
+
+.placeholder {
+    color: var(--markdown-ink-3, #9ca3af);
+    font-style: italic;
+}
+
+/* An error reads like normal output text; the block signals failure with a red border (below),
+   not red text — so it stays legible against every theme without any contrast tuning. */
+.error {
+    color: var(--markdown-ink);
+}
+
+.output.outputError {
+    border-style: solid;
+    border-color: var(--markdown-danger, #b91c1c);
+}

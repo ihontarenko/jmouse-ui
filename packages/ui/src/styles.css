@@ -1,0 +1,144 @@
+/**
+ * @jmouse/ui — the theme CONTRACT and the base layer the primitives need.
+ *
+ * ⚠️ This file carries NO colour values. It maps the CSS custom properties a product defines onto
+ * Tailwind's token vocabulary, and ships the base rules the primitives cannot work without — most
+ * of all `.anchored-panel`, which is how every dropdown, menu, select and tooltip in this package is
+ * positioned.
+ *
+ * A product imports it AFTER `tailwindcss`, and defines the values itself — or imports
+ * `@jmouse/ui/presets/themes.css` to take the shared 29-palette catalogue.
+ *
+ * ⚠️ And it must scan this package for classes, or every primitive renders unstyled:
+ *
+ *     @import "tailwindcss";
+ *     @import "@jmouse/ui/styles.css";
+ *     @source "../node_modules/@jmouse/ui/dist";
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* The corner radius the whole scale is derived from, and the real multiplier ThemeProvider applies
+     via body.style.zoom (1 on mobile, where zoom is skipped) — CSS inside the zoomed subtree
+     counter-scales against it to recover a length's true on-screen size. */
+  --radius: 0.75rem;
+  --body-zoom: 1;
+}
+
+/* `--destructive` is legible AS TEXT in every theme, because that is a property of the VALUE — a
+   deep fill behind white text produced maroon-on-charcoal wherever a component wrote
+   `text-destructive`. `--destructive-ink` survives only as an alias so components already pointing
+   at it keep working. ⚠️ It is not a second colour and must never become one again. */
+:root {
+  --destructive-ink: var(--destructive);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-ink: var(--destructive-ink);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-ink-4: var(--ink-4);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-particle: var(--particle);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /* fontScale (ThemeContext) applies body.style.zoom. Without an explicit height here, `zoom`
+     leaves position:fixed descendants (the sidebar) clipped by body's un-zoomed height instead of
+     the true viewport, hiding whatever sits at the bottom of the fixed column. */
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Tells the browser which way its *own* chrome is painted — the parts no stylesheet reaches: a
+     native `<select>`'s option list (see components/inline/InlineSelect.tsx, which picks native on
+     purpose), scrollbars, date pickers, form-control defaults. Without it every one of them is drawn
+     light while the option text inherits the theme's light `--foreground`, so a dark theme's dropdown
+     reads as white-on-white. ThemeContext always applies `.dark` alongside the specific theme class,
+     so these two lines cover all 27 themes. */
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  /* ⚠️ EVERY DROPDOWN, MENU, SELECT AND TOOLTIP IN THIS APPLICATION IS POSITIONED BY THESE SEVEN
+     LINES, and by nothing in JavaScript. See `components/ui/anchored.tsx` for the measurements, but
+     the short version: text size is `zoom`, and a JS positioner divides a trigger's measured rect by
+     the scale it detects and then cannot reconcile a `position: fixed` containing block — a trigger at
+     y=18 opened its panel at y=654. The browser's own anchor positioning has no such arithmetic.
+
+     `position-area` is per-instance (side + alignment) and set inline; `position-anchor` names the
+     trigger and is generated per pair. `inset: auto` is required — a `position: fixed` element defaults
+     to `inset: 0`, which would stretch it across the viewport and leave the area nothing to place.
+
+     `margin-block` and not `margin-top`: the gap has to land on whichever side the fallback chose, and
+     an inline margin would shift the panel off the alignment it was asked for.
+
+     The max-height is counter-scaled against --body-zoom for the same reason it always was: the panel
+     lives inside the zoomed body, so a length written here is re-multiplied at paint. */
+  .anchored-panel {
+    position: fixed;
+    inset: auto;
+    position-anchor: inherit;
+    position-area: var(--anchored-area, bottom span-right);
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    margin-block: 4px;
+    max-height: calc(70vh / var(--body-zoom, 1));
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* The gap belongs on whichever axis the panel actually sits on. A block margin on a side-anchored
+     panel leaves it touching its trigger and pushes it around on the axis it is being centred on. */
+  .anchored-panel[data-side="left"],
+  .anchored-panel[data-side="right"] {
+    margin-block: 0;
+    margin-inline: 4px;
+  }
+}

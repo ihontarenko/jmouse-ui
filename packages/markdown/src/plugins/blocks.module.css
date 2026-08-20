@@ -1,0 +1,113 @@
+/* The library's own block visuals — callouts, embeds and the notice a block shows when it cannot
+   render. Colours are host tokens throughout, with a literal fallback so the library still looks
+   deliberate in a project that has not defined them. */
+
+/* ── Callouts ────────────────────────────────────────────────────────────────── */
+
+.callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 10px 14px;
+    border: 1px solid var(--markdown-line, #e5e5e5);
+    border-left-width: 3px;
+    border-radius: var(--markdown-r-md, 8px);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--markdown-ink-2, #333);
+}
+
+.calloutIcon {
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.calloutText {
+    min-width: 0;
+}
+
+.calloutNote,
+.calloutInfo {
+    border-left-color: var(--markdown-accent, #0f766e);
+    background: var(--markdown-accent-soft, color-mix(in srgb, #0f766e 8%, transparent));
+}
+
+.calloutTip {
+    border-left-color: var(--markdown-ok, #0d9488);
+    background: color-mix(in srgb, var(--markdown-ok, #0d9488) 8%, transparent);
+}
+
+.calloutWarning {
+    border-left-color: var(--markdown-warn, #b45309);
+    background: color-mix(in srgb, var(--markdown-warn, #b45309) 8%, transparent);
+}
+
+/* ── Embeds ──────────────────────────────────────────────────────────────────── */
+
+.video {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 16 / 9;
+    margin: 14px 0;
+    border: 1px solid var(--markdown-line, #e5e5e5);
+    border-radius: var(--markdown-r-md, 8px);
+    overflow: hidden;
+}
+
+.video iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.videoFixed {
+    aspect-ratio: 16 / 9;
+    max-width: 100%;
+    margin: 14px 0;
+    border: 1px solid var(--markdown-line, #e5e5e5);
+    border-radius: var(--markdown-r-md, 8px);
+    overflow: hidden;
+}
+
+.videoFixed iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ── "Could not render this" ─────────────────────────────────────────────────── */
+
+.notice {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--markdown-warn, #b45309) 30%, transparent);
+    border-radius: var(--markdown-r-md, 8px);
+    background: color-mix(in srgb, var(--markdown-warn, #b45309) 4%, transparent);
+}
+
+.noticeBadge {
+    flex-shrink: 0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--markdown-warn, #b45309);
+    background: color-mix(in srgb, var(--markdown-warn, #b45309) 12%, transparent);
+}
+
+.noticeText {
+    font-size: 12.5px;
+    color: var(--markdown-ink-3, #6b6b6b);
+}

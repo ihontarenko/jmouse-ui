@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
+
+    /* ⚠️ The one option a library cannot afford to be relaxed about. A consumer may compile with
+       `erasableSyntaxOnly`, and TypeScript that emits code — a parameter property, an enum, a
+       namespace — fails its build rather than its dev server. Keeping it on here means the failure
+       lands on whoever wrote it. */
+    "erasableSyntaxOnly": true,
+
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "vite.config.ts"]
+}

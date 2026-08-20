@@ -1,0 +1,11 @@
+/* A wide table scrolls inside its own box instead of overflowing the column it sits in. */
+
+.tableScroll {
+    overflow-x: auto;
+    margin: 14px 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tableScroll table {
+    min-width: 100%;
+}

@@ -1,0 +1,14 @@
+{
+  "name": "jmouse-ui",
+  "private": true,
+  "type": "module",
+  "description": "The shared frontend packages for Innoventa, Tessera and Kiwi.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present"
+  }
+}
