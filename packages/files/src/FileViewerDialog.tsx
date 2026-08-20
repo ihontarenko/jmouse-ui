@@ -74,8 +74,13 @@ export function FileViewerDialog({
   const kind = fileKindOf(file)
   const asText = kind === "text" || kind === "markdown"
 
+  // ⚠️ Two kinds are decided WITHOUT the bytes, so the bytes are never asked for. Fetching a 30 MB
+  // `.docx` in order to say "download this to open it" is a download nobody asked for, over a link
+  // somebody may only have hovered.
+  const undrawable = kind === "unshowable" || kind === "document"
+
   useEffect(() => {
-    if (!file || kind === "unshowable") {
+    if (!file || undrawable) {
       return
     }
 
@@ -121,7 +126,7 @@ export function FileViewerDialog({
     // `bytes` is deliberately not a dependency: callers pass an inline closure, so depending on it would
     // refetch on every render of the parent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, kind, asText])
+  }, [file, undrawable, asText])
 
   if (!file) {
     return null
@@ -146,7 +151,13 @@ export function FileViewerDialog({
             <Unshowable reason={`A ${file.contentType} cannot be shown here. Download it to open it.`} />
           )}
 
-          {!failed && kind !== "unshowable" && objectUrl === null && text === null && (
+          {/* ⚠️ Says what it IS and what would be needed, rather than refusing flatly — the two are
+              genuinely different answers and somebody looking at a `.docx` deserves the second one. */}
+          {!failed && kind === "document" && (
+            <Unshowable reason="An office document has to be converted before it can be shown. Download it to open it in the application that owns it." />
+          )}
+
+          {!failed && !undrawable && objectUrl === null && text === null && (
             <span className="flex items-center gap-2 py-12 text-xs text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
               Loading…
@@ -159,6 +170,21 @@ export function FileViewerDialog({
 
           {kind === "pdf" && objectUrl && (
             <iframe src={objectUrl} title={file.name} className="h-[70vh] w-full" />
+          )}
+
+          {/* ⚠️ The browser's own players, deliberately. A scrub bar, a volume control and a keyboard
+              map re-implemented here would be worse than the native ones and would ignore the
+              platform's captions, playback-rate and picture-in-picture settings. */}
+          {kind === "audio" && objectUrl && (
+            <audio controls src={objectUrl} className="w-full max-w-xl px-6 py-10">
+              <track kind="captions" />
+            </audio>
+          )}
+
+          {kind === "video" && objectUrl && (
+            <video controls src={objectUrl} className="max-h-[70vh] w-full bg-black">
+              <track kind="captions" />
+            </video>
           )}
 
           {kind === "markdown" && text !== null && (
