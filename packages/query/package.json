@@ -1,0 +1,44 @@
+{
+  "name": "@jmouse/query",
+  "version": "0.1.0",
+  "description": "The jMQ filter builder every product shares — the panel, the rows, the editor. The language itself is never written here: the server composes and reads it.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "@jmouse/codemirror": ">=0.1.0",
+    "@jmouse/ui": ">=0.1.0",
+    "@tanstack/react-query": ">=5.0.0",
+    "lucide-react": ">=1.0.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@jmouse/codemirror": "*",
+    "@jmouse/ui": "*",
+    "@tanstack/react-query": "^5.90.21",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "lucide-react": "^1.25.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "~6.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
