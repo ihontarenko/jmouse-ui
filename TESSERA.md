@@ -2,7 +2,7 @@
 
 > Project-specific notes for the `tessera` skill. The tracker is the record; this file is notes.
 > Fix it in the same response as any call that contradicts it.
-> Verified: 2026-08-19
+> Verified: 2026-08-20
 
 ## Project
 
@@ -11,7 +11,7 @@
 - **Lead** `SU`
 - **Board** every open issue (`planning: board`)
 - **Sprints** not used
-- **Story points** — unverified; set the field and read the refusal if it comes.
+- **Story points** used — `storyPoints` was accepted on `UIK-11`, so set the field on every issue as well as writing the Effort table.
 
 ## What this project is for
 
@@ -54,8 +54,13 @@ installation-wide, so it is the same one `INVT` uses:
 | `Story` | ordinary work on the packages |
 | `Task` | work with no visible surface |
 | `Bug` | a defect |
+| `UI changes` | a defect that is purely visual or layout — verified 2026-08-20 on `UIK-17` |
 | `Papercut` | a small defect that annoys rather than breaks |
 | `Nit` | a tidy-up, a rename, a stale comment |
+
+⚠️ **Always pass `type` explicitly** — never take the project's default. The question it turns on is
+*was something wrong?*: yes and visual → `UI changes`, yes and small → `Papercut`, yes otherwise →
+`Bug`, no → `Nit` or `Story`.
 
 ## Statuses and the path through them
 
@@ -83,8 +88,18 @@ installation-wide, so it is the same one `INVT` uses:
 
 ## Local notes
 
-- **Two packages, one repository**: `packages/ui` (`@jmouse/ui`) and `packages/markdown`
-  (`@jmouse/markdown`). npm workspaces, published publicly to npmjs.
+- **Four packages, one repository**: `packages/ui` (`@jmouse/ui`), `packages/files` (`@jmouse/files`),
+  `packages/markdown` (`@jmouse/markdown`) and `packages/codemirror` (`@jmouse/codemirror`). npm
+  workspaces, published publicly to npmjs.
+- ⚠️ **`@jmouse/codemirror`'s root has no React in it**, which is the whole reason it is not a folder
+  inside `@jmouse/ui`: Identity and Innoventa's legacy interface consume it without taking the render
+  layer. React lives behind one entry point, `./react` (the palette/code-theme picker and its hooks),
+  and is an **optional** peer. It is also the only package here carrying its own tests — the `.jmp`
+  grammar's 25, which moved with the grammar rather than staying behind in the product that happened
+  to have written them.
+- ⚠️ **`@jmouse/ui` owns the tab-mark mechanism, not the mark.** `themedFaviconPainter` reads the
+  computed `--primary` / `--primary-foreground` and hangs a data URI on the one `rel="icon"`; each
+  product supplies its own glyph beside the `public/favicon.svg` it has to match (`UIK-15`).
 - ⚠️ **A git-tag install cannot reach a subdirectory** — this is why the packages are published rather
   than consumed from the repository.
 - ⚠️ Four things fail **silently** when wiring a consumer: Tailwind's `@source`, `tsc` not being a
