@@ -10,6 +10,11 @@
 export { cn } from "./lib/helpers"
 
 export { useIsMobile } from "./hooks/use-mobile"
+export {
+  useTreeExpansion,
+  type TreeExpansion,
+  type TreeExpansionProperties,
+} from "./hooks/use-tree-expansion"
 
 export {
   ThemeProvider,
@@ -28,6 +33,12 @@ export {
   type ThemeDefinition,
   type ThemeMode,
 } from "./theme/theming"
+export {
+  markColoursInForce,
+  paintFavicon,
+  themedFaviconPainter,
+  type MarkColours,
+} from "./theme/favicon"
 
 export * from "./components/alert"
 export * from "./components/anchored"
@@ -42,6 +53,7 @@ export * from "./components/collapsible"
 export * from "./components/dialog"
 export * from "./components/dropdown-menu"
 export * from "./components/entity-card"
+export * from "./components/filter-panel"
 export * from "./components/form"
 export * from "./components/input"
 export * from "./components/label"
@@ -59,4 +71,5 @@ export * from "./components/switch"
 export * from "./components/table"
 export * from "./components/tabs"
 export * from "./components/textarea"
+export * from "./components/tree"
 export * from "./components/tooltip"

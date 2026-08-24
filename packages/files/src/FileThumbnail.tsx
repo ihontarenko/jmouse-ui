@@ -59,7 +59,12 @@ export function FileThumbnail({
 
   if (picture) {
     return (
-      <span ref={frame} className={box} style={measured}>
+      // ⚠️ **The frame is on the PICTURE and never on the glyph** (`UIK-17`). A photograph is a sheet
+      // and reads as one with a hairline and a shadow under it; the same frame around a type icon is a
+      // box drawn around a mark, which is what made the older grid look like a table of empty cells.
+      // The component is the only thing that knows which of the two it drew, so it is the only place the
+      // distinction can be made.
+      <span ref={frame} className={cn(box, PICTURE_FRAME)} style={measured}>
         <img
           src={picture}
           alt=""
@@ -85,3 +90,6 @@ export function FileThumbnail({
     </span>
   )
 }
+
+/** ⚠️ See the note at the picture branch — this belongs to a picture and to nothing else. */
+const PICTURE_FRAME = "border shadow-[0_1px_3px_rgb(0_0_0_/_0.18)]"

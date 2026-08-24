@@ -33,9 +33,10 @@ export { FileRows, RenameField } from "./FileRows"
 export { FileTiles } from "./FileTiles"
 export { FileThumbnail } from "./FileThumbnail"
 export { FolderGlyph, CabinetGlyph } from "./FolderGlyph"
-export { fileGlyphOf, type FileGlyphSpecification } from "./fileGlyph"
+export { fileGlyphOf, glyphTint, GLYPH_HUES, type FileGlyphSpecification } from "./fileGlyph"
 export { canPreview, filePreview, useFilePreview, useOnScreen, MAXIMUM_PREVIEW_BYTES } from "./filePreviews"
 export { useManagerLocation, type ManagerLocation } from "./managerLocation"
+export { ancestorIds, parentIds, useDirectoryExpansion, visibleDirectories } from "./treeExpansion"
 export { FileActionButtons, useFileActions, type FileActions } from "./useFileActions"
 
 export {

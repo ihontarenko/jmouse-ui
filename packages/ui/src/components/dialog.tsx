@@ -45,19 +45,43 @@ function DialogOverlay({
   )
 }
 
+/**
+ * ⚠️ **A click outside does NOT close a dialog, and that is the default on purpose.**
+ *
+ * Nearly every dialog in these products is a surface somebody types into — a form, a policy, a label
+ * design. Radix dismisses on any pointer-down outside the panel, so one stray click on the scrim threw
+ * away whatever had been filled in, with no warning and nothing to undo. A modal is now closed
+ * **deliberately**: with `Esc`, with the close button, or with a control that knows what the answers
+ * were.
+ *
+ * A dialog that genuinely holds nothing losable — a picker, a preview — may opt back in with
+ * `dismissOnOutsideClick`.
+ */
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  dismissOnOutsideClick = false,
+  onInteractOutside,
   ...properties
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  dismissOnOutsideClick?: boolean
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        // ⚠️ The caller's own handler runs first and may refuse the dismissal for its own reasons;
+        // this only refuses the ones it left standing.
+        onInteractOutside={(event) => {
+          onInteractOutside?.(event)
+
+          if (!dismissOnOutsideClick) {
+            event.preventDefault()
+          }
+        }}
         className={cn(
           // ⚠️ `grid-cols-[minmax(0,1fr)]`, and it is a bug fix rather than a style: a grid track is
           // `min-width: auto` by default, so ONE wide child — a `<pre>` of embed code, a long token —

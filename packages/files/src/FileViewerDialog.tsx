@@ -144,7 +144,18 @@ export function FileViewerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex max-h-[70vh] min-h-48 items-center justify-center overflow-auto rounded-md border bg-muted/30">
+        {/* ⚠️ THE STAGE NEVER SCROLLS — exactly one scrollbar exists on this dialog, and it belongs to
+            whatever is being read. The stage used to be `overflow-auto` while its children carried their
+            own `max-h-[70vh] overflow-auto`, and both halves of that were wrong: a child capped at the
+            same 70vh as its parent overflows it by the two pixels of the parent's border, so a picture
+            got a scrollbar for two pixels of nothing, and Markdown got two — an inner one that scrolled
+            the text and an outer one that scrolled the inner one.
+
+            A capped flex COLUMN is what replaces it: the cap lives here and nowhere else, and every child
+            is a flex item that shrinks into it. `min-h-0` on each is what allows that shrink — a flex
+            item's `min-height` is `auto`, which is its content's own height, so without it an image or a
+            block of text refuses to become smaller than itself and pushes back out through the cap. */}
+        <div className="flex max-h-[70vh] min-h-48 flex-col items-center justify-center overflow-hidden rounded-md border bg-muted/30">
           {failed && <Unshowable reason="Those bytes could not be fetched." />}
 
           {!failed && kind === "unshowable" && (
@@ -165,11 +176,11 @@ export function FileViewerDialog({
           )}
 
           {kind === "image" && objectUrl && (
-            <img src={objectUrl} alt={file.name} className="max-h-[70vh] w-auto object-contain" />
+            <img src={objectUrl} alt={file.name} className="min-h-0 max-w-full object-contain" />
           )}
 
           {kind === "pdf" && objectUrl && (
-            <iframe src={objectUrl} title={file.name} className="h-[70vh] w-full" />
+            <iframe src={objectUrl} title={file.name} className="h-[70vh] min-h-0 w-full" />
           )}
 
           {/* ⚠️ The browser's own players, deliberately. A scrub bar, a volume control and a keyboard
@@ -182,13 +193,13 @@ export function FileViewerDialog({
           )}
 
           {kind === "video" && objectUrl && (
-            <video controls src={objectUrl} className="max-h-[70vh] w-full bg-black">
+            <video controls src={objectUrl} className="min-h-0 w-full bg-black">
               <track kind="captions" />
             </video>
           )}
 
           {kind === "markdown" && text !== null && (
-            <div className="max-h-[70vh] w-full overflow-auto p-4 text-left">
+            <div className="min-h-0 w-full overflow-auto p-4 text-left">
               {/* ⚠️ Without a renderer this shows the source, and that is the intended fallback: a note
                   shown as its own text is readable, where a half-rendered one is a bug report. */}
               {renderMarkdown ? renderMarkdown(text) : <PlainText text={text} />}
@@ -219,7 +230,7 @@ export function FileViewerDialog({
 
 function PlainText({ text }: { text: string }) {
   return (
-    <pre className="max-h-[70vh] w-full overflow-auto p-3 text-left font-mono text-xs leading-relaxed">
+    <pre className="min-h-0 w-full overflow-auto p-3 text-left font-mono text-xs leading-relaxed">
       {text}
     </pre>
   )

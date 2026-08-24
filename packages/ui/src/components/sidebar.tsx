@@ -321,12 +321,22 @@ function SidebarRail({ className, ...properties }: React.ComponentProps<"button"
   )
 }
 
+/**
+ * The column beside the sidebar — everything that is not the sidebar.
+ *
+ * ⚠️ **`min-w-0` is load-bearing.** A flex item's default `min-width: auto` refuses to shrink below its
+ * own min-content width, so one wide thing anywhere inside — a code block, a table, a fixed-width rail —
+ * stops this column shrinking into the space the sidebar left it. It keeps its full `w-full` instead,
+ * the two columns together come to wider than the window, and the whole document scrolls sideways with
+ * the right-hand edge of every screen cut off. The overflow rules a screen sets on its own boxes never
+ * catch it, because the growth happens above them.
+ */
 function SidebarInset({ className, ...properties }: React.ComponentProps<"main">) {
   return (
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full flex-1 flex-col bg-background",
+        "relative flex w-full min-w-0 flex-1 flex-col bg-background",
         "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}

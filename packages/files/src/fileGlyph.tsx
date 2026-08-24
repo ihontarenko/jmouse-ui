@@ -44,8 +44,14 @@ export interface FileGlyphSpecification {
   tint: string
 }
 
-/** ⚠️ Named for what they mean, so the mapping below reads as a decision rather than as hex. */
-const HUES = {
+/**
+ * The family's hues, named for what they mean so the mapping below reads as a decision rather than as hex.
+ *
+ * ⚠️ **Exported because a product files things that are document-shaped and are not files.** A knowledge
+ * base's pages sit in a tree beside this one and must be the same blue; the alternative is a hex literal
+ * in a product, which is the one thing on a screen that ignores the palette.
+ */
+export const GLYPH_HUES = {
   picture: "#8b5cf6",
   document: "#3b82f6",
   sheet: "#16a34a",
@@ -64,7 +70,7 @@ const HUES = {
  * apart in a light theme without any of them shouting in a dark one. Less and a spreadsheet and a
  * document stop being different colours; more and the row grows a set of stickers.
  */
-function tinted(hue: string): string {
+export function glyphTint(hue: string): string {
   return `color-mix(in srgb, ${hue} 65%, var(--muted-foreground))`
 }
 
@@ -85,54 +91,54 @@ export function fileGlyphOf(file: ViewableFile): FileGlyphSpecification {
   const kind = fileKindOf(file)
 
   if (kind === "image") {
-    return { Icon: FileImage, tint: tinted(HUES.picture) }
+    return { Icon: FileImage, tint: glyphTint(GLYPH_HUES.picture) }
   }
 
   if (kind === "pdf") {
-    return { Icon: FileText, tint: tinted(HUES.portable) }
+    return { Icon: FileText, tint: glyphTint(GLYPH_HUES.portable) }
   }
 
   if (kind === "audio") {
-    return { Icon: FileAudio, tint: tinted(HUES.sound) }
+    return { Icon: FileAudio, tint: glyphTint(GLYPH_HUES.sound) }
   }
 
   if (kind === "video") {
-    return { Icon: FileVideo, tint: tinted(HUES.motion) }
+    return { Icon: FileVideo, tint: glyphTint(GLYPH_HUES.motion) }
   }
 
   if (kind === "markdown") {
-    return { Icon: FileType, tint: tinted(HUES.document) }
+    return { Icon: FileType, tint: glyphTint(GLYPH_HUES.document) }
   }
 
   // ⚠️ A spreadsheet and a deck before the generic document branch: all three are the `document` kind,
   // and all three would otherwise draw as a page — which is the paperclip problem one level in.
   if (SHEET_EXTENSION.test(file.name)) {
-    return { Icon: FileSpreadsheet, tint: tinted(HUES.sheet) }
+    return { Icon: FileSpreadsheet, tint: glyphTint(GLYPH_HUES.sheet) }
   }
 
   if (SLIDES_EXTENSION.test(file.name)) {
-    return { Icon: Presentation, tint: tinted(HUES.slides) }
+    return { Icon: Presentation, tint: glyphTint(GLYPH_HUES.slides) }
   }
 
   if (kind === "document") {
-    return { Icon: FileText, tint: tinted(HUES.document) }
+    return { Icon: FileText, tint: glyphTint(GLYPH_HUES.document) }
   }
 
   if (ARCHIVE.test(file.name)) {
-    return { Icon: FileArchive, tint: tinted(HUES.bundle) }
+    return { Icon: FileArchive, tint: glyphTint(GLYPH_HUES.bundle) }
   }
 
   if (DATA_EXTENSION.test(file.name)) {
-    return { Icon: FileJson, tint: tinted(HUES.data) }
+    return { Icon: FileJson, tint: glyphTint(GLYPH_HUES.data) }
   }
 
   if (CODE_EXTENSION.test(file.name)) {
-    return { Icon: FileCode, tint: tinted(HUES.code) }
+    return { Icon: FileCode, tint: glyphTint(GLYPH_HUES.code) }
   }
 
   if (kind === "text") {
-    return { Icon: FileText, tint: tinted(HUES.plain) }
+    return { Icon: FileText, tint: glyphTint(GLYPH_HUES.plain) }
   }
 
-  return { Icon: AnyFile, tint: tinted(HUES.plain) }
+  return { Icon: AnyFile, tint: glyphTint(GLYPH_HUES.plain) }
 }

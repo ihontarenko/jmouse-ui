@@ -19,6 +19,13 @@ export type { CodeHighlightOptions, ImagePluginOptions as ImageProseOptions } fr
 export { CodeBlock }                                                          from './plugins/CodeBlock';
 export type { Highlighter }                                                   from './plugins/CodeBlock';
 
+export { frontmatterPlugin, parseFrontmatter, FrontmatterCard, toFrontmatterView, DEFAULT_TITLE_KEYS, DEFAULT_DESCRIPTION_KEYS }
+                                                               from './plugins/frontmatter';
+export type {
+    Frontmatter, FrontmatterField, FrontmatterPluginOptions, FrontmatterRenderProperties, YamlMapping,
+    YamlScalar, YamlValue,
+}                                                              from './plugins/frontmatter';
+
 // ── Blocks ───────────────────────────────────────────────────────────────────────
 export { calloutPlugin, youtubePlugin, DEFAULT_CALLOUT_KINDS } from './plugins/callouts';
 export type { CalloutKind }                                    from './plugins/callouts';

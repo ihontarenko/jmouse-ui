@@ -72,6 +72,23 @@ export interface FileManagerProperties {
    * download — belongs to the package and is the same everywhere.
    */
   renderMarkdown?: (markdown: string) => ReactNode
+
+  /**
+   * Whether this fills the frame it is mounted in and reaches its true edges.
+   *
+   * <p>⚠️ <strong>True is right for every screen that is a page.</strong> All three shells lay a page
+   * out in a <code>flex-col gap-4 p-4</code> wrapper, so a manager that stayed politely inside it draws
+   * a rail whose divider starts an inch below the page header's border and stops an inch above the
+   * bottom of the window — a vertical line joined to nothing at either end, which reads as a rendering
+   * fault rather than as a column divider. Bleeding by exactly that 1rem and putting the inset back
+   * INSIDE the columns moves nothing and joins everything.</p>
+   *
+   * <p>⚠️ <strong>False for a manager inside something else</strong> — a dialog, a tab, a card. There
+   * the padding being cancelled belongs to that container rather than to the page, so cancelling it
+   * makes the manager wider than the box holding it, which is a horizontal scrollbar across the whole
+   * screen. Same markup, right in one place and broken in the other.</p>
+   */
+  bleed?: boolean
 }
 
 export function FileManager({
@@ -83,6 +100,7 @@ export function FileManager({
   canWrite = true,
   emptyHint = "Nothing is filed here yet.",
   renderMarkdown,
+  bleed = true,
 }: FileManagerProperties) {
   const [directories, setDirectories] = useState<Directory[]>([])
   const [files, setFiles] = useState<ManagedFile[]>([])
@@ -223,10 +241,17 @@ export function FileManager({
     // starting an inch below the page header and stopping wherever the content happened to end — a
     // line joined to nothing at either end reads as a rendering fault rather than as a column divider.
     // With the bar above it the vertical meets a horizontal at a T, which is what makes it read as
-    // structure. ⚠️ The package cannot reach the page header to close the gap above; making the join
-    // ITSELF is the part that is this component's to get right.
-    <div className="flex min-h-[22rem] flex-col">
-      <header className="flex items-center justify-between gap-2 border-b pb-2">
+    // structure.
+    //
+    // ⚠️ **And it now reaches the frame, which is the other half of the same fault.** `min-h-[22rem]`
+    // meant the divider stopped 22rem down whatever the window's height was; `flex-1 min-h-0` makes the
+    // manager exactly as tall as what is left, so the line ends ON the bottom edge. The bleed does the
+    // same for left, right and bottom — see the `bleed` property for why the package is allowed to know
+    // that number.
+    <div className={["flex min-h-0 flex-1 flex-col", bleed ? "-mx-4 -mb-4" : ""].join(" ")}>
+      <header
+        className={["flex items-center justify-between gap-2 border-b pb-2", bleed ? "px-4" : ""].join(" ")}
+      >
         {/* ⚠️ Names, never the path — the path is the storage key and shows people slugs. */}
         <p className="min-w-0 truncate text-[13px] text-muted-foreground">{trail.join(" / ")}</p>
 
@@ -298,7 +323,15 @@ export function FileManager({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-52 shrink-0 border-r py-2 pr-2">
+        {/* ⚠️ Each pane scrolls itself, and that is what full height buys. While the manager was
+            content-height the WINDOW scrolled instead — taking the page header, the toolbar and the
+            tree off the top to read the end of a long folder. */}
+        <aside
+          className={[
+            "w-52 shrink-0 overflow-y-auto border-r py-2 pr-2",
+            bleed ? "pl-4" : "",
+          ].join(" ")}
+        >
           {treeLoading && directories.length === 0 ? (
             <p className="px-1 py-2 text-[13px] text-muted-foreground">Reading the folders…</p>
           ) : (
@@ -315,7 +348,7 @@ export function FileManager({
           )}
         </aside>
 
-        <div className="min-w-0 flex-1 py-2 pl-4">
+        <div className={["min-w-0 flex-1 overflow-y-auto py-2 pl-4", bleed ? "pr-4" : ""].join(" ")}>
           <FileList
             directories={childrenOfSelected}
             files={files}

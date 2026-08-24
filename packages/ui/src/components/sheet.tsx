@@ -44,21 +44,37 @@ function SheetOverlay({
   )
 }
 
+/**
+ * ⚠️ **A click outside does not close a sheet either** — a drawer holds an editor as often as a dialog
+ * does, and losing a half-filled one to a stray click on the scrim is the same accident. `Esc` and the
+ * close button remain; `dismissOnOutsideClick` opts a purely navigational sheet back in. See
+ * `DialogContent` for the whole reasoning.
+ */
 function SheetContent({
   className,
   children,
   side = "right",
   showCloseButton = true,
+  dismissOnOutsideClick = false,
+  onInteractOutside,
   ...properties
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  dismissOnOutsideClick?: boolean
 }) {
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        onInteractOutside={(event) => {
+          onInteractOutside?.(event)
+
+          if (!dismissOnOutsideClick) {
+            event.preventDefault()
+          }
+        }}
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
           side === "right" &&
