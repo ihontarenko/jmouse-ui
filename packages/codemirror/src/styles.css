@@ -1,0 +1,316 @@
+/* =============================================================================
+   `@jmouse/codemirror/styles.css` — the colours code is read in, for every product.
+
+   ⚠️ IMPORT THIS. A host that does not gets no syntax colour at all, and the failure looks like
+   the highlighter being broken rather than like a missing stylesheet: the token classes are
+   generated and mounted, they just resolve every `var(--syntax-*)` to nothing.
+
+   Normalised, and that is the whole argument. These are not decorative. A palette chosen for how a
+   dashboard feels will, on some of a product's themes, put two token classes on the same hue or a
+   whole class within a few percent of the background — and code that cannot be skimmed is code that
+   gets misread. Innoventa's new interface proved it the expensive way: painted from `--primary` and
+   the chart ramp, scope instances and the fields inside a `when` condition came out all but
+   invisible on the dark themes, and there was no light/dark split at all because a chart ramp is not
+   built for one.
+
+   So syntax colour is declared here, once for light and once for dark, and no application theme
+   reaches it. ⚠️ Picking a product theme recolours the *frame* around code and never the code
+   itself — intended, not a gap.
+
+   ── Two dark-mode selectors, and both are needed ─────────────────────────────
+   Four interfaces flag dark with `.dark` on <html> (shadcn / `@jmouse/ui`'s ThemeProvider); the
+   legacy Innoventa one flags it with `.theme-dark`. Every dark block below names both. Dropping
+   either silently gives that product a light palette on a dark ground.
+
+   ── Choosing a palette ───────────────────────────────────────────────────────
+   Selection is a `data-syntax-palette` attribute on <html>, written by `applySyntaxPalette` from
+   `@jmouse/codemirror/palettes`. The default is the bare `:root` block — no attribute needed, and
+   an unknown value simply inherits it, so a palette removed from the list degrades to the house one
+   rather than to no colour.
+
+   Every palette defines the same nineteen tokens. Adding one means adding it to all of them, which
+   is the cost of the guarantee that no surface ever resolves a token to nothing.
+
+   The hue assignment is the same argument in every palette, only re-voiced:
+     · the language's own words are one hue, so `grants` never reads as a thing being granted
+     · `deny` is the loudest thing on screen, always
+     · a role and the place it applies are neighbours in one hue family
+     · a permission's namespace and its action are neighbours in another
+     · everything structural — punctuation, operators, comments — recedes to grey
+   ============================================================================= */
+
+/* ── Innoventa (default) ─────────────────────────────────────────────────── */
+:root {
+    --syntax-keyword:     #C2185B;
+    --syntax-heading:     #2A2A29;
+    --syntax-deny:        #B3261E;
+    --syntax-invalid:     #B3261E;
+    --syntax-role:        #2E7D32;
+    --syntax-instance:    #3F8F4A;
+    --syntax-string:      #2F7A55;
+    --syntax-scope:       #6A3FB5;
+    --syntax-subject:     #9A6614;
+    --syntax-literal:     #A65A17;
+    --syntax-namespace:   #1B6E97;
+    --syntax-action:      #2E8BA8;
+    --syntax-filter:      #2E8BA8;
+    --syntax-property:    #2E8BA8;
+    --syntax-declaration: #6A3FB5;
+    --syntax-variable:    #3A3A38;
+    --syntax-comment:     #8C8A85;
+    --syntax-operator:    #6E6C67;
+    --syntax-punctuation: #8C8A85;
+}
+
+:root.dark,
+:root.theme-dark {
+    --syntax-keyword:     #FF7EB6;
+    --syntax-heading:     #E8E6E0;
+    --syntax-deny:        #FF6B60;
+    --syntax-invalid:     #FF6B60;
+    --syntax-role:        #7EE787;
+    --syntax-instance:    #9BE29B;
+    --syntax-string:      #7FD8A6;
+    --syntax-scope:       #C3A6FF;
+    --syntax-subject:     #E3B341;
+    --syntax-literal:     #FFAB70;
+    --syntax-namespace:   #6FC3E8;
+    --syntax-action:      #86D8F0;
+    --syntax-filter:      #86D8F0;
+    --syntax-property:    #86D8F0;
+    --syntax-declaration: #C3A6FF;
+    --syntax-variable:    #D9D6CF;
+    --syntax-comment:     #8B8880;
+    --syntax-operator:    #A9A69F;
+    --syntax-punctuation: #8B8880;
+}
+
+/* ── Orchid — violet-forward, the softest of the coloured set ────────────── */
+:root[data-syntax-palette='orchid'] {
+    --syntax-keyword:     #8E24AA;
+    --syntax-heading:     #2B2A33;
+    --syntax-deny:        #C62828;
+    --syntax-invalid:     #C62828;
+    --syntax-role:        #2E7D5B;
+    --syntax-instance:    #3C8A73;
+    --syntax-string:      #37806B;
+    --syntax-scope:       #5E35B1;
+    --syntax-subject:     #A1567C;
+    --syntax-literal:     #B0446B;
+    --syntax-namespace:   #3F51B5;
+    --syntax-action:      #5C6BC0;
+    --syntax-filter:      #5C6BC0;
+    --syntax-property:    #5C6BC0;
+    --syntax-declaration: #5E35B1;
+    --syntax-variable:    #3B3A42;
+    --syntax-comment:     #918EA0;
+    --syntax-operator:    #6F6C7D;
+    --syntax-punctuation: #918EA0;
+}
+
+:root[data-syntax-palette='orchid'].dark,
+:root[data-syntax-palette='orchid'].theme-dark {
+    --syntax-keyword:     #E39BFF;
+    --syntax-heading:     #E9E6F0;
+    --syntax-deny:        #FF6F61;
+    --syntax-invalid:     #FF6F61;
+    --syntax-role:        #79E2C0;
+    --syntax-instance:    #97E8CE;
+    --syntax-string:      #8FE3C6;
+    --syntax-scope:       #B39DFF;
+    --syntax-subject:     #F2A3C7;
+    --syntax-literal:     #FF9CB8;
+    --syntax-namespace:   #91A7FF;
+    --syntax-action:      #AFC0FF;
+    --syntax-filter:      #AFC0FF;
+    --syntax-property:    #AFC0FF;
+    --syntax-declaration: #B39DFF;
+    --syntax-variable:    #DAD7E4;
+    --syntax-comment:     #8B8798;
+    --syntax-operator:    #A8A4B5;
+    --syntax-punctuation: #8B8798;
+}
+
+/* ── Harbour — blue and teal, the calmest to read for long stretches ─────── */
+:root[data-syntax-palette='harbour'] {
+    --syntax-keyword:     #00697C;
+    --syntax-heading:     #26302F;
+    --syntax-deny:        #B3261E;
+    --syntax-invalid:     #B3261E;
+    --syntax-role:        #2F7D4F;
+    --syntax-instance:    #3E8C66;
+    --syntax-string:      #2C7A73;
+    --syntax-scope:       #1B5E9B;
+    --syntax-subject:     #8A6D1F;
+    --syntax-literal:     #9C5B21;
+    --syntax-namespace:   #2A6FA8;
+    --syntax-action:      #3D8BB5;
+    --syntax-filter:      #3D8BB5;
+    --syntax-property:    #3D8BB5;
+    --syntax-declaration: #1B5E9B;
+    --syntax-variable:    #34403F;
+    --syntax-comment:     #859092;
+    --syntax-operator:    #667273;
+    --syntax-punctuation: #859092;
+}
+
+:root[data-syntax-palette='harbour'].dark,
+:root[data-syntax-palette='harbour'].theme-dark {
+    --syntax-keyword:     #5FE3E3;
+    --syntax-heading:     #E2EAEA;
+    --syntax-deny:        #FF7A6E;
+    --syntax-invalid:     #FF7A6E;
+    --syntax-role:        #7ADFA6;
+    --syntax-instance:    #9AE8BE;
+    --syntax-string:      #82DFD2;
+    --syntax-scope:       #8AB6FF;
+    --syntax-subject:     #E0C46A;
+    --syntax-literal:     #FFB27A;
+    --syntax-namespace:   #74B9EC;
+    --syntax-action:      #9CD2F5;
+    --syntax-filter:      #9CD2F5;
+    --syntax-property:    #9CD2F5;
+    --syntax-declaration: #8AB6FF;
+    --syntax-variable:    #D2DCDC;
+    --syntax-comment:     #7F8B8C;
+    --syntax-operator:    #9EA9AA;
+    --syntax-punctuation: #7F8B8C;
+}
+
+/* ── Ember — warm, high separation; the one that survives a bright room ──── */
+:root[data-syntax-palette='ember'] {
+    --syntax-keyword:     #C2410C;
+    --syntax-heading:     #33291F;
+    --syntax-deny:        #9F1239;
+    --syntax-invalid:     #9F1239;
+    --syntax-role:        #3F7D1F;
+    --syntax-instance:    #4F8C2C;
+    --syntax-string:      #4A7C2E;
+    --syntax-scope:       #92400E;
+    --syntax-subject:     #A16207;
+    --syntax-literal:     #B45309;
+    --syntax-namespace:   #0F766E;
+    --syntax-action:      #15837A;
+    --syntax-filter:      #15837A;
+    --syntax-property:    #15837A;
+    --syntax-declaration: #92400E;
+    --syntax-variable:    #43372C;
+    --syntax-comment:     #96897A;
+    --syntax-operator:    #7A6E60;
+    --syntax-punctuation: #96897A;
+}
+
+:root[data-syntax-palette='ember'].dark,
+:root[data-syntax-palette='ember'].theme-dark {
+    --syntax-keyword:     #FFA45C;
+    --syntax-heading:     #F0E6D9;
+    --syntax-deny:        #FF6B7A;
+    --syntax-invalid:     #FF6B7A;
+    --syntax-role:        #A9D96B;
+    --syntax-instance:    #BFE38C;
+    --syntax-string:      #B7DE8A;
+    --syntax-scope:       #E8A55C;
+    --syntax-subject:     #F0C24B;
+    --syntax-literal:     #FFC078;
+    --syntax-namespace:   #5FD3C4;
+    --syntax-action:      #85E0D3;
+    --syntax-filter:      #85E0D3;
+    --syntax-property:    #85E0D3;
+    --syntax-declaration: #E8A55C;
+    --syntax-variable:    #E2D8CB;
+    --syntax-comment:     #8E8377;
+    --syntax-operator:    #ADA294;
+    --syntax-punctuation: #8E8377;
+}
+
+/* ── Moss — greens and olive; the quietest palette that is still coloured ── */
+:root[data-syntax-palette='moss'] {
+    --syntax-keyword:     #7A5C00;
+    --syntax-heading:     #272B22;
+    --syntax-deny:        #A62B1F;
+    --syntax-invalid:     #A62B1F;
+    --syntax-role:        #256B33;
+    --syntax-instance:    #35803F;
+    --syntax-string:      #40733A;
+    --syntax-scope:       #55702A;
+    --syntax-subject:     #7C6420;
+    --syntax-literal:     #8A5A1E;
+    --syntax-namespace:   #2C6B62;
+    --syntax-action:      #3A8078;
+    --syntax-filter:      #3A8078;
+    --syntax-property:    #3A8078;
+    --syntax-declaration: #55702A;
+    --syntax-variable:    #35392F;
+    --syntax-comment:     #8A8C7C;
+    --syntax-operator:    #6C6E60;
+    --syntax-punctuation: #8A8C7C;
+}
+
+:root[data-syntax-palette='moss'].dark,
+:root[data-syntax-palette='moss'].theme-dark {
+    --syntax-keyword:     #E0C267;
+    --syntax-heading:     #E5E9DC;
+    --syntax-deny:        #FF7A6B;
+    --syntax-invalid:     #FF7A6B;
+    --syntax-role:        #8FDD93;
+    --syntax-instance:    #ABE8A9;
+    --syntax-string:      #B4DFA0;
+    --syntax-scope:       #C4D97A;
+    --syntax-subject:     #D8C583;
+    --syntax-literal:     #EDB878;
+    --syntax-namespace:   #79D4C4;
+    --syntax-action:      #9BE3D6;
+    --syntax-filter:      #9BE3D6;
+    --syntax-property:    #9BE3D6;
+    --syntax-declaration: #C4D97A;
+    --syntax-variable:    #D7DBCE;
+    --syntax-comment:     #85897A;
+    --syntax-operator:    #A4A897;
+    --syntax-punctuation: #85897A;
+}
+
+/* ── Graphite — one accent and sixteen greys, for reading structure ──────── */
+:root[data-syntax-palette='graphite'] {
+    --syntax-keyword:     #1F1F1E;
+    --syntax-heading:     #1F1F1E;
+    --syntax-deny:        #B3261E;
+    --syntax-invalid:     #B3261E;
+    --syntax-role:        #2E7D32;
+    --syntax-instance:    #4A4A47;
+    --syntax-string:      #55534E;
+    --syntax-scope:       #383734;
+    --syntax-subject:     #55534E;
+    --syntax-literal:     #55534E;
+    --syntax-namespace:   #383734;
+    --syntax-action:      #6E6C67;
+    --syntax-filter:      #6E6C67;
+    --syntax-property:    #6E6C67;
+    --syntax-declaration: #383734;
+    --syntax-variable:    #3A3A38;
+    --syntax-comment:     #A3A19B;
+    --syntax-operator:    #8C8A85;
+    --syntax-punctuation: #A3A19B;
+}
+
+:root[data-syntax-palette='graphite'].dark,
+:root[data-syntax-palette='graphite'].theme-dark {
+    --syntax-keyword:     #F5F2EC;
+    --syntax-heading:     #F5F2EC;
+    --syntax-deny:        #FF6B60;
+    --syntax-invalid:     #FF6B60;
+    --syntax-role:        #7EE787;
+    --syntax-instance:    #C6C3BB;
+    --syntax-string:      #B4B1A9;
+    --syntax-scope:       #DEDBD3;
+    --syntax-subject:     #B4B1A9;
+    --syntax-literal:     #B4B1A9;
+    --syntax-namespace:   #DEDBD3;
+    --syntax-action:      #A09D95;
+    --syntax-filter:      #A09D95;
+    --syntax-property:    #A09D95;
+    --syntax-declaration: #DEDBD3;
+    --syntax-variable:    #D9D6CF;
+    --syntax-comment:     #7A7770;
+    --syntax-operator:    #928F88;
+    --syntax-punctuation: #7A7770;
+}
