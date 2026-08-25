@@ -15,6 +15,7 @@ import {
   TabsTrigger,
 } from "@jmouse/ui"
 import { QueryBuilder } from "./QueryBuilder"
+import { SavedQueries } from "./SavedQueries"
 import { QueryEditor } from "./QueryEditor"
 import { useQueryVocabulary, useTranslation } from "./hooks"
 import { DEFAULT_LABELS, type QueryLabels } from "./labels"
@@ -153,7 +154,7 @@ export function QueryPanel({
     onApply({ filter: (answer?.filter ?? "") || null, order: (answer?.order ?? "") || null })
 
   return (
-    <div className="space-y-4 rounded-xl border border-border/60 bg-card/30 p-4">
+    <div className="space-y-3 rounded-xl border border-border/60 bg-card/30 p-3">
       {available.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -177,19 +178,93 @@ export function QueryPanel({
         </div>
       ) : null}
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as "builder" | "text")}>
-        <TabsList>
-          <TabsTrigger value="builder" disabled={handWritten}>
-            <SlidersHorizontal className="size-4" />
-            {labels.builderTab}
-          </TabsTrigger>
-          <TabsTrigger value="text">
-            <PenLine className="size-4" />
-            {labels.textTab}
-          </TabsTrigger>
-        </TabsList>
+      {/*
+        ⚠️ Applying a saved view goes through the SAME `onApply` the button uses, so a screen learns
+        nothing new about where a query came from. A second path — "restore a view" beside "apply a
+        filter" — is two ways of arriving at one state, and they drift the first time one grows a step.
+      */}
+      <SavedQueries
+        subject={subject}
+        current={{ filter: answer?.filter ?? text ?? null, order: answer?.order ?? null }}
+        labels={labels}
+        onApply={(applied) => {
+          setText(applied.filter ?? "")
+          setHandWritten(false)
+          onApply(applied)
+        }}
+      />
 
-        <TabsContent value="builder" className="pt-4">
+      <Tabs value={tab} onValueChange={(value) => setTab(value as "builder" | "text")}>
+        {/*
+          ⚠️ ONE row: how the query is written on the left, what is done with it on the right.
+
+          The sort, the direction and the two buttons used to be a bordered footer of their own — a
+          fourth storey under the presets, the tabs and the builder, costing about ninety pixels to hold
+          two controls and two buttons. A filter panel opens over the list it narrows, so every row it
+          takes is a row of answers somebody cannot see while they work; and a person reaching for Apply
+          was reaching past the whole builder to get there.
+        */}
+        <div className="flex flex-wrap items-center gap-2">
+          <TabsList>
+            <TabsTrigger value="builder" disabled={handWritten}>
+              <SlidersHorizontal className="size-4" />
+              {labels.builderTab}
+            </TabsTrigger>
+            <TabsTrigger value="text">
+              <PenLine className="size-4" />
+              {labels.textTab}
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Label className="text-xs text-muted-foreground">{labels.sortBy}</Label>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="h-8 w-[170px] text-sm">
+                <SelectValue placeholder={labels.sortDefault} />
+              </SelectTrigger>
+              <SelectContent>
+                {attributes.map((attribute) => (
+                  <SelectItem key={attribute.name} value={attribute.name}>
+                    {attribute.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Switch id="jmq-descending" checked={descending} onCheckedChange={setDescending} />
+            <Label htmlFor="jmq-descending" className="text-xs font-normal text-muted-foreground">
+              {labels.descending}
+            </Label>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setRows([])
+                setText("")
+                setSortBy("")
+                setDescending(false)
+                setHandWritten(false)
+                setTab("builder")
+                onApply({ filter: null, order: null })
+              }}
+            >
+              {labels.reset}
+            </Button>
+
+            {/*
+              ⚠️ Refused BEFORE it is sent, using the server's own verdict — so the refusal a person sees
+              while composing and the one the listing would answer with are the same judgement.
+            */}
+            <Button type="button" size="sm" onClick={apply} disabled={answer?.readable === false}>
+              {labels.apply}
+            </Button>
+          </div>
+        </div>
+
+        <TabsContent value="builder" className="pt-3">
           <QueryBuilder
             attributes={attributes}
             operators={operators}
@@ -199,7 +274,7 @@ export function QueryPanel({
           />
         </TabsContent>
 
-        <TabsContent value="text" className="space-y-2 pt-4">
+        <TabsContent value="text" className="space-y-2 pt-3">
           {handWritten ? <p className="text-xs text-muted-foreground">{labels.handWritten}</p> : null}
 
           <QueryEditor
@@ -214,57 +289,6 @@ export function QueryPanel({
           />
         </TabsContent>
       </Tabs>
-
-      <div className="flex flex-wrap items-end gap-3 border-t border-border/60 pt-4">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">{labels.sortBy}</Label>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder={labels.sortDefault} />
-            </SelectTrigger>
-            <SelectContent>
-              {attributes.map((attribute) => (
-                <SelectItem key={attribute.name} value={attribute.name}>
-                  {attribute.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2 pb-2">
-          <Switch id="jmq-descending" checked={descending} onCheckedChange={setDescending} />
-          <Label htmlFor="jmq-descending" className="text-xs font-normal text-muted-foreground">
-            {labels.descending}
-          </Label>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setRows([])
-              setText("")
-              setSortBy("")
-              setDescending(false)
-              setHandWritten(false)
-              setTab("builder")
-              onApply({ filter: null, order: null })
-            }}
-          >
-            {labels.reset}
-          </Button>
-
-          {/*
-            ⚠️ Refused BEFORE it is sent, using the server's own verdict — so the refusal a person sees
-            while composing and the one the listing would answer with are the same judgement.
-          */}
-          <Button type="button" onClick={apply} disabled={answer?.readable === false}>
-            {labels.apply}
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }

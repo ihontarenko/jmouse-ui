@@ -12,11 +12,54 @@ import type { QuerySubject, QueryVocabulary, Translated, Translation } from "./t
  *
  * So the product hands over two functions and this package calls them.
  */
+/** A question somebody kept — what the views row lists, applies and manages. */
+export interface SavedQueryView {
+  id: string
+  name: string
+  description?: string | null
+  /** The jMQ, in either shape — one condition, or a whole `view` block. */
+  filter: string | null
+  order?: string | null
+  /** Whether everyone who can reach its owner sees it, or only its author. */
+  shared?: boolean
+  /**
+   * ⚠️ The SERVER's answer, never derived from an author id in the browser. A screen that worked out
+   * who may edit would be a second implementation of a permission, and the two disagree the day one
+   * of them is changed.
+   */
+  editable?: boolean
+}
+
+/** What is sent when a view is kept or renamed. */
+export interface SavedQueryDraft {
+  name: string
+  description?: string | null
+  filter: string | null
+  order?: string | null
+  shared?: boolean
+}
+
+/**
+ * Listing, keeping and managing saved views.
+ *
+ * ⚠️ **Optional, and the row simply does not appear without it.** A product with no store keeps exactly
+ * the panel it has today — the same rule the backend autoconfiguration follows, so a product adopts
+ * saved views by wiring them rather than by having them appear half-working.
+ */
+export interface SavedQueryTransport {
+  list(subject: QuerySubject): Promise<SavedQueryView[]>
+  save(subject: QuerySubject, draft: SavedQueryDraft): Promise<SavedQueryView>
+  update(subject: QuerySubject, id: string, draft: SavedQueryDraft): Promise<SavedQueryView>
+  remove(subject: QuerySubject, id: string): Promise<void>
+}
+
 export interface QueryTransport {
   /** `GET {prefix}/{subject}/schema` with the subject's parameters as the query string. */
   schema(subject: QuerySubject): Promise<QueryVocabulary>
   /** `POST {prefix}/{subject}/translate`. */
   translate(subject: QuerySubject, translation: Translation): Promise<Translated>
+  /** ⚠️ Omitted by a product with no saved-query store — see {@link SavedQueryTransport}. */
+  views?: SavedQueryTransport
 }
 
 const Transport = createContext<QueryTransport | null>(null)

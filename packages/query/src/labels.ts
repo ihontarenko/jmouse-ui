@@ -29,6 +29,13 @@ export interface QueryLabels {
   readonly reset: string
   readonly apply: string
   readonly presets: string
+  /** The saved-view row: what it is called, and the words its controls need. */
+  readonly savedViews: string
+  readonly saveView: string
+  readonly renameView: string
+  readonly discardView: string
+  readonly viewName: string
+  readonly nothingToSave: string
   readonly handWritten: string
   readonly readable: string
   /** ⚠️ Takes the converter's name, because naming it is what makes the pipe stop looking like noise. */
@@ -63,6 +70,12 @@ export const DEFAULT_LABELS: QueryLabels = {
   descending: "descending",
   reset: "Reset",
   apply: "Apply",
+  savedViews: "Saved",
+  saveView: "Save this view",
+  renameView: "Rename",
+  discardView: "Delete",
+  viewName: "Name this view…",
+  nothingToSave: "Compose something first — a view that narrows nothing does nothing",
   presets: "Ready questions",
   handWritten:
     "⚠️ This query was written by hand — the builder does not try to redraw it, because quietly " +

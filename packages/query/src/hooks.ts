@@ -1,5 +1,5 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { useQueryTransport } from "./transport"
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryTransport, type SavedQueryDraft, type SavedQueryView } from "./transport"
 import type { QuerySubject, QueryVocabulary, Translated, Translation } from "./types"
 
 /**
@@ -54,4 +54,57 @@ export function useTranslation(subject: QuerySubject, translation: Translation, 
     // rather than as feedback.
     placeholderData: keepPreviousData,
   })
+}
+
+/**
+ * The views kept against this subject — what the management row lists.
+ *
+ * ⚠️ Disabled outright where the product wired no store, so a panel without one makes no request and
+ * shows no row rather than showing an empty shelf that can never fill.
+ */
+export function useSavedQueryViews(subject: QuerySubject) {
+  const transport = useQueryTransport()
+
+  return useQuery<SavedQueryView[]>({
+    queryKey: ["jmq-views", subject.name, subject.parameters ?? {}],
+    queryFn: () => transport.views!.list(subject),
+    enabled: Boolean(transport.views),
+    staleTime: 30 * 1000,
+  })
+}
+
+/**
+ * Keeping, renaming and discarding a view.
+ *
+ * ⚠️ **The list is invalidated rather than edited in place.** A row written optimistically is a row
+ * whose name, sharing and identifier were all decided in the browser — and the server decides all three,
+ * including whether the name collided with one somebody else kept.
+ */
+export function useSavedQueryActions(subject: QuerySubject) {
+  const transport = useQueryTransport()
+  const client = useQueryClient()
+
+  const refresh = () => client.invalidateQueries({ queryKey: ["jmq-views", subject.name] })
+
+  return {
+    supported: Boolean(transport.views),
+    save: async (draft: SavedQueryDraft) => {
+      const kept = await transport.views!.save(subject, draft)
+
+      await refresh()
+
+      return kept
+    },
+    update: async (id: string, draft: SavedQueryDraft) => {
+      const kept = await transport.views!.update(subject, id, draft)
+
+      await refresh()
+
+      return kept
+    },
+    remove: async (id: string) => {
+      await transport.views!.remove(subject, id)
+      await refresh()
+    },
+  }
 }

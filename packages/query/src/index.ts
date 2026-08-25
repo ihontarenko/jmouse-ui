@@ -8,8 +8,17 @@
 export { QueryPanel, type AppliedQuery } from "./QueryPanel"
 export { QueryBuilder } from "./QueryBuilder"
 export { QueryEditor } from "./QueryEditor"
-export { useQueryVocabulary, useTranslation } from "./hooks"
-export { QueryTransportProvider, transportOver, useQueryTransport, type QueryTransport } from "./transport"
+export { SavedQueries } from "./SavedQueries"
+export { useQueryVocabulary, useTranslation, useSavedQueryViews, useSavedQueryActions } from "./hooks"
+export {
+  QueryTransportProvider,
+  transportOver,
+  useQueryTransport,
+  type QueryTransport,
+  type SavedQueryTransport,
+  type SavedQueryView,
+  type SavedQueryDraft,
+} from "./transport"
 export { DEFAULT_LABELS, wordFor, type QueryLabels } from "./labels"
 export { offered, type QueryPreset } from "./presets"
 export type {
