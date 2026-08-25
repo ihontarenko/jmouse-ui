@@ -46,8 +46,31 @@ export interface SavedQueryDraft {
  * the panel it has today — the same rule the backend autoconfiguration follows, so a product adopts
  * saved views by wiring them rather than by having them appear half-working.
  */
+/**
+ * One listing named in a batch, and what came back for it.
+ *
+ * ⚠️ **The parameters travel both ways.** A product registers one subject per thing being listed, so two
+ * subjects can share a name and differ only here — an answer identified by name alone could not be
+ * matched to the row that asked for it.
+ */
+export interface BatchedSubjectViews {
+  subject: string
+  parameters: Record<string, string>
+  views: SavedQueryView[]
+  /** The caller may not read this listing. ⚠️ One refusal must not fail the batch. */
+  refused: boolean
+}
+
 export interface SavedQueryTransport {
   list(subject: QuerySubject): Promise<SavedQueryView[]>
+  /**
+   * Every listing's kept views, in one request.
+   *
+   * ⚠️ **Optional, and a product without it keeps working.** The manager falls back to one request per
+   * subject — which is what it always did, and what costs eighty-eight requests on a workspace with
+   * forty-four listings.
+   */
+  listMany?(subjects: readonly QuerySubject[]): Promise<BatchedSubjectViews[]>
   save(subject: QuerySubject, draft: SavedQueryDraft): Promise<SavedQueryView>
   update(subject: QuerySubject, id: string, draft: SavedQueryDraft): Promise<SavedQueryView>
   remove(subject: QuerySubject, id: string): Promise<void>
@@ -108,17 +131,21 @@ export function useQueryTransport(): QueryTransport {
 }
 
 /**
- * A transport over any request function, which is what a product's HTTP client already is.
+ * One listing's address — the subject, the action, and ⚠️ **whatever narrows it**.
  *
- * ⚠️ `prefix` defaults to what the library's controller answers on. A product that moved it with
- * `jmouse.query.builder.prefix` has to say so here too — the address lives in two places and there is no
- * third to forget.
+ * ## ⚠️ Written once, because forgetting the parameters fails SILENTLY
+ *
+ * A subject is a name *and* the parameters that say which listing of that name it is — forty-four forms
+ * are forty-four `entries`. An address built without them still resolves, still answers 200 and still
+ * returns rows: the server simply answers about the subject rather than about the listing, so one form's
+ * kept questions appear on all of them and a question saved on one is filed where every one of them can
+ * see it. Nothing anywhere reports this.
+ *
+ * That is not hypothetical — every hand-written saved-view address in this workspace omitted them, which
+ * is precisely why the address is now built in one place and handed to every transport below.
  */
-export function transportOver(
-  request: <T>(method: "GET" | "POST", url: string, body?: unknown) => Promise<T>,
-  prefix = "/query",
-): QueryTransport {
-  const address = (subject: QuerySubject, action: string) => {
+function addressing(prefix: string) {
+  return (subject: QuerySubject, action: string) => {
     const parameters = new URLSearchParams()
 
     Object.entries(subject.parameters ?? {}).forEach(([name, value]) => {
@@ -131,6 +158,20 @@ export function transportOver(
 
     return `${prefix}/${subject.name}/${action}${query === "" ? "" : `?${query}`}`
   }
+}
+
+/**
+ * A transport over any request function, which is what a product's HTTP client already is.
+ *
+ * ⚠️ `prefix` defaults to what the library's controller answers on. A product that moved it with
+ * `jmouse.query.builder.prefix` has to say so here too — the address lives in two places and there is no
+ * third to forget.
+ */
+export function transportOver(
+  request: <T>(method: "GET" | "POST", url: string, body?: unknown) => Promise<T>,
+  prefix = "/query",
+): QueryTransport {
+  const address = addressing(prefix)
 
   return {
     schema: (subject) => request<QueryVocabulary>("GET", address(subject, "schema")),
@@ -198,8 +239,18 @@ export interface SourceVerdict {
  * same rule the query builder follows, and for the same reason: a second writer for a language drifts
  * from the one that decides what actually runs.
  */
+/** One listing's declaration in a batch — see {@link BatchedSubjectViews} for why parameters travel. */
+export interface BatchedSubjectDeclaration {
+  subject: string
+  parameters: Record<string, string>
+  declaration: SourceDeclaration | null
+  refused: boolean
+}
+
 export interface SourceTransport {
   declaration(subject: QuerySubject): Promise<SourceDeclaration>
+  /** Every listing's declaration in one request. ⚠️ Optional — see `SavedQueryTransport.listMany`. */
+  declarationMany?(subjects: readonly QuerySubject[]): Promise<BatchedSubjectDeclaration[]>
   rewrite(subject: QuerySubject, body: string): Promise<SourceDeclaration>
   revert(subject: QuerySubject): Promise<SourceDeclaration>
   validate(subject: QuerySubject, body: string): Promise<SourceVerdict>
@@ -221,22 +272,18 @@ export function sourceTransportOver(
   request: <T>(method: "GET" | "POST" | "PUT" | "DELETE", url: string, body?: unknown) => Promise<T>,
   prefix = "/query",
 ): SourceTransport {
-  const address = (subject: QuerySubject, action: string) => {
-    const parameters = new URLSearchParams()
-
-    Object.entries(subject.parameters ?? {}).forEach(([name, value]) => {
-      if (value !== undefined && value !== "") {
-        parameters.set(name, value)
-      }
-    })
-
-    const query = parameters.toString()
-
-    return `${prefix}/${subject.name}/${action}${query === "" ? "" : `?${query}`}`
-  }
+  const address = addressing(prefix)
 
   return {
     declaration: (subject) => request<SourceDeclaration>("GET", address(subject, "source")),
+    // ⚠️ Free for every product that wires `sourceTransportOver` — the route is the library's own, so a
+    // product adopts the batch by doing nothing at all.
+    declarationMany: (subjects) =>
+      request<BatchedSubjectDeclaration[]>(
+        "POST",
+        `${prefix}/sources/batch`,
+        subjects.map((subject) => ({ subject: subject.name, parameters: subject.parameters ?? {} })),
+      ),
     rewrite: (subject, body) => request<SourceDeclaration>("PUT", address(subject, "source"), { body }),
     revert: (subject) => request<SourceDeclaration>("DELETE", address(subject, "source")),
     validate: (subject, body) =>
@@ -304,20 +351,55 @@ export function playgroundTransportOver(
   request: <T>(method: "GET" | "POST", url: string, body?: unknown) => Promise<T>,
   prefix = "/query",
 ): PlaygroundTransport {
+  const address = addressing(prefix)
+
   return {
-    compile: (subject, filter, order, translator, dialect) => {
-      const parameters = new URLSearchParams()
+    compile: (subject, filter, order, translator, dialect) =>
+      request<CompiledQuery>("POST", address(subject, "playground"), {
+        filter,
+        order,
+        translator,
+        dialect,
+      }),
+  }
+}
 
-      Object.entries(subject.parameters ?? {}).forEach(([name, value]) => {
-        if (value !== undefined && value !== "") {
-          parameters.set(name, value)
-        }
-      })
+/**
+ * The saved-view half of the transport, over the same request function.
+ *
+ * ## ⚠️ Here rather than in each product, and that is the whole point of it existing
+ *
+ * These five addresses are the library's own, and a product hand-writing them writes five URLs whose
+ * only tricky part — the parameters that say *which* listing — is invisible when it is missing. Innoventa
+ * wrote them by hand and left them off all five, so every form's shelf was every other form's, and a view
+ * kept on one was saved where all of them could see it.
+ *
+ * ⚠️ **Opt-in, exactly like `sourceTransportOver`.** Wiring it is a product saying *this product keeps
+ * saved views*; getting it for free would draw a shelf over a backend with no store, and a shelf that can
+ * never fill reads as *you have saved nothing* rather than as *this product does not keep these*.
+ *
+ * ⚠️ `PUT` and `DELETE` are needed here, which is why this takes the wider request function.
+ */
+export function savedQueryTransportOver(
+  request: <T>(method: "GET" | "POST" | "PUT" | "DELETE", url: string, body?: unknown) => Promise<T>,
+  prefix = "/query",
+): SavedQueryTransport {
+  const address = addressing(prefix)
 
-      const query = parameters.toString()
-      const url = `${prefix}/${subject.name}/playground${query === "" ? "" : `?${query}`}`
-
-      return request<CompiledQuery>("POST", url, { filter, order, translator, dialect })
-    },
+  return {
+    list: (subject) => request<SavedQueryView[]>("GET", address(subject, "views")),
+    // ⚠️ Free for every product that wires this — the route is the library's own, so a product adopts the
+    // batch by doing nothing at all. And its parameters travel in the BODY, which is why the batch was
+    // the one saved-view call that never lost them.
+    listMany: (subjects) =>
+      request<BatchedSubjectViews[]>(
+        "POST",
+        `${prefix}/views/batch`,
+        subjects.map((subject) => ({ subject: subject.name, parameters: subject.parameters ?? {} })),
+      ),
+    save: (subject, draft) => request<SavedQueryView>("POST", address(subject, "views"), draft),
+    update: (subject, id, draft) =>
+      request<SavedQueryView>("PUT", address(subject, `views/${id}`), draft),
+    remove: (subject, id) => request<void>("DELETE", address(subject, `views/${id}`)),
   }
 }

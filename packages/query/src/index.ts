@@ -36,6 +36,7 @@ export {
   transportOver,
   sourceTransportOver,
   playgroundTransportOver,
+  savedQueryTransportOver,
   useQueryTransport,
   type QueryTransport,
   type QueryProjection,
