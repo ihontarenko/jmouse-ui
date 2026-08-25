@@ -9,17 +9,49 @@ export { QueryPanel, type AppliedQuery } from "./QueryPanel"
 export { QueryBuilder } from "./QueryBuilder"
 export { QueryEditor } from "./QueryEditor"
 export { SavedQueries } from "./SavedQueries"
-export { useQueryVocabulary, useTranslation, useSavedQueryViews, useSavedQueryActions } from "./hooks"
+export { SavedQueryManager, type ManagedSubject } from "./SavedQueryManager"
+export { SavedQueryLibrary } from "./SavedQueryLibrary"
+export { SubjectProjection } from "./SubjectProjection"
+export { SourceEditor } from "./SourceEditor"
+export { AttributesBuilder } from "./AttributesBuilder"
+export { QueryPlayground } from "./QueryPlayground"
+export { EveryQuery } from "./EveryQuery"
+export { JmqCode } from "./JmqCode"
+export {
+  useQueryVocabulary,
+  useQueryProjection,
+  useTranslation,
+  useSavedQueryViews,
+  useSavedQueryActions,
+  useSourceDeclaration,
+  useSourceActions,
+  useSourceVerdict,
+  useSourceAttributes,
+  usePlayground,
+  useSettled,
+  useEverySavedQuery,
+} from "./hooks"
 export {
   QueryTransportProvider,
   transportOver,
+  sourceTransportOver,
+  playgroundTransportOver,
   useQueryTransport,
   type QueryTransport,
+  type QueryProjection,
   type SavedQueryTransport,
   type SavedQueryView,
   type SavedQueryDraft,
+  type SourceTransport,
+  type SourceDeclaration,
+  type SourceAttribute,
+  type SourceComposition,
+  type SourceVerdict,
+  type PlaygroundTransport,
+  type CompiledQuery,
+  type QueryDestination,
 } from "./transport"
-export { DEFAULT_LABELS, wordFor, type QueryLabels } from "./labels"
+export { DEFAULT_LABELS, wordFor, type QueryLabels, type QueryManagerLabels } from "./labels"
 export { offered, type QueryPreset } from "./presets"
 export type {
   ConditionRow,

@@ -32,7 +32,19 @@ export function EntityCardDensityToggle({
     <div
       role="group"
       aria-label="Card density"
-      className={cn("inline-flex items-center gap-0.5 rounded-md border p-0.5", className)}
+      /*
+        ⚠️ **30px and `rounded-md` — a `Button size="sm"`, because that is the row it lives in.**
+
+        It was a 24px pair inside a `p-0.5` track, so the whole control stood 29px against the 30px
+        field and button beside it, and the *chosen* square stood 24px against their 30px. One pixel
+        out is worse than plainly smaller: plainly smaller reads as a hierarchy, one pixel out reads as
+        a mistake — and this control shares a header with a search field, a segmented switcher and a
+        primary button on every screen that draws cards.
+
+        ⚠️ The padding is gone rather than reduced. With a track inset, the frame can be made to match
+        while the paint inside it still does not, and the paint is what an eye compares.
+      */
+      className={cn("inline-flex h-[30px] items-center rounded-md border p-0", className)}
     >
       {CHOICES.map(({ density: choice, label, Glyph }) => (
         <button
@@ -43,7 +55,7 @@ export function EntityCardDensityToggle({
           aria-pressed={density === choice}
           onClick={() => onChange(choice)}
           className={cn(
-            "inline-flex size-6 items-center justify-center rounded-sm text-muted-foreground transition-colors",
+            "inline-flex h-full w-[30px] items-center justify-center rounded-md text-muted-foreground transition-colors",
             "hover:bg-muted hover:text-foreground",
             density === choice && "bg-secondary text-secondary-foreground",
           )}

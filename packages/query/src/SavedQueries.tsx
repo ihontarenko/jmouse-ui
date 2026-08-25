@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Bookmark, Check, Pencil, Trash2, X } from "lucide-react"
-import { Button, Input } from "@jmouse/ui"
+import { Button, Input, cn } from "@jmouse/ui"
 import { useSavedQueryActions, useSavedQueryViews } from "./hooks"
 import type { QueryLabels } from "./labels"
 import type { AppliedQuery } from "./QueryPanel"
@@ -25,16 +25,26 @@ import type { QuerySubject } from "./types"
  *
  * Never derived from an author id here. A screen working out who may edit is a second implementation of
  * a permission, and two implementations disagree the day one is changed.
+ *
+ * ## ⚠️ It shares a row with the ready-made questions
+ *
+ * Both are the same offer — *start from something already written* — and giving each a row of its own
+ * cost two of the three rows a filter panel spent before showing a single condition. So this takes a
+ * `className` and draws at the shelf's size rather than owning a strip of its own; what tells it apart
+ * from the presets beside it is its caption, which is the only thing that ever did.
  */
 export function SavedQueries({
   subject,
   current,
   labels,
+  className,
   onApply,
 }: {
   subject: QuerySubject
   current: AppliedQuery
   labels: QueryLabels
+  /** Passed by the shelf holding it, so the group sits in a row rather than starting one. */
+  className?: string
   onApply: (query: AppliedQuery) => void
 }) {
   const { data: views = [] } = useSavedQueryViews(subject)
@@ -87,7 +97,7 @@ export function SavedQueries({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={cn("flex min-w-0 flex-wrap items-center gap-1.5", className)}>
       <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
         <Bookmark className="size-3.5" />
         {labels.savedViews}
@@ -100,7 +110,8 @@ export function SavedQueries({
               autoFocus
               value={name}
               disabled={busy}
-              className="h-7 w-40 text-xs"
+              size="sm"
+              className="w-40"
               onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -111,11 +122,11 @@ export function SavedQueries({
                 }
               }}
             />
-            <Button type="button" size="icon" variant="ghost" className="size-7" disabled={busy}
+            <Button type="button" size="icon-xs" variant="ghost" disabled={busy}
                     title={labels.saveView} onClick={() => void rename(view.id, view)}>
               <Check className="size-3.5" />
             </Button>
-            <Button type="button" size="icon" variant="ghost" className="size-7"
+            <Button type="button" size="icon-xs" variant="ghost"
                     title={labels.reset} onClick={() => setRenaming(null)}>
               <X className="size-3.5" />
             </Button>
@@ -124,10 +135,10 @@ export function SavedQueries({
           <span key={view.id} className="group inline-flex items-center">
             <Button
               type="button"
-              size="sm"
+              size="xs"
               variant="outline"
               title={view.description ?? undefined}
-              className="h-7 rounded-full px-3 text-xs font-normal"
+              className="px-2.5 font-normal"
               onClick={() => onApply({ filter: view.filter, order: view.order ?? null })}
             >
               {view.name}
@@ -136,7 +147,7 @@ export function SavedQueries({
 
             {view.editable === false ? null : (
               <span className="ml-0.5 hidden items-center group-hover:inline-flex focus-within:inline-flex">
-                <Button type="button" size="icon" variant="ghost" className="size-6"
+                <Button type="button" size="icon-xs" variant="ghost"
                         title={labels.renameView}
                         onClick={() => {
                           setRenaming(view.id)
@@ -148,8 +159,8 @@ export function SavedQueries({
 
                 {/* ⚠️ Two clicks, and the second one SAYS what it does — see the class note. */}
                 {discarding === view.id ? (
-                  <Button type="button" size="sm" variant="ghost" disabled={busy}
-                          className="h-6 px-2 text-xs text-destructive"
+                  <Button type="button" size="xs" variant="ghost" disabled={busy}
+                          className="text-destructive"
                           onClick={() => {
                             setBusy(true)
                             void actions.remove(view.id).finally(() => {
@@ -160,7 +171,7 @@ export function SavedQueries({
                     {labels.discardView}
                   </Button>
                 ) : (
-                  <Button type="button" size="icon" variant="ghost" className="size-6"
+                  <Button type="button" size="icon-xs" variant="ghost"
                           title={labels.discardView} onClick={() => setDiscarding(view.id)}>
                     <Trash2 className="size-3" />
                   </Button>
@@ -178,7 +189,8 @@ export function SavedQueries({
             value={name}
             disabled={busy}
             placeholder={labels.viewName}
-            className="h-7 w-44 text-xs"
+            size="sm"
+            className="w-44"
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -189,11 +201,11 @@ export function SavedQueries({
               }
             }}
           />
-          <Button type="button" size="icon" variant="ghost" className="size-7" disabled={busy}
+          <Button type="button" size="icon-xs" variant="ghost" disabled={busy}
                   title={labels.saveView} onClick={() => void keep()}>
             <Check className="size-3.5" />
           </Button>
-          <Button type="button" size="icon" variant="ghost" className="size-7"
+          <Button type="button" size="icon-xs" variant="ghost"
                   title={labels.reset} onClick={() => setNaming(false)}>
             <X className="size-3.5" />
           </Button>
@@ -201,17 +213,17 @@ export function SavedQueries({
       ) : (
         <Button
           type="button"
-          size="sm"
+          size="xs"
           variant="ghost"
           disabled={!keepable}
           title={keepable ? undefined : labels.nothingToSave}
-          className="h-7 px-2 text-xs font-normal"
+          className="px-2 font-normal text-muted-foreground"
           onClick={() => {
             setNaming(true)
             setName("")
           }}
         >
-          <Bookmark className="mr-1 size-3.5" />
+          <Bookmark className="size-3.5" />
           {labels.saveView}
         </Button>
       )}

@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  cn,
 } from "@jmouse/ui"
 import { wordFor, type QueryLabels } from "./labels"
 import type { ConditionRow, QueryAttribute, QueryOperator } from "./types"
@@ -28,11 +29,23 @@ import type { ConditionRow, QueryAttribute, QueryOperator } from "./types"
  * They arrive with the vocabulary. A builder offering a comparison the composer does not have produces a
  * refusal about an operator that same builder handed the person.
  *
- * ## ⚠️ *"and those with no such field?"* sits ON the row
+ * ## ⚠️ The rows SAY they are conjoined
+ *
+ * Every row is led by a word — `Where`, then `and` for each one after it — and the whole set is one
+ * bordered list with rules between the rows rather than a stack of separate cards. Both halves of that
+ * are the same fix: a card is a thing on its own, and three selects on a card of their own read as an
+ * independent statement. Nothing on the old screen said whether a second condition narrowed the result
+ * or widened it, which is the one question a filter must never leave open.
+ *
+ * It is also what made the panel fit: a card each, at `p-3`, cost about forty pixels per condition over
+ * a list — in a panel that opens **over** the rows it is filtering.
+ *
+ * ## ⚠️ *"and those with no such field?"* stays ON the row
  *
  * A negative test excludes rows that have no such value at all — three-valued logic, which is correct
- * and surprising every single time. The switch puts the question where the person is already thinking
- * about it, rather than leaving them staring at a result they cannot explain.
+ * and surprising every single time. The question belongs where the person is already thinking about it.
+ * It is a pressed-state chip rather than a switch and a sentence on a second line: the sentence is the
+ * chip's title, so the explanation is a hover away instead of a row away.
  *
  * ## ⚠️ What this component does NOT do
  *
@@ -65,26 +78,43 @@ export function QueryBuilder({
       },
     ])
 
+  const addButton = (
+    <Button type="button" variant="outline" size="sm" onClick={add} disabled={attributes.length === 0}>
+      <Plus className="size-4" />
+      {labels.addCondition}
+    </Button>
+  )
+
+  // ⚠️ The sentence and the button share a line. An empty builder is two facts — *this narrows nothing*
+  // and *here is how to change that* — and stacking them spent a row on the state where there is least
+  // to look at.
+  if (rows.length === 0) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-muted-foreground">{labels.noConditions}</p>
+        {addButton}
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-3">
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{labels.noConditions}</p> : null}
+    <div className="space-y-2">
+      <div className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/60 bg-card/40">
+        {rows.map((row, index) => (
+          <BuilderRow
+            key={index}
+            attributes={attributes}
+            operators={operators}
+            row={row}
+            labels={labels}
+            conjunction={index === 0 ? labels.firstCondition : labels.nextCondition}
+            onChange={(changed) => replace(index, changed)}
+            onRemove={() => onChange(rows.filter((_, position) => position !== index))}
+          />
+        ))}
+      </div>
 
-      {rows.map((row, index) => (
-        <BuilderRow
-          key={index}
-          attributes={attributes}
-          operators={operators}
-          row={row}
-          labels={labels}
-          onChange={(changed) => replace(index, changed)}
-          onRemove={() => onChange(rows.filter((_, position) => position !== index))}
-        />
-      ))}
-
-      <Button type="button" variant="outline" size="sm" onClick={add} disabled={attributes.length === 0}>
-        <Plus className="size-4" />
-        {labels.addCondition}
-      </Button>
+      {addButton}
     </div>
   )
 }
@@ -94,6 +124,7 @@ function BuilderRow({
   operators,
   row,
   labels,
+  conjunction,
   onChange,
   onRemove,
 }: {
@@ -101,6 +132,7 @@ function BuilderRow({
   operators: QueryOperator[]
   row: ConditionRow
   labels: QueryLabels
+  conjunction: string
   onChange: (row: ConditionRow) => void
   onRemove: () => void
 }) {
@@ -109,10 +141,17 @@ function BuilderRow({
   const written = row.value === null || row.value === undefined ? "" : String(row.value)
 
   return (
-    <div className="rounded-lg border border-border/60 bg-card/40 p-3 space-y-2">
+    <div className="px-2.5 py-2">
       <div className="flex flex-wrap items-center gap-2">
+        {/* ⚠️ A fixed width, so the fields line up in a column however long the two words are — a
+            leading word that pushed each row's first select to a different place would read as a
+            worse mess than the one it replaced. */}
+        <span className="w-11 shrink-0 truncate text-right text-xs font-medium text-muted-foreground">
+          {conjunction}
+        </span>
+
         <Select value={row.attribute} onValueChange={(name) => onChange({ ...row, attribute: name })}>
-          <SelectTrigger className="w-[220px]">
+          <SelectTrigger size="sm" className="w-[190px]">
             <SelectValue placeholder={labels.field} />
           </SelectTrigger>
           <SelectContent>
@@ -125,7 +164,7 @@ function BuilderRow({
         </Select>
 
         <Select value={row.operator} onValueChange={(spelling) => onChange({ ...row, operator: spelling })}>
-          <SelectTrigger className="w-[190px]">
+          <SelectTrigger size="sm" className="w-[155px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -145,7 +184,7 @@ function BuilderRow({
         {operator?.needsValue ? (
           attribute && attribute.options.length > 0 ? (
             <Select value={written} onValueChange={(value) => onChange({ ...row, value })}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger size="sm" className="w-[190px]">
                 <SelectValue placeholder={labels.value} />
               </SelectTrigger>
               <SelectContent>
@@ -158,7 +197,8 @@ function BuilderRow({
             </Select>
           ) : (
             <Input
-              className="w-[220px]"
+              size="sm"
+              className="w-[190px]"
               value={written}
               placeholder={labels.value}
               onChange={(event) => onChange({ ...row, value: event.target.value })}
@@ -166,10 +206,36 @@ function BuilderRow({
           )
         ) : null}
 
+        {/* ⚠️ A switch, not a chip that looks like a caption. It was a ghost button carrying the short
+            words, and with nothing drawn around them they read as a note about the row rather than as
+            something to press — the one state a control must never be in. */}
+        {operator?.negative ? (
+          <span className="inline-flex items-center gap-1.5 pl-1" title={labels.includeMissing}>
+            <Switch
+              id={`missing-${row.attribute}-${row.operator}`}
+              checked={row.includeMissing}
+              onCheckedChange={(includeMissing) => onChange({ ...row, includeMissing })}
+            />
+            <Label
+              htmlFor={`missing-${row.attribute}-${row.operator}`}
+              className={cn(
+                "text-xs font-normal",
+                row.includeMissing ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {labels.includeMissingShort}
+            </Label>
+          </span>
+        ) : null}
+
+        {/* ⚠️ `ml-auto` — the delete buttons form a column at the right edge rather than sitting wherever
+            the row's widest control happens to end. A row missing its value field is not a row whose
+            delete button should have moved. */}
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
+          className="ml-auto text-muted-foreground hover:text-foreground"
           onClick={onRemove}
           aria-label={labels.removeCondition}
         >
@@ -177,24 +243,10 @@ function BuilderRow({
         </Button>
       </div>
 
-      {operator?.negative ? (
-        <div className="flex items-center gap-2 pl-1">
-          <Switch
-            id={`missing-${row.attribute}-${row.operator}`}
-            checked={row.includeMissing}
-            onCheckedChange={(includeMissing) => onChange({ ...row, includeMissing })}
-          />
-          <Label
-            htmlFor={`missing-${row.attribute}-${row.operator}`}
-            className="text-xs font-normal text-muted-foreground"
-          >
-            {labels.includeMissing}
-          </Label>
-        </div>
-      ) : null}
-
       {attribute?.converter && operator?.ordered ? (
-        <p className="pl-1 text-xs text-muted-foreground">{labels.converterNote(attribute.converter)}</p>
+        <p className="mt-1.5 pl-[3.25rem] text-xs text-muted-foreground">
+          {labels.converterNote(attribute.converter)}
+        </p>
       ) : null}
     </div>
   )

@@ -12,7 +12,7 @@ import {
  * <p>⚠️ **It is jME plus four tags, and this grammar says so by construction.** Everything between the
  * clause words — the operators, the converters, the tests, `entry[name]` — is the expression language
  * already described in {@link ./jmeSyntax}; what this file adds is the words that open a declaration
- * (`source`, `view`, `function`) and the clauses inside one (`where`, `order`, `columns`, `group`,
+ * (`structure`, `mapping`, `view`, `function`) and the clauses inside one (`where`, `order`, `fetch`, `group`,
  * `having`). Writing a whole second scanner would have been writing jME twice, and the two would have
  * disagreed the first time an operator was added to one of them.
  *
@@ -34,17 +34,24 @@ import {
  *    that the expression language does not.
  */
 
-/** What opens a declaration. Three words, and the file is one of them repeated. */
-const DECLARATIONS = new Set(['source', 'view', 'function']);
+/** What opens a declaration. ⚠️ `source` is read but never written — it is what `structure` + `mapping` used to be. */
+const DECLARATIONS = new Set(['structure', 'mapping', 'view', 'function', 'source']);
 
 /** What appears inside a declaration — the clauses, and the words that shape a source. */
 const CLAUSES = new Set([
-    'where', 'order', 'columns', 'group', 'having',
-    'from', 'bag', 'join', 'collection', 'attribute',
+    'where', 'order', 'fetch', 'group', 'having', 'limit',
+    'from', 'file', 'bag', 'join', 'collection', 'attributes', 'uses',
+    // ⚠️ Read but never written: `columns` is what `fetch` used to be called, and `attribute` is what a
+    // mapping's bindings used to be. Colouring them keeps a stored document legible until it is saved
+    // once and rewritten into the current spelling.
+    'columns', 'attribute',
 ]);
 
 /** Words that modify a clause rather than opening one. */
-const MODIFIERS = new Set(['on', 'as', 'key', 'value', 'in', 'column', 'asc', 'desc']);
+const MODIFIERS = new Set([
+    'on', 'as', 'key', 'value', 'in', 'column', 'asc', 'desc',
+    'default', 'identity', 'header', 'delimiter',
+]);
 
 /**
  * The kinds of value an attribute may be declared to hold.
@@ -52,7 +59,7 @@ const MODIFIERS = new Set(['on', 'as', 'key', 'value', 'in', 'column', 'asc', 'd
  * ⚠️ `unknown` is the important one and is coloured like the rest on purpose: it is an *admission*,
  * not a lesser `text`, and a reader has to see it sitting in the same column as a promise.
  */
-const TYPES = new Set(['text', 'number', 'boolean', 'temporal', 'unknown']);
+const TYPES = new Set(['string', 'int', 'text', 'number', 'boolean', 'temporal', 'unknown']);
 
 /** What the language answers to itself — aggregates, the clock, and lengths of time. */
 const FUNCTIONS = new Set([

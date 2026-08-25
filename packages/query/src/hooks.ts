@@ -1,5 +1,16 @@
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useQueryTransport, type SavedQueryDraft, type SavedQueryView } from "./transport"
+import { useEffect, useState } from "react"
+import { keepPreviousData, useQueries, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useQueryTransport,
+  type QueryProjection,
+  type SavedQueryDraft,
+  type SavedQueryView,
+  type SourceComposition,
+  type SourceDeclaration,
+  type SourceVerdict,
+  type CompiledQuery,
+  type QueryDestination,
+} from "./transport"
 import type { QuerySubject, QueryVocabulary, Translated, Translation } from "./types"
 
 /**
@@ -57,6 +68,24 @@ export function useTranslation(subject: QuerySubject, translation: Translation, 
 }
 
 /**
+ * The subject's declaration, rendered as jMQ by the server.
+ *
+ * ⚠️ **Cached hard, because it cannot move on its own.** A source changes when somebody edits the form
+ * behind it, not while a page is open — and this is the one call on the screen that returns the same
+ * answer every time it is asked.
+ */
+export function useQueryProjection(subject: QuerySubject, enabled = true) {
+  const transport = useQueryTransport()
+
+  return useQuery<QueryProjection>({
+    queryKey: ["jmq-projection", subject.name, subject.parameters ?? {}],
+    queryFn: () => transport.projection!(subject),
+    enabled: enabled && Boolean(transport.projection),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
  * The views kept against this subject — what the management row lists.
  *
  * ⚠️ Disabled outright where the product wired no store, so a panel without one makes no request and
@@ -107,4 +136,190 @@ export function useSavedQueryActions(subject: QuerySubject) {
       await refresh()
     },
   }
+}
+
+/**
+ * A subject's declaration, and what may be done to it.
+ *
+ * ⚠️ Disabled where the product wired no source transport, so a screen without one makes no request and
+ * shows no tab — rather than a tab that answers 404 and reads as *this has no declaration*.
+ */
+export function useSourceDeclaration(subject: QuerySubject, enabled = true) {
+  const transport = useQueryTransport()
+
+  return useQuery<SourceDeclaration>({
+    queryKey: ["jmq-source", subject.name, subject.parameters ?? {}],
+    queryFn: () => transport.sources!.declaration(subject),
+    enabled: enabled && Boolean(transport.sources),
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * Rewriting a declaration, reverting it, and asking whether a draft would be accepted.
+ *
+ * ⚠️ **The declaration is invalidated rather than patched in place.** What comes back carries the
+ * server's stamp, its author and — crucially — its own answer to *is this authored now*, which flips the
+ * first time somebody saves. A row written optimistically would get all three wrong.
+ */
+export function useSourceActions(subject: QuerySubject) {
+  const transport = useQueryTransport()
+  const client = useQueryClient()
+
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: ["jmq-source", subject.name] }),
+      // ⚠️ The vocabulary and the projection are both DERIVED from the declaration, so a rewrite that
+      // left them cached would leave the builder offering attributes the source no longer has.
+      client.invalidateQueries({ queryKey: ["jmq-schema", subject.name] }),
+      client.invalidateQueries({ queryKey: ["jmq-projection", subject.name] }),
+    ])
+
+  return {
+    supported: Boolean(transport.sources),
+    rewrite: async (body: string) => {
+      const written = await transport.sources!.rewrite(subject, body)
+
+      await refresh()
+
+      return written
+    },
+    revert: async () => {
+      const reverted = await transport.sources!.revert(subject)
+
+      await refresh()
+
+      return reverted
+    },
+    validate: (body: string) => transport.sources!.validate(subject, body),
+    compose: (composition: SourceComposition) => transport.sources!.compose(subject, composition),
+  }
+}
+
+/**
+ * The server's verdict on a declaration being typed.
+ *
+ * ⚠️ A query, not a mutation, and `readable: false` is data — the same rule the query editor follows.
+ * A screen that raised every keystroke as a failure would flash red at somebody mid-word.
+ */
+export function useSourceVerdict(subject: QuerySubject, body: string, enabled: boolean) {
+  const transport = useQueryTransport()
+
+  return useQuery<SourceVerdict>({
+    queryKey: ["jmq-source-verdict", subject.name, subject.parameters ?? {}, body],
+    queryFn: () => transport.sources!.validate(subject, body),
+    enabled: enabled && Boolean(transport.sources) && body.trim() !== "",
+    placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * The attribute rows behind a declaration, as the SERVER reads them.
+ *
+ * ⚠️ **A query rather than an effect that fires a promise.** The builder used to seed itself from a
+ * `useEffect` holding a `cancelled` flag — which in development runs twice, discards the first answer,
+ * and left the table empty with two successful requests in the network log and nothing in the console.
+ * The rows are a function of the body; a query is what that is.
+ *
+ * ⚠️ Nothing here parses jMQ. The rows come back from the same call that validates it.
+ */
+export function useSourceAttributes(subject: QuerySubject, body: string | null | undefined) {
+  const transport = useQueryTransport()
+
+  return useQuery<SourceVerdict>({
+    queryKey: ["jmq-source-attributes", subject.name, subject.parameters ?? {}, body ?? ""],
+    queryFn: () => transport.sources!.validate(subject, body!),
+    enabled: Boolean(transport.sources) && Boolean(body && body.trim() !== ""),
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * What a query compiles to, asked as you type.
+ *
+ * ⚠️ A query rather than a mutation: nothing runs, so asking is free of consequence, and a refusal is
+ * an ordinary answer about text that is half written.
+ */
+export function usePlayground(
+  subject: QuerySubject,
+  filter: string,
+  order: string,
+  translator: QueryDestination,
+  dialect: string,
+  enabled: boolean,
+) {
+  const transport = useQueryTransport()
+
+  return useQuery<CompiledQuery>({
+    queryKey: [
+      "jmq-playground", subject.name, subject.parameters ?? {}, filter, order, translator, dialect,
+    ],
+    queryFn: () => transport.playground!.compile(subject, filter, order, translator, dialect),
+    enabled: enabled && Boolean(transport.playground),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * Every kept question across every listing this screen knows about.
+ *
+ * ## ⚠️ Fanned out over the SUBJECTS, never asked of one cross-subject endpoint
+ *
+ * A single "all saved queries" route would need a gate of its own — and the only honest gate is *what
+ * each subject already decides*, since one member may read entries and have no business reading which
+ * fields describe the equipment. Asking each listing in turn inherits every one of those decisions
+ * exactly, for free, and a subject that keeps no views simply contributes nothing.
+ *
+ * ⚠️ It also means the answer is only ever as wide as the list of subjects the product handed in. That
+ * is the correct width: a screen cannot show a listing it was not told about.
+ */
+export function useEverySavedQuery(subjects: readonly QuerySubject[]) {
+  const transport = useQueryTransport()
+
+  const results = useQueries({
+    queries: subjects.map((subject) => ({
+      queryKey: ["jmq-views", subject.name, subject.parameters ?? {}],
+      queryFn: () => transport.views!.list(subject),
+      enabled: Boolean(transport.views),
+      staleTime: 30 * 1000,
+    })),
+  })
+
+  return {
+    // ⚠️ So an empty list can say WHICH emptiness it is. Without this, a product that wired no store
+    // reads as "nothing kept anywhere yet" — which is a lie somebody acts on by going to look for the
+    // save button.
+    supported: Boolean(transport.views),
+    loading: results.some((result) => result.isLoading),
+    // ⚠️ Each view carries the subject it belongs to, because a flat list of names from four listings is
+    // a list in which two "Mine" rows are indistinguishable — and applying the wrong one is silent.
+    entries: results.flatMap((result, index) =>
+      (result.data ?? []).map((view) => ({ subject: subjects[index], view })),
+    ),
+  }
+}
+
+/**
+ * A value that stops changing while somebody is typing.
+ *
+ * ## ⚠️ Here rather than in every screen that needs it
+ *
+ * Two of them already do, and the third was about to write its own — at which point the interval is a
+ * number in three files that nobody keeps in step. It is one hook because the answer is one number.
+ *
+ * ⚠️ **Not applied to the query panel's own translation.** That one asks the server whether a half-typed
+ * condition reads, and the answer is what tells somebody they are mid-word; delaying it would make the
+ * verdict arrive after they had already stopped and wondered. Compiling a statement is different work:
+ * nobody reads SQL between two keystrokes.
+ */
+export function useSettled<T>(value: T, delay = 350): T {
+  const [settled, setSettled] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delay)
+
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return settled
 }
