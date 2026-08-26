@@ -15,16 +15,22 @@
 
 ## What this project is for
 
-⚠️ **The shared render layer, and nothing that belongs to one product.** `@jmouse/ui` and
-`@jmouse/markdown` are consumed by Innoventa, Tessera and Kiwi; a change here lands in all three at
-once, which is exactly why it needs a tracker of its own rather than living in whichever product
-noticed first.
+⚠️ **The shared render layer, and nothing that belongs to one product.** `@jmouse/ui` is consumed by
+Innoventa, Tessera and Kiwi; a change here lands in all three at once, which is exactly why it needs a
+tracker of its own rather than living in whichever product noticed first.
+
+⚠️ **`@jmouse/markdown` is NOT `UIK` — it is the `Markdown` project (`MD`)**, mirrored at
+`jMouseProjects/.tessera/MD/`. This file claimed it until 2026-08-26; the tracker disagrees and the
+tracker is the record — `MD-7` is a `frontmatterPlugin` fix and `MD-1` is the hub that made the package
+shared. A ticket about the markdown package raised in `UIK` is a ticket filed away from its six
+siblings.
 
 | The work is… | Project |
 |---|---|
 | a primitive behaves wrongly in all three | `UIK` |
 | a new shared part — a row, an empty state, a confirmation | `UIK` |
 | a theme token, a palette, the font scale, contrast | `UIK` |
+| anything inside `packages/markdown` — a plugin, the renderer, the editor | `MD` |
 | one Innoventa screen looks wrong | `INVT` |
 | a Tessera board lost a column | `TSSR` |
 | a Kiwi page editor misbehaves | `KW` |
@@ -88,9 +94,16 @@ installation-wide, so it is the same one `INVT` uses:
 
 ## Local notes
 
-- **Four packages, one repository**: `packages/ui` (`@jmouse/ui`), `packages/files` (`@jmouse/files`),
-  `packages/markdown` (`@jmouse/markdown`) and `packages/codemirror` (`@jmouse/codemirror`). npm
-  workspaces, published publicly to npmjs.
+- **Seven packages, one repository**: `packages/ui` (`@jmouse/ui`), `packages/files` (`@jmouse/files`),
+  `packages/markdown` (`@jmouse/markdown`), `packages/codemirror` (`@jmouse/codemirror`),
+  `packages/avatars` (`@jmouse/avatars`), `packages/query` (`@jmouse/query`) and `packages/pwa`
+  (`@jmouse/pwa`). npm workspaces, published publicly to npmjs.
+- ⚠️ **`@jmouse/pwa` is the first package here that is not a render layer**, and the first with an
+  entry a **bundler never touches**: `@jmouse/pwa/vite` is imported by a product's `vite.config.ts`,
+  which Vite hands to Node. So its relative imports carry a `.js` extension while every other
+  package's do not — remove them and the plugin throws `ERR_MODULE_NOT_FOUND` for its own sibling
+  module, at the moment a product first configures its build and nowhere earlier. This is the same
+  family of trap as "tsc is not a bundler" below, arriving from the other direction.
 - ⚠️ **`@jmouse/codemirror`'s root has no React in it**, which is the whole reason it is not a folder
   inside `@jmouse/ui`: Identity and Innoventa's legacy interface consume it without taking the render
   layer. React lives behind one entry point, `./react` (the palette/code-theme picker and its hooks),
