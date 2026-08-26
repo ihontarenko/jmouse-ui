@@ -3,6 +3,7 @@ import type { Parser } from "@lezer/common"
 import { highlightTree, tags } from "@lezer/highlight"
 import { StyleModule } from "style-mod"
 import { jmeSyntaxLanguage } from "./jmeSyntax"
+import { jmmSyntaxLanguage } from "./jmmSyntax"
 import { jmpSyntaxLanguage } from "./jmpSyntax"
 import { jmqSyntaxLanguage } from "./jmqSyntax"
 import {
@@ -182,6 +183,19 @@ export const EXPRESSION_LANGUAGE: LanguageAlias = {
 export const QUERY_LANGUAGE: LanguageAlias = {
   names: ["jmq", "jmouse-query", "jmousequery", "query"],
   parser: jmqSyntaxLanguage.parser,
+}
+
+/**
+ * jMouse Mapping — a `.jmm` file quoted in a manual, a ticket or a runbook.
+ *
+ * ⚠️ Its own alias for the same reason jMQ has one: a mapping's right-hand side IS jME, but the words
+ * that give the file its shape — `mapping`, `target`, `from`, `refuse`, `use` — mean nothing to the
+ * expression grammar, and colouring a mapping with jME leaves every one of them reading as an ordinary
+ * identifier. The block header is exactly what a reader scans for.
+ */
+export const MAPPING_LANGUAGE: LanguageAlias = {
+  names: ["jmm", "jmouse-mapping", "jmousemapping", "mapping"],
+  parser: jmmSyntaxLanguage.parser,
 }
 
 export interface StaticHighlighterOptions {

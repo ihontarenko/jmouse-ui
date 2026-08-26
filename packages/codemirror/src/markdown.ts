@@ -1,6 +1,8 @@
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { LanguageDescription, syntaxHighlighting, type HighlightStyle } from "@codemirror/language"
 import type { Extension } from "@codemirror/state"
+import { jmeLanguageDescription } from "./jmeSyntax"
+import { jmmLanguageDescription } from "./jmmSyntax"
 import { jmpLanguageDescription } from "./jmpSyntax"
 import { jmqLanguageDescription } from "./jmqSyntax"
 
@@ -24,10 +26,15 @@ export interface MarkdownGrammarOptions {
  * What turns a description field from a grey textarea into something that shows structure while it is
  * being typed: the Markdown grammar, a palette, and the chrome around them.
  *
- * <p>⚠️ **`jmp` and `jmq` go in front of the catalogue**, because neither is in it: CodeMirror has never
- * heard of jMouse Policy or jMouse Query, and a ticket or a page about authorization is exactly a
- * ` ```jmp ` fence — while a page explaining a saved view is a ` ```jmq ` one. Same grammars the static
- * highlighter resolves, so both read identically typed and saved.
+ * <p>⚠️ **All four house dialects go in front of the catalogue**, because none of them is in it:
+ * CodeMirror has never heard of jMouse Policy, Query, Mapping or the expression language, and a page
+ * about authorization is exactly a ` ```jmp ` fence — as a page explaining a saved view is a ` ```jmq `
+ * one, a manual for a mapping file a ` ```jmm ` one, and a validation rule a ` ```jme ` one. The same
+ * grammars the static highlighter resolves, so a fence reads identically typed and saved.
+ *
+ * <p>⚠️ **A catalogue entry cannot stand in for one of these.** A dialect missing from this list does
+ * not fail — it falls through to `@codemirror/language-data`, finds nothing, and renders as plain text,
+ * which looks exactly like a fence somebody mislabelled.
  *
  * <p>⚠️ **`;;;` directive blocks stay plain in the source editor.** One interface carries a bespoke
  * block parser for them, and almost all of it exists to nest its expression language inside one. A host
@@ -41,7 +48,13 @@ export function markdownGrammar(options: MarkdownGrammarOptions): readonly Exten
   return [
     markdown({
       base: markdownLanguage,
-      codeLanguages: [jmpLanguageDescription, jmqLanguageDescription, ...codeLanguages],
+      codeLanguages: [
+        jmpLanguageDescription,
+        jmqLanguageDescription,
+        jmmLanguageDescription,
+        jmeLanguageDescription,
+        ...codeLanguages,
+      ],
     }),
     syntaxHighlighting(highlightStyle),
     chrome,
