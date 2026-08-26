@@ -10,6 +10,12 @@
 export { cn } from "./lib/helpers"
 
 export { useIsMobile } from "./hooks/use-mobile"
+export { useViewportBelow } from "./hooks/use-viewport-below"
+export {
+  useCodeScanner,
+  type CodeScanner,
+  type CodeScannerOptions,
+} from "./hooks/use-code-scanner"
 export {
   useTreeExpansion,
   type TreeExpansion,
@@ -40,6 +46,7 @@ export {
   type MarkColours,
 } from "./theme/favicon"
 
+export * from "./components/action-bar"
 export * from "./components/alert"
 export * from "./components/anchored"
 export * from "./components/avatar"
@@ -52,6 +59,7 @@ export * from "./components/chart"
 export * from "./components/collapsible"
 export * from "./components/dialog"
 export * from "./components/dropdown-menu"
+export * from "./components/emoji-picker"
 export * from "./components/entity-card"
 export * from "./components/filter-panel"
 export * from "./components/form"
@@ -59,6 +67,7 @@ export * from "./components/input"
 export * from "./components/label"
 export * from "./components/popover"
 export * from "./components/progress"
+export * from "./components/responsive-panel"
 export * from "./components/row-list"
 export * from "./components/scroll-area"
 export * from "./components/select"

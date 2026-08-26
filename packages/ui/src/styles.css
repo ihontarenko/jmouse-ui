@@ -24,6 +24,15 @@
      counter-scales against it to recover a length's true on-screen size. */
   --radius: 0.75rem;
   --body-zoom: 1;
+
+  /* ⚠️ **The height of one screenful, and the ONLY thing an application shell may be sized with.**
+     A viewport unit is deliberately immune to `zoom`, so `100svh` inside the zoomed body is laid
+     out as a full screen and then painted `--body-zoom` times taller — at the Large text size a
+     `h-svh` frame is ~1430px tall in a 1271px window, and the document grows a scrollbar of its own
+     beside the one already inside the frame. That is the two bars down the right-hand side, and no
+     amount of `overflow-hidden` on the frame removes it: the frame is not what overflows, the frame
+     IS the overflow. Dividing the length back out is what makes one screenful mean one screenful. */
+  --viewport-height: calc(100svh / var(--body-zoom, 1));
 }
 
 /* `--destructive` is legible AS TEXT in every theme, because that is a property of the VALUE — a
@@ -140,5 +149,31 @@
   .anchored-panel[data-side="right"] {
     margin-block: 0;
     margin-inline: 4px;
+  }
+
+  /* ⚠️ WHERE THE BACKGROUND FLIPS, EVERY GLYPH THAT PAINTS ITS OWN COLOUR HAS TO FLIP WITH IT.
+
+     Text and lucide icons look after themselves: they are `currentColor`, so `text-primary-foreground`
+     on the container carries them across. A DRAWN glyph does not — a folder tinted from `--primary`
+     and a document mixed into `--muted-foreground` keep their own dark values on top of a selected
+     row's `--primary` fill, and go from "an icon" to "a smudge one shade off the background". A blue
+     theme is where it is worst, because the document's own blue and the fill are then nearly the same
+     colour.
+
+     So a glyph never names `--primary` or `--muted-foreground` directly. It paints from these three,
+     which mean "the accent HERE" and "the text colour HERE" — and this class is what an inverted
+     surface says to redefine them. It is a contract rather than a component: a CSS class costs a
+     product nothing to apply, reaches a CSS-module screen that imports no React from this package,
+     and is the one place a new inverted surface has to remember.
+
+     ⚠️ **And the hue yields on the accent, which is what `--glyph-strength` is for.** Keeping 65% of a
+     document's blue over a blue fill is legible arithmetic that produces an illegible icon; a third of
+     the hue against the foreground stays recognisably the document colour and is readable in all 29
+     palettes, both modes. */
+  .inverted-surface {
+    --glyph-ink: var(--primary-foreground);
+    --glyph-accent: var(--primary-foreground);
+    --glyph-emblem: var(--primary);
+    --glyph-strength: 35%;
   }
 }

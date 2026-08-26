@@ -139,7 +139,11 @@ function SidebarProvider({
             } as React.CSSProperties
           }
           className={cn(
-            "group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
+            // ⚠️ `--viewport-height` and never `min-h-svh`: a viewport unit ignores the font-scale
+            // `zoom`, so a plain `svh` here reserves a screenful and gets painted a fifth taller than
+            // the window — the document then scrolls behind a frame that is already scrolling inside
+            // itself. Capping the inset alone does not help; this wrapper is the outer of the two.
+            "group/sidebar-wrapper flex min-h-(--viewport-height) w-full has-data-[variant=inset]:bg-sidebar",
             className
           )}
           {...properties}
@@ -187,6 +191,16 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
+          // ⚠️ **`dismissOnOutsideClick` is what makes this drawer closable at all, and it is not a
+          // preference.** `SheetContent` defaults it OFF deliberately — a drawer usually holds an
+          // editor, and a stray tap on the scrim should not throw a half-filled one away. A
+          // navigation drawer is the exception that decision names: it holds nothing to lose, and on
+          // a phone it has no other way out. Every other exit is already gone — the trigger that
+          // opened it is *underneath* the scrim, `Esc` wants a keyboard, and the sheet's own close
+          // button is hidden just below (`[&>button]:hidden`, because the sidebar header already
+          // carries a switcher where it would land). Without this the sidebar opens and no gesture
+          // on the device closes it again.
+          dismissOnOutsideClick
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
@@ -199,7 +213,40 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          {/* ⚠️ **A tap that navigates also closes the drawer.** Following a link otherwise leaves it
+              standing over the very page it just took you to, which reads as "it will not close"
+              even once the scrim dismisses. Anchors only, and captured rather than bubbled so the
+              row's own handler still runs: the drawer also holds controls that open something in
+              place — the workspace switcher, a collapsible group, a search field — and those must
+              not dismiss it. `a[href]` rather than a router import, because this package has no
+              router: an anchor with a destination is the router-agnostic spelling of "this leaves". */}
+          {/* ⚠️ **This wrapper is the mobile counterpart of `sidebar-inner`, and for a long time it was
+              not.** The desktop branch below nests a `sidebar-inner` div carrying the whole inset and
+              rhythm — `px-3.5 pt-4.5 gap-[22px]`, Innoventa's `.sidebar { gap:22px; padding:18px 14px 0 }`
+              ported. The mobile branch nested nothing and the sheet itself is `p-0`, so on a phone the
+              sidebar had **no horizontal padding at all**: every row ran to the true left edge, the active
+              row's pill bled the full 288px from edge to edge with only its own `px-2.5` holding the label
+              off the glass, and the group-to-group rhythm was gone with it. It reads as "everything is
+              stuck to the left", because it is.
+
+              ⚠️ **The inset is deliberately wider than desktop's, and that is not drift.** 14px is right
+              beside a 248px rail on a monitor; in a 288px sheet that a thumb is holding it is mean, and
+              16/20 is what every phone platform lands on. The rhythm (`gap-[22px]`) stays identical,
+              because that is the part that makes it recognisably the same sidebar.
+
+              The safe-area inset is the drawer's, not the layout's: this sheet is the one region that
+              reaches the true bottom of the window on a phone, and the account row it ends with is what
+              iOS Safari's toolbar and the home indicator sit on top of. Zero on any device without one. */}
+          <div
+            className="flex h-full w-full flex-col gap-[22px] overflow-y-auto px-4 pt-5 pb-[env(safe-area-inset-bottom)]"
+            onClickCapture={(event) => {
+              if ((event.target as HTMLElement).closest("a[href]")) {
+                setOpenMobile(false)
+              }
+            }}
+          >
+            {children}
+          </div>
         </SheetContent>
       </Sheet>
     )

@@ -75,9 +75,15 @@ export const treeLabelClassName =
  */
 export type TreeRowTone = "accent" | "primary"
 
+/**
+ * ⚠️ `inverted-surface` on the `primary` row, and it is not decoration — see the class in `styles.css`.
+ * The label and the twisty are `currentColor` and follow `text-primary-foreground` by themselves; a
+ * drawn glyph in the same line paints its own colour and would keep its dark value on top of the fill.
+ * The class is what tells one what the other already knows: here, the accent is the foreground.
+ */
 const SELECTED_TONE: Record<TreeRowTone, string> = {
   accent: "bg-accent font-medium",
-  primary: "bg-primary font-medium text-primary-foreground",
+  primary: "inverted-surface bg-primary font-medium text-primary-foreground",
 }
 
 /**
@@ -126,6 +132,12 @@ export function TreeRow({
       data-selected={selected || undefined}
       className={cn(
         "group relative flex h-7 min-w-0 items-center gap-1 rounded-md pr-1 text-[13px] transition-colors",
+        // ⚠️ Taller wherever the pointer is a finger. 28px is a mouse rhythm — deliberately dense,
+        // because a tree is read by scanning it — and it is well under every platform's minimum touch
+        // target, on the control the whole of a wiki's navigation hangs off. The variant asks the
+        // DEVICE rather than the width: a tablet at 1200px is still operated by a thumb, and a narrow
+        // desktop window is not.
+        "pointer-coarse:h-9 pointer-coarse:text-sm",
         // ⚠️ Our own ring rather than the browser's — see {@link treeLabelClassName}.
         "outline-hidden focus-within:ring-2 focus-within:ring-ring",
         selected ? SELECTED_TONE[tone] : "hover:bg-accent/50",
@@ -142,7 +154,11 @@ export function TreeRow({
       {branch ? (
         <button
           type="button"
-          className="flex size-4 shrink-0 items-center justify-center rounded text-current opacity-60 transition-opacity hover:opacity-100"
+          // ⚠️ 16px for a mouse, 24px for a thumb — and the LEAF SPACER below grows by exactly the same
+          // amount. They are one column: growing only the button would leave every branch's name eight
+          // pixels to the right of every leaf's at the same depth, which reads as a broken tree rather
+          // than as a bigger control.
+          className="flex size-4 shrink-0 items-center justify-center rounded text-current opacity-60 transition-opacity hover:opacity-100 pointer-coarse:size-6 pointer-coarse:opacity-80"
           title={action}
           aria-label={name ? `${action} ${name}` : action}
           aria-expanded={open}
@@ -151,7 +167,7 @@ export function TreeRow({
           <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
         </button>
       ) : (
-        <span aria-hidden="true" className="size-4 shrink-0" />
+        <span aria-hidden="true" className="size-4 shrink-0 pointer-coarse:size-6" />
       )}
 
       {children}
@@ -161,6 +177,13 @@ export function TreeRow({
           className={cn(
             "absolute top-1/2 right-1 flex -translate-y-1/2 items-center rounded-md opacity-0 shadow-sm backdrop-blur-sm transition-opacity",
             "focus-within:opacity-100 group-hover:opacity-100 [&:has([data-state=open])]:opacity-100",
+            // ⚠️ **Always visible where there is no hover, or this control does not exist.** Revealing
+            // a row's actions on hover is right for a mouse and total on a touch screen: a finger
+            // never produces a hover, so on a phone every per-row menu in every tree in this family —
+            // rename, move, delete, new page — was invisible and unreachable, with nothing on screen
+            // to suggest a control was there at all. This is not a touch-target size problem; the
+            // button was not rendered to be aimed at.
+            "pointer-coarse:opacity-100",
             selected ? ACTIONS_TONE[tone] : "bg-background/85",
           )}
         >
