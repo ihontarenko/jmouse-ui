@@ -1,0 +1,46 @@
+{
+  "name": "@jmouse/pwa",
+  "version": "0.1.0",
+  "description": "How a product becomes installable — the station contract, the manifest a station is installed by, and the build step that emits one per station.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "default": "./dist/vite/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "@jmouse/ui": ">=0.1.0",
+    "react": ">=19.0.0",
+    "vite": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@jmouse/ui": "*",
+    "@types/react": "^19.2.17",
+    "react": "^19.2.7",
+    "typescript": "~6.0.2",
+    "vite": "^6.4.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
