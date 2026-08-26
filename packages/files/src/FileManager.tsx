@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { FolderPlus, LayoutGrid, Link2, List, Upload } from "lucide-react"
-import { Button, Input } from "@jmouse/ui"
+import { Button, ImageCropperDialog, Input, isCroppableImage, keepingFormatOf } from "@jmouse/ui"
 import { DirectoryTree } from "./DirectoryTree"
 import { FileList } from "./FileList"
 import { FileViewerDialog } from "./FileViewerDialog"
@@ -63,6 +63,18 @@ export interface FileManagerProperties {
   /** Where the rows-or-tiles choice is remembered. Omit and it is not remembered. */
   layoutStorageKey?: string
   canWrite?: boolean
+  /**
+   * Whether a single picture is offered a crop on its way in.
+   *
+   * ⚠️ **Offered, never required, and only for one file at a time.** A shape a product renders at has
+   * to be framed or a machine frames it badly; a file somebody is filing does not, and a crop step per
+   * file of a five-file drop is a queue of dialogs nobody who dropped five files wanted. Declining
+   * uploads the original bytes untouched.
+   *
+   * ⚠️ **False for a manager standing in for a document store** — a scan of a signed page is not
+   * something to offer to reshape, and only the product mounting this knows which kind it is.
+   */
+  canCrop?: boolean
   emptyHint?: string
   /**
    * What this product's Markdown means, for a `.md` opened in the viewer.
@@ -98,6 +110,7 @@ export function FileManager({
   rootLabel,
   layoutStorageKey,
   canWrite = true,
+  canCrop = true,
   emptyHint = "Nothing is filed here yet.",
   renderMarkdown,
   bleed = true,
@@ -109,6 +122,16 @@ export function FileManager({
   const [layout, setLayout] = useState<FilesLayout>(() => readLayout(layoutStorageKey))
 
   const uploadField = useRef<HTMLInputElement>(null)
+
+  /** A picture waiting to be framed, or waved through. Null means nothing is being offered a crop. */
+  const [framing, setFraming] = useState<File | null>(null)
+
+  // Held steady across renders: the cropper re-derives its frame from whatever specification it is
+  // handed, so a fresh object every render is a frame that never settles.
+  const framingSpecification = useMemo(
+    () => (framing ? keepingFormatOf(framing) : undefined),
+    [framing],
+  )
 
   // ⚠️ **The ADDRESS is where the manager is, and there is no second copy of it in state.** A folder in
   // a `useState` beside a folder in the URL is two answers to one question, and the day they disagree is
@@ -199,19 +222,41 @@ export function FileManager({
   // It happens to compile either way — a function import has no meaning in type position, so the DOM
   // interface still wins — but a reader cannot tell that, and the day somebody exports a type of that
   // name from `./FileList` this silently becomes a different thing.
-  function upload(chosen: globalThis.FileList | null) {
+  function upload(chosen: globalThis.FileList | File[] | null) {
     if (!chosen || !selectedId) {
+      return
+    }
+
+    const files = [...chosen]
+
+    // The offer, and only for a lone picture — see `canCrop`.
+    if (canCrop && files.length === 1 && isCroppableImage(files[0])) {
+      setFraming(files[0])
       return
     }
 
     // ⚠️ Sequential rather than `Promise.all`. Uploads are the one thing here that is measured in
     // megabytes, and firing ten at once is how a browser's connection pool becomes the bottleneck and
     // every one of them appears to hang.
-    void [...chosen]
+    void files
       .reduce(
         (queue, file) => queue.then(() => port.upload(selectedId, file).then(() => undefined)),
         Promise.resolve(),
       )
+      .then(refresh)
+      .catch((failure) => onNotice?.(`Something was not uploaded.${because(failure)}`))
+  }
+
+  /** Uploads exactly what it is given, past the offer — which is where a declined offer goes too. */
+  function uploadDirectly(file: File) {
+    setFraming(null)
+
+    if (!selectedId) {
+      return
+    }
+
+    void port
+      .upload(selectedId, file)
       .then(refresh)
       .catch((failure) => onNotice?.(`Something was not uploaded.${because(failure)}`))
   }
@@ -374,6 +419,22 @@ export function FileManager({
         renderMarkdown={renderMarkdown}
         onDownload={() => download(viewing as ManagedFile)}
         onOpenChange={closeFile}
+      />
+
+      <ImageCropperDialog
+        open={framing !== null}
+        onOpenChange={(next) => !next && setFraming(null)}
+        source={framing}
+        specification={framingSpecification}
+        skippable
+        onCropped={uploadDirectly}
+        onSkipped={() => framing && uploadDirectly(framing)}
+        labels={{
+          title: "Trim the picture?",
+          description: "File the whole thing, or keep just the part that matters.",
+          confirm: "Upload this crop",
+          skip: "Upload as it is",
+        }}
       />
     </div>
   )
