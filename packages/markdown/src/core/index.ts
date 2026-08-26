@@ -36,6 +36,7 @@ export type {
 } from './toolbarModel';
 
 export { useBlockDataFor }    from './blockData';
+export { useProseDataFor }    from './proseData';
 export { useEditorExtensions } from './editorExtensions';
 export { useAsyncResource }   from './useAsyncResource';
 export type { AsyncResource } from './useAsyncResource';

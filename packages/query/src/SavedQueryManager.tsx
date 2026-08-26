@@ -6,13 +6,21 @@ import { EveryQuery } from "./EveryQuery"
 import { QueryPlayground } from "./QueryPlayground"
 import { SavedQueryLibrary } from "./SavedQueryLibrary"
 import { SourceEditor } from "./SourceEditor"
-import { useSavedQueryViews, useSourceDeclaration } from "./hooks"
+import { useEveryDeclaration, useEverySavedQuery } from "./hooks"
 import { DEFAULT_LABELS, type QueryLabels } from "./labels"
 import type { AppliedQuery } from "./QueryPanel"
 import type { QuerySubject } from "./types"
 
 /** ⚠️ Not an index into `subjects` — see where it is used. */
 const EVERYTHING = -1
+
+/**
+ * ⚠️ A subject is identified by its name AND its parameters, never by the name alone — a product
+ * registers one per thing being listed, so forty-four forms are forty-four subjects called `entries`.
+ */
+function keyOf(subject: QuerySubject): string {
+  return `${subject.name}-${JSON.stringify(subject.parameters ?? {})}`
+}
 
 /** One thing that can be queried, as a person would name it. */
 export interface ManagedSubject {
@@ -71,6 +79,27 @@ export function SavedQueryManager({
   // question, and giving it an index would make it look like one more listing in the column.
   const [active, setActive] = useState<number>(EVERYTHING)
 
+  /**
+   * ⚠️ **Both facts the column needs, fetched ONCE for every listing** — see `SubjectButton` for what
+   * this replaced. `useEverySavedQuery` is asked here rather than only inside the *every listing* pane
+   * because its answer is the counts as well, and asking it twice would be the fan-out again under
+   * another name — react-query dedupes it, which is exactly why this is safe.
+   */
+  const plain = useMemo(() => subjects.map((entry) => entry.subject), [subjects])
+  const { entries } = useEverySavedQuery(plain)
+  const declarations = useEveryDeclaration(plain)
+
+  const counted = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    // Every listing starts at zero so a row can say "0 kept" rather than staying blank once the batch
+    // has answered — an absent count and a count of none are different things on this screen.
+    plain.forEach((subject) => counts.set(keyOf(subject), 0))
+    entries.forEach(({ subject }) => counts.set(keyOf(subject), (counts.get(keyOf(subject)) ?? 0) + 1))
+
+    return counts
+  }, [plain, entries])
+
   if (subjects.length === 0) {
     return null
   }
@@ -116,6 +145,8 @@ export function SavedQueryManager({
             entry={entry}
             labels={labels}
             active={index === active}
+            viewCount={counted.get(keyOf(entry.subject))}
+            authored={declarations.get(keyOf(entry.subject))?.authored}
             onSelect={() => setActive(index)}
           />
         ))}
@@ -218,19 +249,34 @@ function SubjectTabs({
  * identical words is what each row *has* — how many questions are kept against it, and whether its
  * declaration is something anybody wrote.
  */
+/**
+ * One listing in the column.
+ *
+ * ⚠️ **It asks for nothing of its own any more** (Ivan, 2026-08-25: *«краще зробити батч»*). It used to
+ * call two hooks per row — the kept views for the count, the declaration for the badge — so a product
+ * registering one subject per listing paid two requests per listing to paint a sidebar: eighty-eight of
+ * them on a workspace with forty-four component types. Both now arrive in one batch each, fetched above,
+ * and a row is handed its own two facts.
+ */
 function SubjectButton({
   entry,
   labels,
   active,
+  viewCount,
+  authored,
   onSelect,
 }: {
   entry: ManagedSubject
   labels: QueryLabels
   active: boolean
+  /** How many questions are kept against this listing, or `undefined` while the batch is in flight. */
+  viewCount?: number
+  /** Whether somebody has taken this listing's declaration over. */
+  authored?: boolean
   onSelect: () => void
 }) {
-  const { data: views } = useSavedQueryViews(entry.subject)
-  const { data: declaration } = useSourceDeclaration(entry.subject)
+  const views = viewCount === undefined ? undefined : { length: viewCount }
+  const declaration = { authored }
 
   return (
     <Button

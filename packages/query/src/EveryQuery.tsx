@@ -99,9 +99,11 @@ export function EveryQuery({
         </p>
       ) : (
         <ul className="space-y-2">
-          {shown.map(({ subject, view }) => (
+          {shown.map(({ subject, view, key }) => (
             <li
-              key={`${subject.name}-${view.id}`}
+              // ⚠️ The hook's key, not `name-viewId`: two subjects can share a name and differ only in
+              // their parameters — see `useEverySavedQuery`.
+              key={key}
               className="space-y-2 rounded-lg border border-border/60 p-3"
             >
               <div className="flex flex-wrap items-center gap-2">

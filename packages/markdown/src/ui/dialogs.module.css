@@ -203,8 +203,24 @@
     background: var(--markdown-accent-soft);
 }
 
+/*
+ * ⚠️ The label holds its width and the HINT gives way — this used to be the other way round.
+ *
+ * `.pickerHint` was `flex-shrink: 0`, which is fine while every hint is a file size and breaks the
+ * moment one is a sentence: the row grows past the list, the label (the only part that identifies the
+ * thing) collapses to nothing, and the whole picker scrolls sideways. Which is exactly what a source
+ * offering "TSSR-0141 · Tessera answers suggest for issues, sprints and boards · Story · To Do" did.
+ *
+ * A hint is by definition the part a reader can do without, so it is the part that truncates. The label
+ * is capped rather than fixed so that a genuinely long one cannot take the whole row either.
+ */
 .pickerLabel {
-    flex: 1;
+    /* ⚠️ `0 0` — it does not shrink at all, capped instead. `0 1` looks equivalent and is not: both
+       parts then shrink proportionally, so a long hint clips `TSSR-0141` down to `TSSR-01…` and the
+       row stops naming anything. */
+    flex: 0 0 auto;
+    max-width: 45%;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -213,7 +229,11 @@
 .pickerHint {
     font-size: 11px;
     color: var(--markdown-ink-3);
-    flex-shrink: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ── jMouse-EL binding rows ──────────────────────────────────────────────────── */

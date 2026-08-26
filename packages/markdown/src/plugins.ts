@@ -34,6 +34,10 @@ export type { CalloutProperties, CalloutStyle }                from './plugins/C
 export { BlockNotice }                                         from './plugins/BlockNotice';
 export { mermaidPlugin }                                       from './plugins/diagrams';
 export { dataBlockPlugin, promiseLoader }                      from './plugins/dataBlocks';
+export { referencePlugin, ReferenceBadge, referenceKey }       from './plugins/references';
+export type {
+    ReferenceAutolink, ReferencePluginOptions, ReferenceRenderProperties, ReferenceState, ReferenceToken,
+} from './plugins/references';
 export type {
     DataBlockLoad, DataBlockLoader, DataBlockPluginOptions, DataBlockRenderProperties, DataBlockRequest,
     DataBlockResult,

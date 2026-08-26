@@ -276,14 +276,58 @@ export function usePlayground(
 export function useEverySavedQuery(subjects: readonly QuerySubject[]) {
   const transport = useQueryTransport()
 
+  /**
+   * ⚠️ **One request when the product offers a batch, one per subject when it does not.**
+   *
+   * A product registers one subject per thing being listed, so a workspace with forty-four component
+   * types is forty-four `entries` subjects — and this screen asked each of them separately. Ivan,
+   * 2026-08-25: *«краще зробити батч»*.
+   *
+   * ⚠️ **Both hooks are called every render, and only one is enabled.** React's rules do not allow the
+   * batch to be chosen with an `if`, so the fan-out is disabled rather than skipped — which is also what
+   * keeps a product with no `listMany` working exactly as it did.
+   */
+  const batched = useQuery({
+    queryKey: ["jmq-views-batch", subjects.map((subject) => [subject.name, subject.parameters ?? {}])],
+    queryFn: () => transport.views!.listMany!(subjects),
+    enabled: Boolean(transport.views?.listMany) && subjects.length > 0,
+    staleTime: 30 * 1000,
+  })
+
   const results = useQueries({
     queries: subjects.map((subject) => ({
       queryKey: ["jmq-views", subject.name, subject.parameters ?? {}],
       queryFn: () => transport.views!.list(subject),
-      enabled: Boolean(transport.views),
+      enabled: Boolean(transport.views) && !transport.views?.listMany,
       staleTime: 30 * 1000,
     })),
   })
+
+  if (transport.views?.listMany) {
+    // ⚠️ Matched back by name AND parameters — the name alone does not identify a subject, which is the
+    // same fact the row keys had to learn. A refused listing contributes nothing rather than an error:
+    // one unreadable listing must not blank a screen showing forty-three readable ones.
+    const answers = new Map(
+      (batched.data ?? []).map((answer) => [
+        `${answer.subject}-${JSON.stringify(answer.parameters ?? {})}`,
+        answer,
+      ]),
+    )
+
+    return {
+      supported: Boolean(transport.views),
+      loading: batched.isLoading,
+      entries: subjects.flatMap((subject) => {
+        const answer = answers.get(`${subject.name}-${JSON.stringify(subject.parameters ?? {})}`)
+
+        return (answer?.views ?? []).map((view) => ({
+          subject,
+          view,
+          key: `${subject.name}-${JSON.stringify(subject.parameters ?? {})}-${view.id}`,
+        }))
+      }),
+    }
+  }
 
   return {
     // ⚠️ So an empty list can say WHICH emptiness it is. Without this, a product that wired no store
@@ -293,10 +337,74 @@ export function useEverySavedQuery(subjects: readonly QuerySubject[]) {
     loading: results.some((result) => result.isLoading),
     // ⚠️ Each view carries the subject it belongs to, because a flat list of names from four listings is
     // a list in which two "Mine" rows are indistinguishable — and applying the wrong one is silent.
+    //
+    // ⚠️ **And a `key`, because the subject's NAME does not identify a subject.** A product registers one
+    // subject per *thing being listed*, so forty-four forms are forty-four `entries` subjects differing
+    // only in their parameters — and every one of them offers the same ready-made questions. Keyed on
+    // `name-viewId`, React saw forty-four children called `entries-preset-entries-mine-this-week` and
+    // warned that it may duplicate or omit them. The parameters are what tell two subjects apart, so
+    // they are in the key.
     entries: results.flatMap((result, index) =>
-      (result.data ?? []).map((view) => ({ subject: subjects[index], view })),
+      (result.data ?? []).map((view) => ({
+        subject: subjects[index],
+        view,
+        key: `${subjects[index].name}-${JSON.stringify(subjects[index].parameters ?? {})}-${view.id}`,
+      })),
     ),
   }
+}
+
+/**
+ * Every listing's declaration, for a screen that draws them all at once.
+ *
+ * ⚠️ **This exists so the sidebar stops asking per row.** The manager marks the subjects whose
+ * declaration somebody has taken over; asked one at a time that was a request per listing, on top of a
+ * request per listing for the counts. Ivan, 2026-08-25: *«краще зробити батч»*.
+ *
+ * ⚠️ **Keyed by name AND parameters**, because a name does not identify a subject — see
+ * `useEverySavedQuery`. Returns a lookup rather than an array so a row can ask for its own without
+ * knowing its index.
+ */
+export function useEveryDeclaration(subjects: readonly QuerySubject[]) {
+  const transport = useQueryTransport()
+
+  // ⚠️ Takes the parameters rather than a subject, because the two sides of the match are different
+  // shapes: what was asked is a `QuerySubject`, what came back is an answer that echoes the same two
+  // facts. One helper over the pair keeps them spelled identically, which is the whole of the match.
+  const keyOf = (name: string, parameters?: Record<string, string | undefined>) =>
+    `${name}-${JSON.stringify(parameters ?? {})}`
+
+  const batched = useQuery({
+    queryKey: ["jmq-source-batch", subjects.map((subject) => [subject.name, subject.parameters ?? {}])],
+    queryFn: () => transport.sources!.declarationMany!(subjects),
+    enabled: Boolean(transport.sources?.declarationMany) && subjects.length > 0,
+    staleTime: 60 * 1000,
+  })
+
+  // ⚠️ The fan-out stays for a product whose transport predates the batch, and is disabled rather than
+  // skipped — a hook cannot be called conditionally.
+  const results = useQueries({
+    queries: subjects.map((subject) => ({
+      queryKey: ["jmq-source", subject.name, subject.parameters ?? {}],
+      queryFn: () => transport.sources!.declaration(subject),
+      enabled: Boolean(transport.sources) && !transport.sources?.declarationMany,
+      staleTime: 60 * 1000,
+    })),
+  })
+
+  if (transport.sources?.declarationMany) {
+    return new Map(
+      (batched.data ?? [])
+        .filter((answer) => !answer.refused && answer.declaration)
+        .map((answer) => [keyOf(answer.subject, answer.parameters), answer.declaration!]),
+    )
+  }
+
+  return new Map(
+    results.flatMap((result, index) =>
+      result.data ? [[keyOf(subjects[index].name, subjects[index].parameters), result.data] as const] : [],
+    ),
+  )
 }
 
 /**

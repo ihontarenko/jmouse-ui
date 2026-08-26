@@ -5,6 +5,7 @@ import type { MarkdownPlugin } from './plugin';
 import type { MarkdownBlock, MarkdownSegment } from './parse';
 import { blockKey, collectBlocks, parseMarkdown } from './parse';
 import { BlockDataScope, useBlockDataFor } from './blockData';
+import { ProseDataScope } from './proseData';
 import { ProseRenderer } from './ProseRenderer';
 
 interface MarkdownRendererProperties<TContext> {
@@ -34,11 +35,18 @@ export function MarkdownRenderer<TContext>({
 
     return (
         <BlockDataScope plugins={registry.dataPlugins} blocks={blocks} context={context}>
-            <div className={className}>
-                {segments.map((segment, index) => (
-                    <Segment key={index} segment={segment} registry={registry} context={context}/>
-                ))}
-            </div>
+            {/*
+              * ⚠️ Inside the block scope rather than beside it, so a block renderer can read prose data
+              * too — a `:::summary` that quotes the references around it is a perfectly reasonable thing
+              * to build, and the reverse nesting would rule it out for no gain.
+              */}
+            <ProseDataScope plugins={registry.proseDataPlugins} markdown={markdown ?? ''} context={context}>
+                <div className={className}>
+                    {segments.map((segment, index) => (
+                        <Segment key={index} segment={segment} registry={registry} context={context}/>
+                    ))}
+                </div>
+            </ProseDataScope>
         </BlockDataScope>
     );
 }

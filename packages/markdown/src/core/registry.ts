@@ -20,10 +20,14 @@ export interface PluginRegistry<TContext = unknown> {
     readonly prose:        Required<Pick<ProseContribution, 'remarkPlugins' | 'rehypePlugins'>> & {
         readonly components: NonNullable<Options['components']>;
         readonly transform:  (markdown: string) => string;
+        /** Every scheme some plugin owns — what survives the URL sanitiser. Lowercased. */
+        readonly urlSchemes: readonly string[];
     };
     readonly staticExtensions: readonly Extension[];
-    /** Plugins that resolve data — mounted as one provider each, in list order. */
+    /** Plugins that resolve data for their blocks — mounted as one provider each, in list order. */
     readonly dataPlugins:      readonly MarkdownPlugin<TContext>[];
+    /** Plugins that resolve data from prose — likewise, and independently. */
+    readonly proseDataPlugins: readonly MarkdownPlugin<TContext>[];
     /** Plugins whose extensions depend on live state — likewise. */
     readonly extensionPlugins: readonly MarkdownPlugin<TContext>[];
     /** The plugin that owns a block, and the component that draws it. */
@@ -46,6 +50,7 @@ export function buildRegistry<TContext>(plugins: readonly MarkdownPlugin<TContex
     const components:    Record<string, unknown>               = {};
     const transforms:    ((markdown: string) => string)[]      = [];
     const staticExtensions: Extension[] = [];
+    const urlSchemes = new Set<string>();
 
     for (const plugin of plugins) {
         for (const claim of plugin.claims ?? []) {
@@ -70,6 +75,11 @@ export function buildRegistry<TContext>(plugins: readonly MarkdownPlugin<TContex
         remarkPlugins.push(...(plugin.prose?.remarkPlugins ?? []));
         rehypePlugins.push(...(plugin.prose?.rehypePlugins ?? []));
         Object.assign(components, plugin.prose?.components ?? {});
+        // Lowercased on the way in: a browser reads `Issue:` and `issue:` as one protocol, and a set
+        // that told them apart would make the same document render two ways.
+        for (const scheme of plugin.prose?.urlSchemes ?? []) {
+            urlSchemes.add(scheme.toLowerCase());
+        }
         if (plugin.prose?.transform) {
             transforms.push(plugin.prose.transform);
         }
@@ -84,9 +94,10 @@ export function buildRegistry<TContext>(plugins: readonly MarkdownPlugin<TContex
         claimed,
         actions,
         triggers,
-        prose:            { remarkPlugins, rehypePlugins, components, transform },
+        prose:            { remarkPlugins, rehypePlugins, components, transform, urlSchemes: [...urlSchemes] },
         staticExtensions,
         dataPlugins:      plugins.filter((plugin) => plugin.useBlockData !== undefined),
+        proseDataPlugins: plugins.filter((plugin) => plugin.useProseData !== undefined),
         extensionPlugins: plugins.filter((plugin) => plugin.useEditorExtensions !== undefined),
         rendererFor:      (block) => renderers.get(claimKey(block.shape, block.name)),
     };

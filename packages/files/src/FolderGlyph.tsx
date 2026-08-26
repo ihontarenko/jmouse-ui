@@ -7,8 +7,10 @@ import { cn } from "@jmouse/ui"
  * different object on every machine — and none of them looked like the thing a file browser is asking
  * you to believe in. Two sheets and a tab cost nothing and look the same everywhere.
  *
- * ⚠️ **Tinted from `--primary`, so it follows every palette a product ships.** A fixed yellow would be the one thing
- * on the screen that ignored the theme — which is exactly what the emoji was.
+ * ⚠️ **Tinted from the accent, so it follows every palette a product ships.** A fixed yellow would be the one thing
+ * on the screen that ignored the theme — which is exactly what the emoji was. ⚠️ From the accent **of the
+ * surface it is drawn on** rather than from `--primary` itself: on a selected row the accent is the
+ * background, and a folder painted in the fill it sits on is a folder nobody can see.
  *
  * ⚠️ **`color-mix` against the theme token, never a hard-coded pair of colours.** The lighter flap and
  * the darker back have to stay related as the palette moves; two literals would drift apart the first
@@ -41,7 +43,10 @@ export function FolderGlyph({
   emblem?: string | null
   className?: string
 }) {
-  const tint = muted ? "var(--muted-foreground)" : "var(--primary)"
+  // ⚠️ The accent OF THIS SURFACE, not the theme's — on a selected row the accent IS the background,
+  // and a folder tinted from `--primary` there is a folder painted in the fill it is sitting on.
+  // `.inverted-surface` (`@jmouse/ui`'s `styles.css`) hands both of these the foreground instead.
+  const tint = muted ? "var(--glyph-ink, var(--muted-foreground))" : "var(--glyph-accent, var(--primary))"
 
   return (
     <span
@@ -80,7 +85,10 @@ export function FolderGlyph({
           style={{
             top: "44%",
             fontSize: size * 0.32,
-            color: "#fff",
+            // ⚠️ The foreground OF THE FOLDER, which is not always white — a theme whose accent is a
+            // pale yellow already had a white mark on a white flap, and an inverted row turns the
+            // folder itself into the foreground, where white would be the mark disappearing entirely.
+            color: "var(--glyph-emblem, var(--primary-foreground))",
             textShadow: "0 1px 1px rgb(0 0 0 / 0.35)",
           }}
         >

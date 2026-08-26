@@ -69,9 +69,16 @@ export const GLYPH_HUES = {
  * ⚠️ **65% of the hue against the theme's own muted text**, which is the ratio at which the family stays
  * apart in a light theme without any of them shouting in a dark one. Less and a spreadsheet and a
  * document stop being different colours; more and the row grows a set of stickers.
+ *
+ * ⚠️ **Both halves of that mix are asked of the SURFACE rather than named outright.** `--muted-foreground`
+ * is the text colour of a normal row and is exactly the wrong colour on a selected one, where the fill
+ * is the accent and the text is `--primary-foreground` — a document icon that kept its own dark blue
+ * there was a smudge one shade off the background rather than an icon. `.inverted-surface`
+ * (`@jmouse/ui`'s `styles.css`) redefines `--glyph-ink` and `--glyph-strength` for precisely that case,
+ * and the fallbacks below are what every ordinary surface gets without saying anything.
  */
 export function glyphTint(hue: string): string {
-  return `color-mix(in srgb, ${hue} 65%, var(--muted-foreground))`
+  return `color-mix(in srgb, ${hue} var(--glyph-strength, 65%), var(--glyph-ink, var(--muted-foreground)))`
 }
 
 const SHEET_EXTENSION = /\.(xlsx?|ods|numbers|csv|tsv)$/i
