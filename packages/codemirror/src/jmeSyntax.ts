@@ -254,16 +254,16 @@ const parser: StreamParser<JMouseELState> = {
 };
 
 /** The jMouse-EL language — a `StreamLanguage`; `.parser` is reused for nested/static highlighting. */
-export const jMouseELLanguage = StreamLanguage.define(parser);
+export const jmeSyntaxLanguage = StreamLanguage.define(parser);
 
 /** Editor-ready language support (grammar only; theme/highlight-style are applied separately). */
-export function jMouseEL(): LanguageSupport {
-    return new LanguageSupport(jMouseELLanguage);
+export function jmeSyntax(): LanguageSupport {
+    return new LanguageSupport(jmeSyntaxLanguage);
 }
 
 /** Lazy description so Markdown's `codeLanguages` can resolve ` ```jme ` fences to this grammar. */
 export const jmeLanguageDescription = LanguageDescription.of({
     name:    'jme',
     alias:   ['jmouse', 'jmouse-el', 'jmouseel'],
-    support: jMouseEL(),
+    support: jmeSyntax(),
 });

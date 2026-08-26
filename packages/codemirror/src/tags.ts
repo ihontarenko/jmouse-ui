@@ -105,3 +105,30 @@ export const expressionField = Tag.define(tags.attributeName)
 
 /** `{{`, `}}`, `{%`, `%}` — the walls of an expression, not part of what it says. */
 export const expressionDelimiter = Tag.define(tags.meta)
+
+// ── Mapping (.jmm) ───────────────────────────────────────────────────────────
+
+/**
+ * The whole type on a `use` line — `net.innoventa.…$CreateProjectRequest`.
+ *
+ * <p>⚠️ **Its own tag because it is bookkeeping, and the block types are the subject.** A `use` line
+ * says which types the file will go on to name; `target Project` says what the block in front of you is
+ * about. Under {@link ./highlight}'s standard set both `tags.typeName` and `tags.namespace` resolve to
+ * the keyword colour, so before this tag existed `target` and `Project` came out identical — the one
+ * pair in a mapping file a reader most needs told apart, because the keyword is the same on every block
+ * and the type is the only thing that says which block this is.
+ *
+ * <p>It is deliberately the quieter of the two. A file's `use` header is read once and scanned past
+ * forever after.
+ */
+export const mappingImport = Tag.define(tags.namespace)
+
+/**
+ * The type a block is about — the `Project` of `target Project`, the `CreateProjectRequest` of
+ * `from CreateProjectRequest`.
+ *
+ * <p>The subject of the block, and what a reader scans a file for. Set apart from the keyword beside it
+ * by both hue and weight: `target`, `from` and `mapping` repeat on every block and carry no information
+ * once you know the language, while the type is the whole reason the block exists.
+ */
+export const mappingType = Tag.define(tags.typeName)

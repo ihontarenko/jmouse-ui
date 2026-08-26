@@ -2,7 +2,7 @@ import { HighlightStyle, LanguageDescription } from "@codemirror/language"
 import type { Parser } from "@lezer/common"
 import { highlightTree, tags } from "@lezer/highlight"
 import { StyleModule } from "style-mod"
-import { jMouseELLanguage } from "./jmeSyntax"
+import { jmeSyntaxLanguage } from "./jmeSyntax"
 import { jmpSyntaxLanguage } from "./jmpSyntax"
 import { jmqSyntaxLanguage } from "./jmqSyntax"
 import {
@@ -10,6 +10,8 @@ import {
   expressionField,
   expressionFilter,
   expressionKeyword,
+  mappingImport,
+  mappingType,
   policyAction,
   policyCapability,
   policyDeny,
@@ -125,6 +127,18 @@ export const SYNTAX_HIGHLIGHT_STYLE = HighlightStyle.define([
   { tag: [expressionField], color: "var(--syntax-instance)" },
   { tag: [expressionDelimiter], color: "var(--syntax-punctuation)" },
 
+  // ── Mapping (.jmm) ───────────────────────────────────────────────────────
+  //
+  // ⚠️ These two exist because the standard set sends `tags.typeName` and `tags.namespace` to the
+  // keyword colour, which made `target` and `Project` the same colour — and the keyword repeats on
+  // every block while the type is the only thing that says which block you are looking at.
+  //
+  // The scope colour for the block's subject: it answers the same question `@SPACE` answers in a
+  // policy — what this is about — and one house palette should not need two vocabularies for that.
+  { tag: [mappingType], color: "var(--syntax-scope)", fontWeight: "600" },
+  // And the quieter of the two for a `use` line, which is read once and scanned past forever after.
+  { tag: [mappingImport], color: "var(--syntax-namespace)" },
+
   // ── The Markdown surface itself — what a source editor is mostly showing ──
   { tag: [tags.heading], color: "var(--syntax-heading, var(--ink))", fontWeight: "700" },
   { tag: [tags.strong], color: "var(--syntax-heading, var(--ink))", fontWeight: "700" },
@@ -155,7 +169,7 @@ export const POLICY_LANGUAGE: LanguageAlias = {
 /** The same for jMouse-EL, which is written in a fence about as often as it is written in a field. */
 export const EXPRESSION_LANGUAGE: LanguageAlias = {
   names: ["jme", "jmouse", "jmouse-el", "jmouseel"],
-  parser: jMouseELLanguage.parser,
+  parser: jmeSyntaxLanguage.parser,
 }
 
 /**

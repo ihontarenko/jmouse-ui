@@ -54,8 +54,11 @@ export {
   expressionField,
   expressionFilter,
   expressionKeyword,
+  mappingImport,
+  mappingType,
 } from "./tags"
 
 export { jmpSyntax, jmpSyntaxLanguage, jmpLanguageDescription } from "./jmpSyntax"
-export { jMouseEL, jMouseELLanguage, jmeLanguageDescription } from "./jmeSyntax"
+export { jmeSyntax, jmeSyntaxLanguage, jmeLanguageDescription } from "./jmeSyntax"
 export { jmqSyntax, jmqSyntaxLanguage, jmqLanguageDescription } from "./jmqSyntax"
+export { jmmSyntax, jmmSyntaxLanguage, jmmLanguageDescription } from "./jmmSyntax"
