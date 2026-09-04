@@ -21,6 +21,7 @@
 
 export {
   validateStations,
+  openStation,
   stationEntryPath,
   stationManifestPath,
   type PwaStation,
@@ -79,7 +80,6 @@ export {
 export { InstallButton, type InstallButtonProperties } from "./install/InstallButton.js"
 
 export {
-  openStation,
   StationShelf,
   type StationShelfProperties,
   type StationTileState,

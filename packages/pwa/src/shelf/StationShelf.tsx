@@ -1,20 +1,17 @@
 import { Badge, Button, Card, CardContent, cn } from "@jmouse/ui"
+import { openStation } from "../station.js"
 import type { PwaStation, StationRequirement } from "../station.js"
 import { InstallButton } from "../install/InstallButton.js"
 import { useInstallPrompt } from "../install/useInstallPrompt.js"
 
 /**
- * Leaves the page for a station's own address.
- *
- * ⚠️ **A real navigation, and it cannot be a router push.** The browser reads the manifest from the
- * document it loaded, and swapping `<link rel="manifest">` afterwards does not reliably re-arm the
- * installation prompt — so reaching a station has to fetch that station's own document. A client-side
- * route to the same path renders the right screen under the *wrong* manifest, which looks entirely
- * correct until somebody tries to install it.
+ * ⚠️ **Re-exported, not defined here — it moved to `station.js`.** Launching a station is a document
+ * load rather than a route, which is a fact about manifests rather than about a tile grid; keeping it
+ * in this file made it unreachable from `@jmouse/pwa/headless`, whose whole purpose is to hand a
+ * product the behaviour without the two components that draw with `@jmouse/ui`. Every existing import
+ * of `openStation` from the root entry keeps working.
  */
-export function openStation(station: Pick<PwaStation, "startPath">): void {
-  window.location.assign(station.startPath)
-}
+export { openStation } from "../station.js"
 
 export type StationTileState = "available" | "installed" | "unavailable-here" | "closed"
 

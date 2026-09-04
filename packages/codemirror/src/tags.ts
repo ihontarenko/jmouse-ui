@@ -132,3 +132,36 @@ export const mappingImport = Tag.define(tags.namespace)
  * once you know the language, while the type is the whole reason the block exists.
  */
 export const mappingType = Tag.define(tags.typeName)
+
+// ── Script (.jms) ────────────────────────────────────────────────────────────
+
+/**
+ * The name after an `@` — `@world`, `@player`, `@orders`.
+ *
+ * <p>⚠️ **Its own tag because it is the one syntax in a script that reaches outside it.** Everything
+ * else a script names is its own: a local, a loop variable, a declared function, whatever the host put
+ * in the context for this event. An `@` name is a *facade* — an object the host explicitly agreed to
+ * expose, resolved against a closed catalogue and refused at load if it is not on it. That is the line
+ * a reader auditing a script is looking for, and under a borrowed `tags.variableName` it would be the
+ * same colour as the loop variable beside it.
+ *
+ * <p>It takes {@link policyScope}'s hue, and deliberately: a scope and a facade occupy the same role on
+ * the page — the named outside thing the line is about, with everything after it saying what is being
+ * done to it.
+ */
+export const scriptFacade = Tag.define(tags.typeName)
+
+/**
+ * The event a handler is written for — the `unload` of `on unload when … do`.
+ *
+ * <p>⚠️ **Its own tag because it is what a reader scans a script for.** Nobody opens a behaviour file
+ * asking "what does line forty do"; they ask *what happens when the harvester unloads*, and the answer
+ * is a column of event names down the left of the handlers. Without a tag of its own that column is
+ * `tags.variableName`, identical to every other identifier in the file — and the one structural thing a
+ * script has to offer a reader would be invisible.
+ *
+ * <p>⚠️ It is emitted for the word after `on` **whatever that word is**. The backend reads every one of
+ * the dialect's keywords as an ordinary name wherever a name belongs, because a host is entitled to an
+ * event called `end`; a grammar that refused to colour one would make a correct file look broken.
+ */
+export const scriptEvent = Tag.define(tags.className)

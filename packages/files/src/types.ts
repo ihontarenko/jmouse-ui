@@ -48,6 +48,67 @@ export interface ManagedFile {
 }
 
 /**
+ * How a folder's acceptance lists are read.
+ *
+ * ⚠️ Part of the folder's own rule rather than the installation's, which is what lets a folder be
+ * *stricter* as easily as looser. Without it the mechanism would only work in one direction, and that
+ * is the more alarming direction.
+ */
+export type AcceptanceMode = "ALLOWLIST" | "DENYLIST"
+
+/**
+ * The upload rule that actually applies to a folder — after inheritance.
+ *
+ * ⚠️ **`admitsActiveContent` is a FACT, not a verdict.** The library reserves no file type and refuses
+ * nothing on an owner's behalf: a folder may be configured to admit `.svg`, `.html`, even `.exe`. What
+ * was never declined is *saying so*, and a folder quietly admitting active content because a rule three
+ * levels up allows it is hidden risk rather than the understood kind. Draw it as information — never as
+ * an error, and never with a word like "unsafe" the API deliberately does not use.
+ */
+export interface EffectiveUploadRule {
+  mode: AcceptanceMode
+  contentTypes: string[]
+  extensions: string[]
+  maxSizeBytes: number
+  admitsActiveContent: boolean
+  /** An allowlist listing nothing — a folder nobody can upload into. Legitimate, and worth saying. */
+  admitsNothing: boolean
+}
+
+/** Where a rule came from. */
+export type ConfigurationOrigin = "SELF" | "INHERITED" | "INSTALLATION"
+
+/**
+ * What applies to a folder, of one kind, and where it came from.
+ *
+ * ⚠️ **The origin is the half a screen cannot work out for itself.** From below, an inherited rule and a
+ * folder's own look identical — and "inherited from `innoventa/files`" against "set here" is exactly the
+ * sentence somebody needs before they change anything.
+ */
+export interface DirectoryConfiguration<T = unknown> {
+  effective: T
+  origin: ConfigurationOrigin
+  /** The ancestor's whole address when inherited, otherwise null. */
+  originPath: string | null
+  /** Whether this folder carries a row of its own — what "clear" is drawn from. */
+  own: boolean
+}
+
+/**
+ * A folder with everything that applies to it, keyed by kind.
+ *
+ * ⚠️ **Keyed by KIND rather than flattened into `uploadMode`, `uploadExtensions`, …** The backend's table
+ * takes any kind of directory configuration, and a shape named after `upload` would have to be redesigned
+ * the day a second one arrives.
+ */
+export interface DirectoryDetail extends Directory {
+  configurations: Record<string, DirectoryConfiguration>
+}
+
+/** The kind name the upload rule is filed under. */
+export const UPLOAD_CONFIGURATION = "upload"
+
+/**
  * Everything the manager needs from the outside world.
  *
  * <h2>⚠️ Nothing in this package fetches</h2>
@@ -104,6 +165,39 @@ export interface FileLibraryPort {
 
   createDirectory(parentId: string, name: string): Promise<Directory>
   renameDirectory(directoryId: string, name: string): Promise<Directory>
+
+  /**
+   * One folder with everything that applies to it — offered only where the product supplies it.
+   *
+   * <h2>⚠️ Optional, and the reason is a permission rather than a route</h2>
+   *
+   * <p>The library reserves no file type, so *who may change a folder's upload rule* is literally *who
+   * may put an executable into this installation*. Products gate it on a right of its own — never the
+   * one that renames a folder — and plenty of accounts will not hold it. Leaving these three out is how
+   * a product says "not for this reader": the manager then shows no Configuration item at all, rather
+   * than one that always refuses.
+   *
+   * <p>⚠️ **A separate call from `subtree`, deliberately.** Resolving a rule walks a folder's ancestors,
+   * so answering it per row would turn drawing a tree into a resolve per node. This is asked for one
+   * folder, when somebody opens its configuration.
+   */
+  directoryDetail?(directoryId: string): Promise<DirectoryDetail>
+
+  /**
+   * Say what a folder does, of one kind.
+   *
+   * @returns the configuration as the backend normalised it — lower-cased, dots stripped, content-type
+   *          parameters removed. Show what came back rather than what was typed.
+   */
+  writeDirectoryConfiguration?(directoryId: string, kind: string, document: unknown): Promise<unknown>
+
+  /**
+   * Stop saying anything of this kind, and go back to inheriting.
+   *
+   * ⚠️ **Offered whenever writing is.** A rule that can be set and not removed is a one-way door on
+   * every folder somebody ever touches.
+   */
+  clearDirectoryConfiguration?(directoryId: string, kind: string): Promise<void>
 
   /**
    * ⚠️ **Without taking the subtree.** The backend refuses a folder that still holds something, and

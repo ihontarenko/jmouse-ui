@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { HTMLAttributes, ReactNode } from "react"
 import type { EntityCardDensity } from "./surface"
 
 /**
@@ -56,6 +56,27 @@ export interface EntityCardProperties {
   onRemove?: () => void
   /** What the delete's second press says. Name the record in it. */
   confirmLabel?: string
+  /**
+   * Focus, key handling and the active flag, for a card that is a **row in a keyboard-navigable list**
+   * — normally `useListKeyboard`'s `rowProperties(…)`, spread straight in.
+   *
+   * <p>⚠️ **Its own field rather than the component spreading unknown properties.** A card that took
+   * arbitrary attributes would also take `className` and `style`, and a caller would eventually use
+   * them to restyle the surface — which is the one thing this component exists to keep identical
+   * across three products. Naming the field says what may pass and what may not.
+   */
+  navigation?: HTMLAttributes<HTMLElement> & {
+    /**
+     * ⚠️ **A callback ref, not `Ref<HTMLElement>`.** The card's root is an `article` in one density and
+     * an `li` in the other, and `RefObject<HTMLElement>` is assignable to neither — an object ref is
+     * written *into*, so it has to name the exact element. A callback only ever *receives* one, which
+     * makes `(element: HTMLElement | null) => void` acceptable wherever a more specific element is
+     * handed over.
+     */
+    ref?: (element: HTMLElement | null) => void
+    tabIndex?: number
+    "data-active"?: "" | undefined
+  }
 }
 
 export interface EntityCardOwnProperties extends EntityCardProperties {

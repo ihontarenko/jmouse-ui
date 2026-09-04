@@ -28,6 +28,7 @@ export {
 
 export { FileManager, type FileManagerProperties } from "./FileManager"
 export { DirectoryTree } from "./DirectoryTree"
+export { DirectoryConfigurationDialog } from "./DirectoryConfigurationDialog"
 export { FileList } from "./FileList"
 export { FileRows, RenameField } from "./FileRows"
 export { FileTiles } from "./FileTiles"
@@ -52,8 +53,14 @@ export {
   typeLabel,
 } from "./fileDisplay"
 
+export { UPLOAD_CONFIGURATION } from "./types"
 export type {
+  AcceptanceMode,
+  ConfigurationOrigin,
   Directory,
+  DirectoryConfiguration,
+  DirectoryDetail,
+  EffectiveUploadRule,
   FileLibraryPort,
   FileManagerNotice,
   FilesLayout,

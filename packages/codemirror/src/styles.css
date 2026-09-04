@@ -17,10 +17,17 @@
    reaches it. ⚠️ Picking a product theme recolours the *frame* around code and never the code
    itself — intended, not a gap.
 
-   ── Two dark-mode selectors, and both are needed ─────────────────────────────
-   Four interfaces flag dark with `.dark` on <html> (shadcn / `@jmouse/ui`'s ThemeProvider); the
-   legacy Innoventa one flags it with `.theme-dark`. Every dark block below names both. Dropping
-   either silently gives that product a light palette on a dark ground.
+   ── Three dark-mode selectors, and all three are needed ──────────────────────
+   Hosts do not agree on how <html> says "dark". Four interfaces flag it with `.dark` (shadcn /
+   `@jmouse/ui`'s ThemeProvider), the legacy Innoventa one with `.theme-dark`, and Innoventa's jMUI
+   with `data-theme="dark"` — an attribute, because it carries density and the chart palette beside
+   the theme and stamps all three before the first paint. Every dark block below names all three.
+
+   ⚠️ A host whose flag is missing from that list is the one failure mode this stylesheet has, and
+   it does not look like one: nothing throws, every token still resolves, and the reader simply gets
+   the LIGHT palette on a dark ground — legible enough to be mistaken for the palette's own taste
+   rather than for a selector that never matched. jMUI read that way for as long as it existed.
+   Adding a fourth convention means adding it to all six blocks below, never only to the default.
 
    ── Choosing a palette ───────────────────────────────────────────────────────
    Selection is a `data-syntax-palette` attribute on <html>, written by `applySyntaxPalette` from
@@ -63,7 +70,8 @@
 }
 
 :root.dark,
-:root.theme-dark {
+:root.theme-dark,
+:root[data-theme='dark'] {
     --syntax-keyword:     #FF7EB6;
     --syntax-heading:     #E8E6E0;
     --syntax-deny:        #FF6B60;
@@ -109,7 +117,8 @@
 }
 
 :root[data-syntax-palette='orchid'].dark,
-:root[data-syntax-palette='orchid'].theme-dark {
+:root[data-syntax-palette='orchid'].theme-dark,
+:root[data-syntax-palette='orchid'][data-theme='dark'] {
     --syntax-keyword:     #E39BFF;
     --syntax-heading:     #E9E6F0;
     --syntax-deny:        #FF6F61;
@@ -155,7 +164,8 @@
 }
 
 :root[data-syntax-palette='harbour'].dark,
-:root[data-syntax-palette='harbour'].theme-dark {
+:root[data-syntax-palette='harbour'].theme-dark,
+:root[data-syntax-palette='harbour'][data-theme='dark'] {
     --syntax-keyword:     #5FE3E3;
     --syntax-heading:     #E2EAEA;
     --syntax-deny:        #FF7A6E;
@@ -201,7 +211,8 @@
 }
 
 :root[data-syntax-palette='ember'].dark,
-:root[data-syntax-palette='ember'].theme-dark {
+:root[data-syntax-palette='ember'].theme-dark,
+:root[data-syntax-palette='ember'][data-theme='dark'] {
     --syntax-keyword:     #FFA45C;
     --syntax-heading:     #F0E6D9;
     --syntax-deny:        #FF6B7A;
@@ -247,7 +258,8 @@
 }
 
 :root[data-syntax-palette='moss'].dark,
-:root[data-syntax-palette='moss'].theme-dark {
+:root[data-syntax-palette='moss'].theme-dark,
+:root[data-syntax-palette='moss'][data-theme='dark'] {
     --syntax-keyword:     #E0C267;
     --syntax-heading:     #E5E9DC;
     --syntax-deny:        #FF7A6B;
@@ -293,7 +305,8 @@
 }
 
 :root[data-syntax-palette='graphite'].dark,
-:root[data-syntax-palette='graphite'].theme-dark {
+:root[data-syntax-palette='graphite'].theme-dark,
+:root[data-syntax-palette='graphite'][data-theme='dark'] {
     --syntax-keyword:     #F5F2EC;
     --syntax-heading:     #F5F2EC;
     --syntax-deny:        #FF6B60;

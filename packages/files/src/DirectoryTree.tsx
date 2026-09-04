@@ -1,6 +1,18 @@
 import { useState } from "react"
-import { FolderPlus, Pencil, X } from "lucide-react"
-import { Button, Input, TreeRow, treeIndent, treeLabelClassName } from "@jmouse/ui"
+import { FolderPlus, MoreHorizontal, Pencil, SlidersHorizontal, X } from "lucide-react"
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input,
+  TreeRow,
+  treeIndent,
+  treeLabelClassName,
+} from "@jmouse/ui"
+import { DirectoryConfigurationDialog } from "./DirectoryConfigurationDialog"
 import { CabinetGlyph, FolderGlyph } from "./FolderGlyph"
 import { directoryLabel, FILE_DRAG_TYPE } from "./fileDisplay"
 import { parentIds, useDirectoryExpansion, visibleDirectories } from "./treeExpansion"
@@ -64,6 +76,15 @@ export function DirectoryTree({
   const [draftName, setDraftName] = useState("")
   const [renaming, setRenaming] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [configuring, setConfiguring] = useState<Directory | null>(null)
+
+  /**
+   * ⚠️ **The whole seam, in one boolean.** The right to change what a folder accepts is its own — with
+   * no reserved file type anywhere in the library, it is the right to put an executable into this
+   * installation — so a product hands these three functions over only for a reader who holds it. Absent
+   * means no menu item, rather than an item that always refuses.
+   */
+  const canConfigure = Boolean(port.directoryDetail && port.writeDirectoryConfiguration)
 
   const { expanded, open, toggle } = useDirectoryExpansion(directories, selectedId)
   const withChildren = parentIds(directories)
@@ -124,59 +145,86 @@ export function DirectoryTree({
               dropTarget={isDropTarget}
               actions={
                 canWrite && renaming !== directory.id ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      title="New folder inside"
-                      onClick={() => {
-                        setAddingUnder(directory.id)
-                        setDraftName("")
-                        // ⚠️ Opened as the field appears, or a folder made inside a closed one is
-                        // created and then hidden — which reads as the creation having failed.
-                        open(directory.id)
-                      }}
-                    >
-                      <FolderPlus />
-                    </Button>
+                  /*
+                    ⚠️ ONE menu rather than a row of icon buttons, and the reason is arithmetic. There
+                    were three actions and there are four; four hover-revealed icons on a tree row that
+                    is already an indent, a twisty, a glyph and a truncating name leaves the name nothing
+                    to truncate into. A menu is one target whatever the count grows to.
 
-                    {/* ⚠️ A root has no name of its own to rename and nothing above it to be deleted
-                        from — a tree's top is made by the backend, not by anybody here. */}
-                    {!directory.root && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          title="Rename"
-                          onClick={() => {
+                    ⚠️ And a menu OPENS ON TAP, which a hover-revealed button does not — a touch device
+                    has no hover, so a row of floating icons is a row of actions that do not exist there
+                    at all.
+                  */
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-xs" title={`Actions for ${directory.name}`}>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setAddingUnder(directory.id)
+                          setDraftName("")
+                          // ⚠️ Opened as the field appears, or a folder made inside a closed one is
+                          // created and then hidden — which reads as the creation having failed.
+                          open(directory.id)
+                        }}
+                      >
+                        <FolderPlus />
+                        New folder inside
+                      </DropdownMenuItem>
+
+                      {/* ⚠️ A root has no name of its own to rename and nothing above it to be deleted
+                          from — a tree's top is made by the backend, not by anybody here. It may still
+                          be CONFIGURED: `<application>/<purpose>` is the obvious place for a rule that
+                          covers a whole purpose. */}
+                      {!directory.root && (
+                        <DropdownMenuItem
+                          onSelect={() => {
                             setRenaming(directory.id)
                             setDraftName(directory.name)
                           }}
                         >
                           <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          title="Delete"
-                          className="text-destructive hover:bg-destructive/10"
-                          onClick={() =>
-                            // ⚠️ Never with the subtree. The backend refuses a folder that still holds
-                            // something, and being refused is the right answer — a one-click delete
-                            // that takes a branch with it is a click nobody meant.
-                            port
-                              .deleteDirectory(directory.id)
-                              .then(onChanged)
-                              .catch(() =>
-                                onNotice?.("That folder is not empty — move or delete what is in it first."),
-                              )
-                          }
-                        >
-                          <X />
-                        </Button>
-                      </>
-                    )}
-                  </>
+                          Rename
+                        </DropdownMenuItem>
+                      )}
+
+                      {canConfigure && (
+                        <DropdownMenuItem onSelect={() => setConfiguring(directory)}>
+                          <SlidersHorizontal />
+                          Configuration…
+                        </DropdownMenuItem>
+                      )}
+
+                      {!directory.root && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() =>
+                              // ⚠️ Never with the subtree. The backend refuses a folder that still holds
+                              // something, and being refused is the right answer — a one-click delete
+                              // that takes a branch with it is a click nobody meant.
+                              port
+                                .deleteDirectory(directory.id)
+                                .then(onChanged)
+                                .catch(() =>
+                                  onNotice?.(
+                                    "That folder is not empty — move or delete what is in it first.",
+                                  ),
+                                )
+                            }
+                          >
+                            <X />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 ) : null
               }
               onDragOver={(event) => {
@@ -251,6 +299,18 @@ export function DirectoryTree({
           </div>
         )
       })}
+
+      {/* ⚠️ One dialog for the whole tree, not one per row. Two hundred folders would otherwise be two
+          hundred mounted dialogs, each with an effect waiting to fetch. */}
+      <DirectoryConfigurationDialog
+        directoryId={configuring?.id ?? null}
+        directoryName={configuring ? directoryLabel(configuring, rootLabel) : ""}
+        port={port}
+        open={Boolean(configuring)}
+        onOpenChange={(next) => !next && setConfiguring(null)}
+        onChanged={onChanged}
+        onNotice={onNotice}
+      />
     </div>
   )
 }

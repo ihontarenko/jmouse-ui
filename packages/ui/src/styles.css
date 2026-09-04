@@ -116,6 +116,20 @@
     color-scheme: dark;
   }
 
+  /* ⚠️ …AND `color-scheme` IS NOT ENOUGH ON ITS OWN, because it loses to an author colour. Chromium
+     paints a native option list from the SELECT's own `background-color`; a select wearing the field
+     look everything else here wears — `bg-transparent`, the way `Input` does — therefore drops its
+     popup back to white while the options inherit the theme's light `--foreground`. White on white, on
+     every dark theme, and invisible in a screenshot: the trigger looks right and only the open list is
+     unreadable. Naming the surface on the rows themselves is what survives whatever background a
+     product has given the trigger. `NativeSelect` is the control that does not need this; these two
+     rules are for every hand-rolled `<select>` that came before it. */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
   /* ⚠️ EVERY DROPDOWN, MENU, SELECT AND TOOLTIP IN THIS APPLICATION IS POSITIONED BY THESE SEVEN
      LINES, and by nothing in JavaScript. See `components/ui/anchored.tsx` for the measurements, but
      the short version: text size is `zoom`, and a JS positioner divides a trigger's measured rect by

@@ -19,6 +19,8 @@ import {
   extensionForFormat,
   frameAspectOf,
   mimeTypeForFormat,
+  reshapedTo,
+  type CropRatio,
   type ImageCropSpecification,
 } from "./cropSpecification"
 import { encodeCrop } from "./encodeCrop"
@@ -44,6 +46,9 @@ export interface ImageCropperLabels {
   discard: string
   unreadable: string
   chooseAnother: string
+  shape: string
+  customShape: string
+  reshape: string
 }
 
 const DEFAULT_LABELS: ImageCropperLabels = {
@@ -55,6 +60,9 @@ const DEFAULT_LABELS: ImageCropperLabels = {
   discard: "Choose a different picture",
   unreadable: "That file could not be read as an image.",
   chooseAnother: "Choose another",
+  shape: "Shape",
+  customShape: "Custom",
+  reshape: "Drag to reshape the frame",
 }
 
 export interface ImageCropperProperties {
@@ -82,6 +90,19 @@ const FRAME_RADIUS = "0.375rem"
 const CIRCLE_RADIUS = "9999px"
 
 /**
+ * How far a dragged corner may take the frame's proportions.
+ *
+ * ⚠️ **Bounded because an unbounded ratio is a frame with no area.** A pointer dragged onto the stage's
+ * own centre line asks for a strip one pixel tall, and the encoder is then asked for a canvas that no
+ * browser will hand out. Five to one either way covers every shape anybody frames a picture to.
+ */
+const NARROWEST_ASPECT = 1 / 5
+const WIDEST_ASPECT = 5
+
+/** Two ratios are the same shape when they agree to here — enough to survive the arithmetic in `4 / 3`. */
+const ASPECT_TOLERANCE = 0.001
+
+/**
  * Framing a picture: drag to move, scroll or pinch to zoom, turn it if it came off a phone sideways.
  *
  * ⚠️ **A real cropper rather than an automatic centre crop.** The cheap version is one `drawImage` and
@@ -101,7 +122,7 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
     { source, specification, stageHeight = 320, onDiscard, onReadyChange, labels, className },
     handle
   ) {
-    const settled = React.useMemo(() => cropSpecificationOf(specification), [specification])
+    const requested = React.useMemo(() => cropSpecificationOf(specification), [specification])
     const wording = { ...DEFAULT_LABELS, ...labels }
 
     const [image, setImage] = React.useState<LoadedImage | null>(null)
@@ -110,7 +131,25 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
     const [rotation, setRotation] = React.useState(0)
     const [offset, setOffset] = React.useState<Point>({ x: 0, y: 0 })
 
+    /**
+     * The shape somebody chose, or `undefined` while nobody has chosen one.
+     *
+     * ⚠️ **`undefined` is a third state and it is load-bearing.** `null` already means "the picture's
+     * own proportions", which is a choice a person can make out loud; collapsing the two would make a
+     * cropper that had been reshaped and then set back to Original indistinguishable from one nobody
+     * touched — and the difference decides whether {@link reshapedTo} gives up the caller's second
+     * output dimension.
+     */
+    const [chosenAspect, setChosenAspect] = React.useState<number | null | undefined>(undefined)
+
     const [stage, stageSize] = useElementSize<HTMLDivElement>()
+
+    // What the encoder is handed, and what the frame is measured from — one object, so the preview and
+    // the bytes cannot disagree about the shape the way they cannot disagree about the placement.
+    const settled = React.useMemo(
+      () => (chosenAspect === undefined ? requested : reshapedTo(requested, chosenAspect)),
+      [requested, chosenAspect]
+    )
 
     const frame = React.useMemo<Dimensions | null>(() => {
       if (!image || !stageSize) {
@@ -131,6 +170,7 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
       setZoom(1)
       setRotation(0)
       setOffset({ x: 0, y: 0 })
+      setChosenAspect(undefined)
 
       loadImage(source)
         .then((result) => {
@@ -290,6 +330,27 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
       )
     }
 
+    /**
+     * Dragging a corner: the pointer's direction from the middle is the frame's new proportions.
+     *
+     * ⚠️ **The corner does not follow the pointer, and it must not.** The frame is fitted as large as
+     * the stage allows — see {@link ImageCropSpecification.resizable} — so what a grip reports is a
+     * shape, not a rectangle. Reading it as `|x| / |y|` means a drag that leaves the stage entirely
+     * still says something sensible, and a pointer released outside the window leaves a frame that is
+     * a shape rather than a sliver.
+     */
+    const reshape = (event: React.PointerEvent) => {
+      const point = fromCentre(event)
+
+      setChosenAspect(
+        clamp(
+          Math.abs(point.x) / Math.max(1, Math.abs(point.y)),
+          NARROWEST_ASPECT,
+          WIDEST_ASPECT
+        )
+      )
+    }
+
     // ⚠️ Bound by hand rather than as an `onWheel` property, because React registers wheel listeners
     // passively at the root — a handler that calls `preventDefault` there is ignored and warns, so the
     // page scrolls away underneath the cropper instead of the picture zooming.
@@ -317,6 +378,7 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
       setZoom(1)
       setRotation(0)
       setOffset({ x: 0, y: 0 })
+      setChosenAspect(undefined)
     }, [])
 
     const turn = (radians: number) => setRotation((current) => current + radians)
@@ -406,6 +468,11 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
     const circular = settled.shape === "circle"
     const frameBox = image && stageSize && frame ? framePlacement(stageSize, frame, circular) : null
 
+    // ⚠️ Neither control is offered on a round frame: a circle has one shape, and a row of ratios above
+    // one would be a control whose every option does the same nothing.
+    const reshapeable = settled.resizable && !circular
+    const offeredRatios = circular ? null : settled.ratios
+
     return (
       <div data-slot="image-cropper" className={cn("flex flex-col gap-3", className)}>
         <div className="relative">
@@ -464,6 +531,40 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
                   className="pointer-events-none absolute ring-2 ring-primary/70"
                   style={frameBox}
                 />
+
+                {/* ⚠️ The grips stop the event rather than sharing it. They sit inside the stage, whose
+                    own pointer handlers pan the picture, so a corner drag would otherwise reshape the
+                    frame and drag the photograph out from under it at the same time. */}
+                {reshapeable &&
+                  CORNERS.map((corner) => (
+                    <button
+                      key={corner.key}
+                      type="button"
+                      aria-label={wording.reshape}
+                      className="absolute size-4 rounded-full border-2 border-primary bg-background shadow-sm transition-transform hover:scale-125 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                      style={{
+                        left:
+                          (stageSize.width - frame.width) / 2 + corner.x * frame.width - GRIP_RADIUS,
+                        top:
+                          (stageSize.height - frame.height) / 2 +
+                          corner.y * frame.height -
+                          GRIP_RADIUS,
+                        cursor: corner.cursor,
+                      }}
+                      onPointerDown={(event) => {
+                        event.stopPropagation()
+                        event.currentTarget.setPointerCapture(event.pointerId)
+                      }}
+                      onPointerMove={(event) => {
+                        event.stopPropagation()
+
+                        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                          reshape(event)
+                        }
+                      }}
+                      onPointerUp={(event) => event.stopPropagation()}
+                    />
+                  ))}
               </>
             ) : (
               <Skeleton className="size-full rounded-lg" />
@@ -483,6 +584,30 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
             </Button>
           )}
         </div>
+
+        {offeredRatios && offeredRatios.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={wording.shape}>
+            {offeredRatios.map((ratio) => (
+              <RatioChip
+                key={ratio.label}
+                ratio={ratio}
+                active={sameShape(settled.aspect, ratio.aspect)}
+                disabled={!image}
+                onSelect={() => setChosenAspect(ratio.aspect)}
+              />
+            ))}
+
+            {/* ⚠️ Shown only when the frame matches nothing on offer, and not selectable. It is a
+                readout of what dragging a corner produced, not a way of getting there — pressing a
+                shape called "Custom" could only ever mean "the last custom one", which is a state this
+                does not keep and should not start keeping. */}
+            {reshapeable && !offeredRatios.some((ratio) => sameShape(settled.aspect, ratio.aspect)) && (
+              <span className="rounded-md border border-dashed px-2 py-1 text-[11px] text-muted-foreground">
+                {wording.customShape}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           {settled.rotatable && (
@@ -546,6 +671,62 @@ export const ImageCropper = React.forwardRef<ImageCropperHandle, ImageCropperPro
 
 /** The middle of the frame, which is what a control with no pointer behind it zooms towards. */
 const CENTRE: Point = { x: 0, y: 0 }
+
+/** Half a grip, so a corner sits on the frame rather than beside it. */
+const GRIP_RADIUS = 8
+
+/** Where the four grips sit, as fractions of the frame. */
+const CORNERS = [
+  { key: "top-left", x: 0, y: 0, cursor: "nwse-resize" },
+  { key: "top-right", x: 1, y: 0, cursor: "nesw-resize" },
+  { key: "bottom-left", x: 0, y: 1, cursor: "nesw-resize" },
+  { key: "bottom-right", x: 1, y: 1, cursor: "nwse-resize" },
+]
+
+/**
+ * Whether two ratios are the same shape.
+ *
+ * ⚠️ **`null` is only ever equal to `null`.** It means "the picture's own", which is a different
+ * instruction from any number even when the picture happens to be that number — a 4:3 photograph
+ * framed as Original and the same one framed as 4:3 keep their shape by different rules, and only the
+ * first still fits when somebody swaps the picture.
+ */
+function sameShape(left: number | null, right: number | null): boolean {
+  if (left === null || right === null) {
+    return left === right
+  }
+
+  return Math.abs(left - right) < ASPECT_TOLERANCE
+}
+
+function RatioChip({
+  ratio,
+  active,
+  disabled,
+  onSelect,
+}: {
+  ratio: CropRatio
+  active: boolean
+  disabled: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      )}
+    >
+      {ratio.label}
+    </button>
+  )
+}
 
 function framePlacement(
   stage: Dimensions,

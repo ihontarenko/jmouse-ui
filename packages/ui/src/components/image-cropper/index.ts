@@ -26,6 +26,7 @@ export {
 
 export {
   AVATAR_CROP,
+  COMMON_RATIOS,
   COVER_CROP,
   DEFAULT_CROP_SPECIFICATION,
   FREE_CROP,
@@ -35,6 +36,8 @@ export {
   extensionForFormat,
   keepingFormatOf,
   mimeTypeForFormat,
+  reshapedTo,
+  type CropRatio,
   type CropShape,
   type ImageCropSpecification,
   type ImageFormat,

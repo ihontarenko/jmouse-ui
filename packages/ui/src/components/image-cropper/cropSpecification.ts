@@ -12,6 +12,36 @@ export type CropShape = "circle" | "square" | "rectangle"
 
 export type ImageFormat = "png" | "jpeg" | "webp"
 
+/**
+ * A shape somebody may switch the frame to, offered as a row of choices under the picture.
+ *
+ * ⚠️ **`aspect: null` is the picture's own proportions, and it is an answer rather than the absence of
+ * one.** "Trim it, do not reshape it" is what most people want from most attachments, and a row that
+ * only listed fixed ratios would have no way to say it — leaving the one common intention as the one
+ * thing the control could not express.
+ */
+export interface CropRatio {
+  label: string
+  aspect: number | null
+}
+
+/**
+ * The shapes worth offering when the caller has no opinion beyond "let them choose".
+ *
+ * Portrait sits beside landscape rather than being reached by turning the picture: a phone photograph
+ * cropped to 9:16 and the same one cropped to 16:9 are two different pictures, and rotating to reach
+ * the second would take the subject with it.
+ */
+export const COMMON_RATIOS: CropRatio[] = [
+  { label: "Original", aspect: null },
+  { label: "Square", aspect: 1 },
+  { label: "4:3", aspect: 4 / 3 },
+  { label: "3:2", aspect: 3 / 2 },
+  { label: "16:9", aspect: 16 / 9 },
+  { label: "3:4", aspect: 3 / 4 },
+  { label: "9:16", aspect: 9 / 16 },
+]
+
 export interface ImageCropSpecification {
   shape: CropShape
   /**
@@ -31,6 +61,25 @@ export interface ImageCropSpecification {
   /** How far past "just covers the frame" the image may be pushed. */
   maximumZoom: number
   rotatable: boolean
+  /**
+   * The shapes offered as a row under the picture, letting the person change {@link aspect} while
+   * framing.
+   *
+   * ⚠️ **`null` offers nothing, and that is the right answer for most callers.** An avatar, a tile and
+   * a cover are each one shape the product renders at; offering to change it would be offering to
+   * break the layout it was measured for. The row is for the case where the shape is the person's —
+   * a picture they are attaching, not a slot they are filling.
+   */
+  ratios: CropRatio[] | null
+  /**
+   * Whether the frame's corners may be dragged to a shape nobody listed.
+   *
+   * ⚠️ **Dragging a corner changes the frame's PROPORTIONS, not its size on screen.** The frame is
+   * always fitted as large as the stage allows, because how big it is drawn says nothing — which part
+   * of the picture is taken is set by the pan and the zoom, and the frame's only remaining freedom is
+   * its shape. A grip that also shrank the frame would be a second, slower way of zooming out.
+   */
+  resizable: boolean
   /** The rule-of-thirds overlay. Off for a circular frame, where thirds mean nothing. */
   guides: boolean
   /**
@@ -55,6 +104,8 @@ export const DEFAULT_CROP_SPECIFICATION: ImageCropSpecification = {
   quality: 0.92,
   maximumZoom: 5,
   rotatable: true,
+  ratios: null,
+  resizable: false,
   guides: true,
   background: null,
 }
@@ -91,13 +142,22 @@ export const COVER_CROP: Partial<ImageCropSpecification> = {
   quality: 0.9,
 }
 
-/** Keep the picture's own proportions; the person is trimming, not reshaping. */
+/**
+ * The picture's own proportions to begin with, and every other shape within reach.
+ *
+ * ⚠️ **This is the one preset where the shape belongs to the person, so it is the one that offers the
+ * row.** The others each name a slot the product renders at. Here there is no slot: somebody is
+ * attaching a picture, and whether they want it square, wide or exactly as it came off the camera is
+ * not a question the product has any standing to answer for them.
+ */
 export const FREE_CROP: Partial<ImageCropSpecification> = {
   shape: "rectangle",
   aspect: null,
   outputWidth: null,
   outputHeight: null,
   format: "png",
+  ratios: COMMON_RATIOS,
+  resizable: true,
   guides: true,
 }
 
@@ -172,7 +232,43 @@ function settledAspectOf(specification: ImageCropSpecification): number | null {
     return specification.outputWidth / specification.outputHeight
   }
 
-  return null
+  /**
+   * ⚠️ **Offering shapes settles the first one — the frame OPENS on it.** A caller that lists
+   * `[Square]` and gets a frame the picture's own proportions has been ignored: the list is what that
+   * caller thinks this picture is for, and the first entry is its answer. Without this the row drew a
+   * *Square* chip nobody had pressed beside a frame that was not square, which reads as a broken
+   * control rather than as an offer.
+   *
+   * It changes nothing for the general case, and deliberately: {@link COMMON_RATIOS} leads with
+   * *Original*, whose aspect is `null`, so "let them choose from everything" still opens on the
+   * picture's own proportions.
+   */
+  return specification.ratios?.[0]?.aspect ?? null
+}
+
+/**
+ * The specification as it stands once somebody has chosen a different shape while framing.
+ *
+ * ⚠️ **A chosen shape gives up the second output dimension.** A caller asking for 400×300 is asking two
+ * things at once — a 4:3 region, and a 400×300 file — and the moment the frame becomes a square those
+ * two cannot both be honoured. The one that gives way is the file's second number: `outputSizeOf` then
+ * reads the height off the frame, so the result is 400×400 rather than a square wrung out into a
+ * landscape box. The width survives because it is the one that carries the *intent* — "about this
+ * big" — while the height was only ever the ratio said twice.
+ */
+export function reshapedTo(
+  specification: ImageCropSpecification,
+  aspect: number | null
+): ImageCropSpecification {
+  if (aspect === specification.aspect) {
+    return specification
+  }
+
+  return {
+    ...specification,
+    aspect,
+    outputHeight: specification.outputWidth ? null : specification.outputHeight,
+  }
 }
 
 /**

@@ -58,10 +58,29 @@ export interface StationManifestOptions {
  * defaults to `start_url` — so a manifest copied from another station installs *over* it instead of
  * beside it, with no error anywhere. Two stations, one icon on the home screen, and nothing to read.
  *
- * ⚠️ **`scope` is the origin root for every station, and this is deliberate rather than lazy.** It is
- * *not* the station's own path, though narrowing it looks like the tidier choice. Stations share one
- * service worker, one precache and one update cycle precisely because they share a scope; a scope each
- * would multiply all three on a phone, to buy nothing.
+ * <h2>⚠️ `scope` is the station's OWN path, and it was the origin root until 2026-09-04</h2>
+ *
+ * <p>The argument for `"/"` was that stations share one service worker, one precache and one update
+ * cycle *because* they share a scope. <strong>That argument was simply wrong.</strong> A service
+ * worker's scope is the one given at registration — `register(address, { scope: "/" })`, spelled out
+ * in `serviceWorker/register.ts` and asserted there — and it has nothing to do with this field. The
+ * worker, the precache and the update cycle are untouched by what is written here.</p>
+ *
+ * <p>⚠️ <strong>What this field actually decides is which navigations stay INSIDE the installed
+ * window</strong>, and `"/"` meant every address on the origin did. An installed station was therefore
+ * a browser-less window over the entire product — and every *Open in a new tab* opened another
+ * chromeless application window instead of a tab, because the target was in scope. Ivan reported that
+ * three times; the first two answers changed the wording of the label rather than the behaviour, which
+ * is why it came back.</p>
+ *
+ * <p>⚠️ <strong>Narrowed to `startPath`, an out-of-scope address opens in the BROWSER</strong> — a tab
+ * beside whatever window is open, which is what the control has always promised. A component's
+ * photograph at `/_/file/{token}` is out of scope; every screen the station itself is made of lives
+ * under `startPath` and is not.</p>
+ *
+ * <p>⚠️ <strong>An already-installed station keeps its old scope until Chrome re-reads the
+ * manifest.</strong> It is picked up on an update check, and reinstalling is the certain way. Nothing
+ * about a build can force it.</p>
  */
 export function buildStationManifest(
   station: StationDefinition,
@@ -75,7 +94,7 @@ export function buildStationManifest(
     short_name: station.shortName,
     description: station.description,
     start_url: station.startPath,
-    scope: "/",
+    scope: station.startPath,
     display: "standalone",
     theme_color: options.themeColor,
     background_color: options.backgroundColor,

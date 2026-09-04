@@ -2,7 +2,7 @@
 
 > Project-specific notes for the `tessera` skill. The tracker is the record; this file is notes.
 > Fix it in the same response as any call that contradicts it.
-> Verified: 2026-08-20
+> Verified: 2026-08-31
 
 ## Project
 
@@ -94,10 +94,21 @@ installation-wide, so it is the same one `INVT` uses:
 
 ## Local notes
 
-- **Seven packages, one repository**: `packages/ui` (`@jmouse/ui`), `packages/files` (`@jmouse/files`),
+- **Eight packages, one repository**: `packages/ui` (`@jmouse/ui`), `packages/files` (`@jmouse/files`),
   `packages/markdown` (`@jmouse/markdown`), `packages/codemirror` (`@jmouse/codemirror`),
-  `packages/avatars` (`@jmouse/avatars`), `packages/query` (`@jmouse/query`) and `packages/pwa`
-  (`@jmouse/pwa`). npm workspaces, published publicly to npmjs.
+  `packages/avatars` (`@jmouse/avatars`), `packages/query` (`@jmouse/query`), `packages/pwa`
+  (`@jmouse/pwa`) and `packages/validation` (`@jmouse/validation`). npm workspaces, published
+  publicly to npmjs.
+- ⚠️ **`@jmouse/validation` implements none of the `.jmv` language, and that is the rule to check in
+  a review here.** Rows go to the server and come back as text; text goes out and comes back as rows.
+  A browser that wrote the language would be a second implementation of it, and the two would disagree
+  the first time somebody wrote a message containing an apostrophe. Its Rules tab is a read-only
+  outline with a per-statement dialog for editing (`UIK-56`) — a page of inline inputs was what it
+  replaced.
+- ⚠️ **Tailwind does not re-scan `node_modules` while a consuming Vite server is running.** Rebuild a
+  package and the product picks up the new JS at once but not a class the stylesheet has never seen —
+  the page renders with a utility silently missing, which reads as a markup bug. Restart the consumer's
+  dev server after any rebuild that introduces a new class.
 - ⚠️ **`@jmouse/pwa` is the first package here that is not a render layer**, and the first with an
   entry a **bundler never touches**: `@jmouse/pwa/vite` is imported by a product's `vite.config.ts`,
   which Vite hands to Node. So its relative imports carry a `.js` extension while every other

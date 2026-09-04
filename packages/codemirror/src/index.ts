@@ -20,9 +20,16 @@
  *   <li>`@jmouse/codemirror/highlight` — the palette and the static renderer (`@lezer/common`,
  *       `style-mod`).</li>
  *   <li>`@jmouse/codemirror/editor` — the editor frame (`@codemirror/view`).</li>
+ *   <li>`@jmouse/codemirror/completion` — catalogue-fed completion (`@codemirror/autocomplete`). ⚠️ Its
+ *       own entry point for the same reason: a host rendering one policy as static HTML must not be
+ *       made to install an autocomplete engine to get a tokenizer.</li>
  *   <li>`@jmouse/codemirror/markdown` — the Markdown source stack (`@codemirror/lang-markdown`).</li>
  *   <li>`@jmouse/codemirror/palettes` — the six syntax palettes and the switch.</li>
  *   <li>`@jmouse/codemirror/themes` — the imported code themes (`thememirror`).</li>
+ *   <li>`@jmouse/codemirror/react-highlight` — a read-only block of code as a React component
+ *       (`react`, and a type). ⚠️ Apart from `./react` for the usual reason: that entry reaches the
+ *       editor frame, and a host rendering one static document must not install `@codemirror/view`
+ *       to get a `<pre>`.</li>
  *   <li>`@jmouse/codemirror/styles.css` — ⚠️ **required**, and the one thing that fails silently:
  *       without it every `var(--syntax-*)` resolves to nothing and the highlighter looks broken.</li>
  * </ul>
@@ -56,9 +63,21 @@ export {
   expressionKeyword,
   mappingImport,
   mappingType,
+  scriptEvent,
+  scriptFacade,
 } from "./tags"
 
 export { jmpSyntax, jmpSyntaxLanguage, jmpLanguageDescription } from "./jmpSyntax"
 export { jmeSyntax, jmeSyntaxLanguage, jmeLanguageDescription } from "./jmeSyntax"
 export { jmqSyntax, jmqSyntaxLanguage, jmqLanguageDescription } from "./jmqSyntax"
 export { jmmSyntax, jmmSyntaxLanguage, jmmLanguageDescription } from "./jmmSyntax"
+export { jmvSyntax, jmvSyntaxLanguage, jmvLanguageDescription } from "./jmvSyntax"
+export { jmsSyntax, jmsSyntaxLanguage, jmsLanguageDescription } from "./jmsSyntax"
+
+export type {
+  CatalogueEntry,
+  CatalogueFacade,
+  CatalogueMethod,
+  CompletionCatalogue,
+  CompletionRules,
+} from "./completion"

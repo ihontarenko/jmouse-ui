@@ -6,6 +6,8 @@ import { jmeSyntaxLanguage } from "./jmeSyntax"
 import { jmmSyntaxLanguage } from "./jmmSyntax"
 import { jmpSyntaxLanguage } from "./jmpSyntax"
 import { jmqSyntaxLanguage } from "./jmqSyntax"
+import { jmsSyntaxLanguage } from "./jmsSyntax"
+import { jmvSyntaxLanguage } from "./jmvSyntax"
 import {
   expressionDelimiter,
   expressionField,
@@ -13,6 +15,8 @@ import {
   expressionKeyword,
   mappingImport,
   mappingType,
+  scriptEvent,
+  scriptFacade,
   policyAction,
   policyCapability,
   policyDeny,
@@ -140,6 +144,22 @@ export const SYNTAX_HIGHLIGHT_STYLE = HighlightStyle.define([
   // And the quieter of the two for a `use` line, which is read once and scanned past forever after.
   { tag: [mappingImport], color: "var(--syntax-namespace)" },
 
+  // ── Script (.jms) ────────────────────────────────────────────────────────
+  //
+  // The scope colour again, for the reason `.jmm` borrows it: a facade answers the question `@SPACE`
+  // answers in a policy — what this line is about — and one house palette should not need a third
+  // vocabulary for that.
+  { tag: [scriptFacade], color: "var(--syntax-scope)", fontWeight: "600" },
+  // The role colour for the event, because a handler's event is what it is FOR, and a reader scanning
+  // a script is scanning that column and no other.
+  { tag: [scriptEvent], color: "var(--syntax-role)", fontWeight: "600" },
+  //
+  // ⚠️ `=` apart from `==`. They are one token type to the lexer and two different acts, and writing
+  // the comparison where the assignment was meant is the mistake this language expects — it parses,
+  // evaluates, discards its answer and reports nothing. The declaration colour, because an assignment
+  // is the closest thing a script has to defining something.
+  { tag: [tags.definitionOperator], color: "var(--syntax-declaration)", fontWeight: "600" },
+
   // ── The Markdown surface itself — what a source editor is mostly showing ──
   { tag: [tags.heading], color: "var(--syntax-heading, var(--ink))", fontWeight: "700" },
   { tag: [tags.strong], color: "var(--syntax-heading, var(--ink))", fontWeight: "700" },
@@ -196,6 +216,38 @@ export const QUERY_LANGUAGE: LanguageAlias = {
 export const MAPPING_LANGUAGE: LanguageAlias = {
   names: ["jmm", "jmouse-mapping", "jmousemapping", "mapping"],
   parser: jmmSyntaxLanguage.parser,
+}
+
+/**
+ * jMouse Script — a `.jms` handler quoted in a manual, a ticket or a runbook.
+ *
+ * ⚠️ Its own alias for the reason jMQ and `.jmm` have one: a script's expressions ARE jME, and the words
+ * that give the file its shape — `script`, `behaviour`, `on`, `when`, `do`, `end` — mean nothing to the
+ * expression grammar. Colour a script with jME and every handler header reads as three ordinary
+ * identifiers in a row, which is precisely the line a reader scans for.
+ *
+ */
+export const SCRIPT_LANGUAGE: LanguageAlias = {
+  names: ["jms", "jmouse-script", "jmousescript", "script"],
+  parser: jmsSyntaxLanguage.parser,
+}
+
+/**
+ * jMouse Validation — a `.jmv` document quoted in a manual, a ticket or a runbook.
+ *
+ * ⚠️ Its own alias for the reason every dialect beside jME has one: a rule's expression IS jME, and the
+ * words that give the document its shape mean nothing to the expression grammar. Colour a validation
+ * document with jME and every rule header reads as ordinary identifiers in a row, which is the line a
+ * reader scans for.
+ *
+ * ⚠️ **The names match `jmvLanguageDescription` exactly, and that is not decoration.** A host that
+ * registers this alias and *also* passes the description to a Markdown `codeLanguages` list has two
+ * routes to the same grammar; the two answering to different spellings is how a fence renders coloured
+ * on one screen and grey on the next.
+ */
+export const VALIDATION_LANGUAGE: LanguageAlias = {
+  names: ["jmv", "jmouse-validation", "jmousevalidation", "validation"],
+  parser: jmvSyntaxLanguage.parser,
 }
 
 export interface StaticHighlighterOptions {

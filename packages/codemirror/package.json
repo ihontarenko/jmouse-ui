@@ -21,6 +21,10 @@
       "types": "./dist/editor.d.ts",
       "default": "./dist/editor.js"
     },
+    "./completion": {
+      "types": "./dist/completion.d.ts",
+      "default": "./dist/completion.js"
+    },
     "./markdown": {
       "types": "./dist/markdown.d.ts",
       "default": "./dist/markdown.js"
@@ -37,6 +41,10 @@
     "./react": {
       "types": "./dist/react.d.ts",
       "default": "./dist/react.js"
+    },
+    "./react-highlight": {
+      "types": "./dist/reactHighlight.d.ts",
+      "default": "./dist/reactHighlight.js"
     }
   },
   "scripts": {
@@ -46,6 +54,7 @@
     "test": "vitest run"
   },
   "peerDependencies": {
+    "@codemirror/autocomplete": ">=6.18.0",
     "@codemirror/lang-markdown": ">=6.5.0",
     "@codemirror/language": ">=6.12.0",
     "@codemirror/state": ">=6.7.0",
@@ -56,6 +65,9 @@
     "react": ">=19.0.0"
   },
   "peerDependenciesMeta": {
+    "@codemirror/autocomplete": {
+      "optional": true
+    },
     "@codemirror/lang-markdown": {
       "optional": true
     },
@@ -70,6 +82,7 @@
     }
   },
   "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.7.1",

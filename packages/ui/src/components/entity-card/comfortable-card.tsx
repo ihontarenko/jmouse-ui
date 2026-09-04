@@ -41,13 +41,23 @@ export function ComfortableEntityCard({
   onOpen,
   onRemove,
   confirmLabel,
+  navigation,
 }: EntityCardProperties) {
   return (
     <article
+      {...navigation}
       className={entityCardSurface({
         isDraft,
         hasAccent: !!(accentClassName || accentColour),
-        className: ["flex flex-col", accentClassName].filter(Boolean).join(" "),
+        className: [
+          "flex flex-col",
+          // ⚠️ A ring rather than a fill, so an accented or draft card keeps saying what it is while
+          // it is also the active row. Two facts, two channels.
+          "focus-visible:outline-none data-[active]:ring-2 data-[active]:ring-ring data-[active]:ring-inset",
+          accentClassName,
+        ]
+          .filter(Boolean)
+          .join(" "),
       })}
       style={accentColour ? ({ borderLeftColor: accentColour } as CSSProperties) : undefined}
     >

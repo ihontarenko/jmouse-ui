@@ -13,6 +13,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./headless": {
+      "types": "./dist/headless.d.ts",
+      "default": "./dist/headless.js"
+    },
     "./vite": {
       "types": "./dist/vite/index.d.ts",
       "default": "./dist/vite/index.js"
@@ -30,6 +34,9 @@
   },
   "peerDependenciesMeta": {
     "vite": {
+      "optional": true
+    },
+    "@jmouse/ui": {
       "optional": true
     }
   },

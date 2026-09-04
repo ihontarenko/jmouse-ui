@@ -42,12 +42,17 @@ export function CompactEntityCard({
   onOpen,
   onRemove,
   confirmLabel,
+  navigation,
 }: EntityCardProperties) {
   return (
     <li
+      {...navigation}
       className={cn(
         "group/entity-card grid min-h-9 items-center gap-2.5 border-t border-l-[3px] border-l-transparent px-3 py-1.5",
         "transition-colors first:border-t-0 hover:bg-accent/50",
+        // ⚠️ A ring, not a fill — the left edge already carries the accent and a draft already recedes,
+        // so the active row needs a channel neither of them is using.
+        "focus-visible:outline-none data-[active]:ring-2 data-[active]:ring-ring data-[active]:ring-inset",
         // The accent edge is a colour the caller owns; where there is none, the hover supplies one.
         !accentColour && !accentClassName && "hover:border-l-primary",
         // ⚠️ A draft recedes rather than growing a dashed border: the left edge is spoken for, and two

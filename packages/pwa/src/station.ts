@@ -138,3 +138,19 @@ export function stationManifestPath(station: StationDefinition): string {
 
   return `${directory}manifest.webmanifest`
 }
+
+/**
+ * Leaves the page for a station's own address.
+ *
+ * ⚠️ **A real navigation, and it cannot be a router push.** The browser reads the manifest from the
+ * document it loaded, and swapping `<link rel="manifest">` afterwards does not reliably re-arm the
+ * installation prompt — so reaching a station has to fetch that station's own document. A client-side
+ * route to the same path renders the right screen under the *wrong* manifest, which looks entirely
+ * correct until somebody tries to install it.
+ *
+ * ⚠️ **It lives beside the entry and manifest paths rather than beside the shelf that calls it**, and
+ * that move is what lets a product take it without taking a rendered tile grid — see `headless.ts`.
+ */
+export function openStation(station: Pick<StationDefinition, "startPath">): void {
+  window.location.assign(station.startPath)
+}

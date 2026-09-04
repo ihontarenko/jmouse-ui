@@ -43,6 +43,13 @@ const KEYWORDS = new Set([
     'policy', 'scopes', 'permissions', 'role', 'subject',
     'grants', 'allow', 'when', 'include',
 
+    // `field:write "…" through each form` — where a permission is asked, when the row named is not the
+    // one that carries the authority. ⚠️ The word after the quantifier is a RESOURCE name, not a
+    // permission namespace, so it is left as a plain identifier: painting it as a permission would say
+    // `form` and `form:read` are halves of one thing, and they are two vocabularies that merely share a
+    // spelling. The quantifier is compulsory — `through form` alone does not parse.
+    'through', 'any', 'each',
+
 
     'capabilities', 'paid', 'gate', 'limit', 'quota',
     'plans', 'plan', 'order', 'note', 'extends', 'unlimited', 'per',
@@ -55,6 +62,35 @@ const KEYWORDS = new Set([
 ]);
 // ⚠️ `deny` is absent on purpose and always has been — it is matched before this set is consulted so
 // that it keeps a colour of its own. Adding it here would be dead code that reads like a decision.
+
+/**
+ * The word spellings of the operators a `when` condition is composed with.
+ *
+ * <p>⚠️ **These are operators, not keywords, because they are the same tokens as `&&`, `||` and the
+ * comparisons beside them** — `BasicToken.T_AND` is spelled `&&` *or* `and`, `T_OR` is `||` *or* `or`.
+ * The symbol form has always taken the operator colour here; the word form used to fall through to
+ * `variable` and come out identical to the property it was joining, so `a == 'x' or b == 'y'` read as
+ * three names in a row and the one word deciding how the two halves combine was the least visible
+ * thing on the line.
+ *
+ * <p>⚠️ **`not` is deliberately absent.** `ConditionVocabulary` admits `T_NEGATE`, which is spelled
+ * `!` and nothing else — a word `not` in a policy file is prose in a comment or somebody's mistake,
+ * and colouring it as language would endorse the mistake.
+ *
+ * <p>⚠️ **`in` is absent for a stronger reason**: it is one of the tokens a condition may *not*
+ * contain. `ConditionVocabulary` refuses it by name, precisely because leaving it unregistered made
+ * the parser stop at it and silently evaluate half a rule. A grammar that painted it as language
+ * would be advertising the shape the backend exists to refuse.
+ */
+const CONDITION_OPERATORS = new Set(['and', 'or', 'is']);
+
+/**
+ * The bare values a condition may compare against — `T_TRUE`, `T_FALSE` and `T_NULL`'s two spellings.
+ *
+ * <p>They take the literal colour a number takes, because that is what they are: the right-hand side
+ * of a comparison, written in the file rather than read from the request.
+ */
+const CONDITION_LITERALS = new Set(['true', 'false', 'null', 'none']);
 
 /**
  * Which kind of name follows a keyword — because "a name follows a keyword" is not one fact but three.
@@ -148,6 +184,11 @@ const TOKEN_TAGS: Record<string, Tag> = {
     placeholder:   tags.meta,
     string:        tags.string,
     number:        tags.number,
+    // `true` / `false` / `null` / `none` — the literal colour a number takes, which is what the house
+    // style already sends `tags.atom` to. No new palette token: nineteen `--syntax-*` values are
+    // defined six times over, and one more would have to be invented in all six to say what
+    // `--syntax-literal` already says.
+    literal:       tags.atom,
     comment:       tags.comment,
     operator:      tags.operator,
     punctuation:   tags.punctuation,
@@ -423,6 +464,16 @@ const parser: StreamParser<PolicyState> = {
             // namespace wherever it appears, which is what lets a product administer its own roles.
             if (stream.peek() === ':') {
                 return 'namespace';
+            }
+            // ⚠️ Under the namespace check, and that placement is the whole safety argument: a product
+            // is free to own a permission called `is:read` or a capability keyed `or`, and a word
+            // owning a colon is read as a namespace before any of this is consulted — the same
+            // allowance every other word in this scanner gets, for the same reason.
+            if (CONDITION_OPERATORS.has(word)) {
+                return 'operator';
+            }
+            if (CONDITION_LITERALS.has(word)) {
+                return 'literal';
             }
             if (word === 'deny') {
                 state.afterWord = isTrailingEffect(word, wasAfterPermission) ? null : word;
