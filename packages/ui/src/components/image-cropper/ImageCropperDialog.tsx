@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "../dialog"
 import { ImageCropper, type ImageCropperHandle, type ImageCropperLabels } from "./ImageCropper"
-import { cropSpecificationOf, type ImageCropSpecification } from "./cropSpecification"
+import { cropSpecificationOf, type ImageCropSpecification } from "@jmouse/cropping"
 
 export interface ImageCropperDialogLabels extends Partial<ImageCropperLabels> {
   title: string

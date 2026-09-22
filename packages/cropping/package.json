@@ -1,0 +1,34 @@
+{
+  "name": "@jmouse/cropping",
+  "version": "0.1.0",
+  "description": "Framing a picture before it is uploaded: the geometry, the encoder, and a headless React hook. No design system, so a product with its own look can still crop.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "react": "^19.2.7",
+    "typescript": "~6.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
