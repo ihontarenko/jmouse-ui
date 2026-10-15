@@ -73,6 +73,7 @@ export { jmqSyntax, jmqSyntaxLanguage, jmqLanguageDescription } from "./jmqSynta
 export { jmmSyntax, jmmSyntaxLanguage, jmmLanguageDescription } from "./jmmSyntax"
 export { jmvSyntax, jmvSyntaxLanguage, jmvLanguageDescription } from "./jmvSyntax"
 export { jmsSyntax, jmsSyntaxLanguage, jmsLanguageDescription } from "./jmsSyntax"
+export { jmfSyntax, jmfSyntaxLanguage, jmfLanguageDescription, JMF_FUNCTIONS, JMF_FORMS, JMF_CONSTANTS } from "./jmfSyntax"
 
 export type {
   CatalogueEntry,

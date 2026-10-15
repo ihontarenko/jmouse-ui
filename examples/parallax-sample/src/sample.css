@@ -1,0 +1,259 @@
+/*
+ * The sample's whole look, through the library's contract only: `--parallax-*` tokens and nothing else.
+ * Deliberately unlike Parallax — warm paper and ink, a serif reading face, a paper screen, square everywhere — so a
+ * screenshot shows at once whether the library follows a host or forces its own look.
+ *
+ * Order: the host's base (reset, KaTeX) sits in a layer BELOW the library's, so an element reset never beats a
+ * library rule; the token mapping and the shell are unlayered, so they beat the library's defaults.
+ */
+@layer sample-base, jmouse-parallax;
+@import "katex/dist/katex.min.css" layer(sample-base);
+@import "@jmouse/parallax-react/styles.css";
+
+/* ─── tokens: paper and ink onto the library ─────────────────────────────── */
+:root {
+  color-scheme: light;
+  --sample-header-height: 49px;
+
+  --parallax-background: #efe7d6;
+  --parallax-surface: #faf6ec;
+  --parallax-surface-2: #f4eddf;
+  --parallax-well: #e6dcc6;
+  --parallax-ink: #221a12;
+  --parallax-secondary: #4a3d2e;
+  --parallax-muted: #75664f;
+  --parallax-line: #d6c8ad;
+  --parallax-line-strong: #9c8a6a;
+  --parallax-accent: #a2381a;
+  --parallax-accent-soft: #a2381a1c;
+  --parallax-accent-strong: #7e2a12;
+  --parallax-on-accent: #fff8ee;
+  --parallax-good: #3d6b2c;
+  --parallax-warn: #a0650f;
+  --parallax-danger: #9e2219;
+  --parallax-focus-ring: #1f4e8c;
+
+  --parallax-radius-small: 0;
+  --parallax-radius-control: 0;
+  --parallax-radius-surface: 0;
+  --parallax-shadow-surface: none;
+  --parallax-shadow-pop: 0 0 0 1px var(--parallax-line-strong);
+
+  --parallax-font-ui: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --parallax-font-heading: var(--parallax-font-ui);
+  --parallax-font-control: var(--parallax-font-ui);
+  --parallax-font-technical: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --parallax-weight-heading: 600;
+
+  --parallax-sheet: #fbf8f0;
+  --parallax-sheet-grid: #221a1214;
+  --parallax-wire: #2b2118;
+  --parallax-wire-live: #a2381a;
+  --parallax-node: #2b2118;
+
+  /* the screen is paper too: ink traces on a ruled sheet */
+  --parallax-screen: #f8f2e3;
+  --parallax-screen-grid: #221a1214;
+  --parallax-screen-grid-strong: #221a122e;
+  --parallax-screen-text: #4a3d2e;
+  --parallax-channel-1: #1f4e8c;
+  --parallax-channel-2: #a2381a;
+  --parallax-channel-3: #3d6b2c;
+  --parallax-channel-4: #6a3d8f;
+  --parallax-probe-5: #b5740b;
+  --parallax-probe-6: #1d7a7a;
+  --parallax-probe-7: #8c2f5c;
+  --parallax-probe-8: #5c6a10;
+  --parallax-probe-9: #c2412d;
+  --parallax-probe-10: #3a3128;
+
+  --parallax-series-1: #1f4e8c;
+  --parallax-series-2: #a2381a;
+  --parallax-series-3: #3d6b2c;
+  --parallax-series-4: #6a3d8f;
+  --parallax-series-5: #b5740b;
+  --parallax-series-6: #1d7a7a;
+}
+
+/* ─── reset: below the library ───────────────────────────────────────────── */
+@layer sample-base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    height: 100%;
+  }
+  body {
+    background: var(--parallax-background);
+    color: var(--parallax-ink);
+    font: var(--parallax-weight-body) var(--parallax-text-md) / 1.45 var(--parallax-font-ui);
+  }
+  h1,
+  h2,
+  p {
+    margin: 0;
+  }
+  button,
+  input {
+    font: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--parallax-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+/* ─── the host's shell ───────────────────────────────────────────────────── */
+#root {
+  height: 100%;
+}
+
+.sample-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.sample-header {
+  display: flex;
+  align-items: center;
+  gap: var(--parallax-space-5);
+  height: var(--sample-header-height);
+  padding: 0 var(--parallax-space-4);
+  border-bottom: 1px solid var(--parallax-ink);
+  background: var(--parallax-surface);
+}
+
+.sample-header h1 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.sample-header nav {
+  display: flex;
+  gap: var(--parallax-space-4);
+}
+
+.sample-header nav a {
+  color: var(--parallax-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.sample-header nav a:hover {
+  color: var(--parallax-ink);
+}
+
+.sample-header nav a[aria-current="page"] {
+  color: var(--parallax-accent);
+  border-bottom-color: var(--parallax-accent);
+}
+
+.sample-main {
+  min-height: 0;
+  overflow: auto;
+}
+
+.sample-page {
+  display: grid;
+  gap: var(--parallax-space-3);
+  padding: var(--parallax-space-4);
+}
+
+.sample-page-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sample-status {
+  padding: var(--parallax-space-5) var(--parallax-space-4);
+  color: var(--parallax-muted);
+}
+/* This host has a header above the workbench, so the workbench fills what is left of the window. */
+.sample-bench {
+  --parallax-bench-height: calc(100dvh - var(--sample-header-height));
+}
+
+
+.sample-bench-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--parallax-space-4);
+  min-height: var(--parallax-bench-bar);
+  padding: 0 var(--parallax-space-4);
+  border-bottom: 1px solid var(--parallax-line-strong);
+  background: var(--parallax-surface-2);
+}
+
+.sample-bench-context {
+  display: flex;
+  align-items: center;
+  gap: var(--parallax-space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.sample-sign-in {
+  display: grid;
+  gap: var(--parallax-space-2);
+  width: min(340px, 100% - 32px);
+  margin: var(--parallax-space-7) auto;
+  padding: var(--parallax-space-5);
+  border: 1px solid var(--parallax-ink);
+  background: var(--parallax-surface);
+}
+
+.sample-sign-in h2 {
+  font-size: 17px;
+}
+
+.sample-sign-in p {
+  color: var(--parallax-muted);
+  margin-bottom: var(--parallax-space-2);
+}
+
+.sample-sign-in label {
+  font-size: var(--parallax-text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--parallax-secondary);
+}
+
+.sample-sign-in input {
+  height: 34px;
+  padding: 0 var(--parallax-space-2);
+  border: 1px solid var(--parallax-line-strong);
+  background: var(--parallax-sheet);
+  color: var(--parallax-ink);
+}
+
+.sample-sign-in button {
+  height: 34px;
+  margin-top: var(--parallax-space-2);
+  border: 1px solid var(--parallax-ink);
+  background: var(--parallax-ink);
+  color: var(--parallax-surface);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.sample-sign-in button:hover:not(:disabled) {
+  background: var(--parallax-accent-strong);
+}
+
+.sample-problem {
+  color: var(--parallax-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sample-header nav a,
+  .sample-sign-in button {
+    transition: none;
+  }
+}

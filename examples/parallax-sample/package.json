@@ -1,0 +1,11 @@
+{
+  "name": "parallax-sample",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A second host for @jmouse/parallax and @jmouse/parallax-react: proves the packages need nothing from Parallax. Not a workspace; it resolves its dependencies through the monorepo root's node_modules.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit"
+  }
+}

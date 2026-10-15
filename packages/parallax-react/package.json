@@ -1,0 +1,118 @@
+{
+  "name": "@jmouse/parallax-react",
+  "version": "0.1.0",
+  "description": "Parallax's interface as React components — the bench, the viewers, the schematic, the oscilloscope and meters, the graph, the stand, the document and symbol editing surfaces — over @jmouse/parallax, with no router, no product and no HTTP client inside.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./controls": {
+      "types": "./dist/controls/index.d.ts",
+      "default": "./dist/controls/index.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "default": "./dist/editor/index.js"
+    },
+    "./icons": {
+      "types": "./dist/icons/index.d.ts",
+      "default": "./dist/icons/index.js"
+    },
+    "./viewers": {
+      "types": "./dist/viewers/index.d.ts",
+      "default": "./dist/viewers/index.js"
+    },
+    "./circuit": {
+      "types": "./dist/circuit/index.d.ts",
+      "default": "./dist/circuit/index.js"
+    },
+    "./scope": {
+      "types": "./dist/scope/index.d.ts",
+      "default": "./dist/scope/index.js"
+    },
+    "./meters": {
+      "types": "./dist/meters/index.d.ts",
+      "default": "./dist/meters/index.js"
+    },
+    "./bench": {
+      "types": "./dist/bench/index.d.ts",
+      "default": "./dist/bench/index.js"
+    },
+    "./graph": {
+      "types": "./dist/graph/index.d.ts",
+      "default": "./dist/graph/index.js"
+    },
+    "./stand": {
+      "types": "./dist/stand/index.d.ts",
+      "default": "./dist/stand/index.js"
+    },
+    "./document": {
+      "types": "./dist/document/index.d.ts",
+      "default": "./dist/document/index.js"
+    },
+    "./symbols": {
+      "types": "./dist/symbols/index.d.ts",
+      "default": "./dist/symbols/index.js"
+    },
+    "./scene": {
+      "types": "./dist/scene/index.d.ts",
+      "default": "./dist/scene/index.js"
+    },
+    "./program": {
+      "types": "./dist/program/index.d.ts",
+      "default": "./dist/program/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "@codemirror/autocomplete": ">=6.18.0",
+    "@codemirror/language": ">=6.12.0",
+    "@codemirror/state": ">=6.7.0",
+    "@codemirror/view": ">=6.43.0",
+    "@jmouse/codemirror": ">=0.1.0",
+    "@jmouse/parallax": ">=0.1.0",
+    "@lezer/common": ">=1.5.0",
+    "@lezer/highlight": ">=1.2.0",
+    "katex": ">=0.16.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0",
+    "three": ">=0.180.0"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.9",
+    "@jmouse/codemirror": "0.1.0",
+    "@jmouse/parallax": "0.1.0",
+    "@lezer/common": "^1.5.2",
+    "@lezer/highlight": "^1.2.3",
+    "@types/katex": "0.16.8",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "0.180.0",
+    "katex": "^0.16.22",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "0.180.0",
+    "typescript": "~6.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

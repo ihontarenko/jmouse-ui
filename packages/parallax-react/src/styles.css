@@ -1,0 +1,1254 @@
+/* =============================================================================
+   `@jmouse/parallax-react/styles.css` — how Parallax's interface looks when the host says nothing.
+
+   ⚠️ IMPORT THIS ONCE. A host that does not gets every bench, sheet, screen and meter unstyled: the
+   components render, their classes are on the elements, and nothing draws them.
+
+   ── The contract is the tokens ───────────────────────────────────────────────
+   Every colour, line, radius, space, font and stroke below is a `--parallax-*` custom property with
+   a default here, light and dark. A host dictates the look by mapping its own tokens onto them, in
+   one place and outside this file:
+
+       :root { --parallax-accent: var(--accent); --parallax-line: var(--line); … }
+
+   No host token name ever appears in this file, and no React prop themes anything. The canvas,
+   WebGL and SVG drawings read the same tokens from computed style (`visual/theme` and the screen,
+   probe and series readers in `@jmouse/parallax`), so a mapped token reaches the pictures too.
+
+   Groups: page (`background`, `surface`, `surface-2`, `well`, `ink`, `secondary`, `muted`, `line`,
+   `line-strong`, `accent*`, `on-accent`, `good*`, `warn*`, `danger*`, `focus-ring`), geometry
+   (`space-1…7`, `radius-small|control|surface`, `control`, `control-small`, `icon`, `icon-large`,
+   `band`, `shadow-surface`, `shadow-pop`, `ease`), type (`font-ui|heading|control|technical`,
+   `text-2xs…md`, `weight-body|control|heading`, `ui-scale`), layout (`topbar`, `panel`, `inspector`,
+   `bench-bar`, `panel-width`, `inspector-width`, `bench-folded`, `scope-height`), drawing (`sheet`,
+   `sheet-grid`, `wire`, `wire-live`, `node`, `stroke-symbol`, `stroke-wire`), screen (`screen`,
+   `screen-grid`, `screen-grid-strong`, `screen-text`, `channel-1…4`), colour sets the library owns
+   (`probe-1…10`, `series-1…6`), and the instrument group `--parallax-instrument-*` — what the
+   schematic, the scope screen, logic timing, part loads and the voltage legend are drawn on. The
+   instrument group follows the page unless the host maps it.
+
+   ── Dark ─────────────────────────────────────────────────────────────────────
+   Hosts disagree on how <html> says "dark": `.dark`, `.theme-dark`, `data-theme="dark"`. The dark
+   block names all three, as `@jmouse/codemirror/styles.css` does.
+
+   ── Every product rule wins ──────────────────────────────────────────────────
+   The defaults are `:where(…)`, specificity zero, so any host declaration of a token beats them.
+   The rules sit in `@layer jmouse-parallax`, so any unlayered host rule beats them whatever its
+   specificity; a host that layers its own CSS declares `@layer jmouse-parallax` first. Inside the
+   layer the selectors keep their own specificity, because the rules depend on it among themselves
+   (`.parallax-button.parallax-primary` over `.parallax-button:hover`).
+
+   ── What a host may restyle ──────────────────────────────────────────────────
+   Stable parts carry `data-parallax-part="…"` (`bench`, `bench-grid`, `scope-toolbar`,
+   `scope-screen`, `circuit-diagram`, `meter-display`, `segmented`, `button`, …) and states carry
+   `data-state` (`bench-instruments`: screen | meters | both; `run-state`: running | stopped | …;
+   a part's load: within | overloaded | overheated | burnt) or `aria-pressed`. The `parallax-*`
+   class names inside are not a contract.
+   ============================================================================= */
+
+:where(:root) {
+  /* page */
+  --parallax-background: #f2f3f6;
+  --parallax-surface: #ffffff;
+  --parallax-surface-2: #f7f8fa;
+  --parallax-well: #eceef2;
+  --parallax-ink: #141821;
+  --parallax-secondary: #3f4756;
+  --parallax-muted: #646c7b;
+  --parallax-line: #dcdfe6;
+  --parallax-line-strong: #a9b0bd;
+  --parallax-accent: #5a5c8a;
+  --parallax-accent-soft: #5a5c8a18;
+  --parallax-accent-strong: #4b4e7f;
+  --parallax-on-accent: #ffffff;
+  --parallax-good: #3f7c79;
+  --parallax-warn: #8a6141;
+  --parallax-danger: #8f5771;
+  --parallax-good-soft: color-mix(in srgb, var(--parallax-good) 14%, transparent);
+  --parallax-warn-soft: color-mix(in srgb, var(--parallax-warn) 16%, transparent);
+  --parallax-danger-soft: color-mix(in srgb, var(--parallax-danger) 14%, transparent);
+  --parallax-focus-ring: var(--parallax-accent);
+
+  /* geometry — square by default; a host with a radius scale maps it */
+  --parallax-space-1: 4px;
+  --parallax-space-2: 8px;
+  --parallax-space-3: 12px;
+  --parallax-space-4: 16px;
+  --parallax-space-5: 24px;
+  --parallax-space-6: 32px;
+  --parallax-space-7: 48px;
+  --parallax-radius-small: 0px;
+  --parallax-radius-control: 0px;
+  --parallax-radius-surface: 0px;
+  --parallax-control: 32px;
+  --parallax-control-small: 26px;
+  --parallax-icon: 16px;
+  --parallax-icon-large: 20px;
+  --parallax-band: 3px;
+  --parallax-shadow-surface: none;
+  --parallax-shadow-pop: 0 12px 32px -12px #0d111940, 0 1px 2px #0d11191a;
+  --parallax-ease: 120ms ease;
+
+  /* type */
+  --parallax-ui-scale: 1;
+  --parallax-font-ui: Inter, system-ui, sans-serif;
+  --parallax-font-heading: var(--parallax-font-ui);
+  --parallax-font-control: var(--parallax-font-ui);
+  --parallax-font-technical: var(--parallax-font-ui);
+  --parallax-text-2xs: 10px;
+  --parallax-text-xs: 11px;
+  --parallax-text-sm: 12px;
+  --parallax-text-base: 13px;
+  --parallax-text-md: 14px;
+  --parallax-weight-body: 400;
+  --parallax-weight-control: 500;
+  --parallax-weight-heading: 550;
+
+  /* layout */
+  --parallax-topbar: 52px;
+  --parallax-panel: 272px;
+  --parallax-inspector: 304px;
+  --parallax-bench-bar: 48px;
+  /* The height the workbench fills: the window by default; a host with its own header sets it, e.g. calc(100dvh - 56px). */
+  --parallax-bench-height: 100dvh;
+  --parallax-panel-width: clamp(232px, 15vw, var(--parallax-panel));
+  --parallax-inspector-width: clamp(248px, 17vw, var(--parallax-inspector));
+  --parallax-bench-folded: 32px;
+  --parallax-scope-height: 42%;
+
+  /* the drawing sheet */
+  --parallax-sheet: var(--parallax-surface);
+  --parallax-sheet-grid: #14182114;
+  --parallax-wire: #2d3340;
+  --parallax-wire-live: var(--parallax-accent);
+  --parallax-node: var(--parallax-accent);
+  --parallax-stroke-symbol: 2.4;
+  --parallax-stroke-wire: 2.6;
+
+  /* the instrument screen: dark in both themes, as a screen is */
+  --parallax-screen: #0e1116;
+  --parallax-screen-grid: #ffffff12;
+  --parallax-screen-grid-strong: #ffffff22;
+  --parallax-screen-text: #c7ccd6;
+  --parallax-channel-1: #e3b34a;
+  --parallax-channel-2: #4fa8e8;
+  --parallax-channel-3: #e8609a;
+  --parallax-channel-4: #58cf8c;
+
+  /* probe colours: the first four are the screen's channels; a probe, its trace, swatch and legend share one */
+  --parallax-probe-1: var(--parallax-channel-1);
+  --parallax-probe-2: var(--parallax-channel-2);
+  --parallax-probe-3: var(--parallax-channel-3);
+  --parallax-probe-4: var(--parallax-channel-4);
+  --parallax-probe-5: #f0823c;
+  --parallax-probe-6: #a98cf0;
+  --parallax-probe-7: #3fd0d4;
+  --parallax-probe-8: #c9d84a;
+  --parallax-probe-9: #ff6b6b;
+  --parallax-probe-10: #e6e8ec;
+
+  /* current colours: named hues of their own — never a probe's, which follows the screen and turned "Amber" blue on
+     paper. Darker here for a light sheet, brighter in the dark theme below. */
+  --parallax-current-amber: #b87a0e;
+  --parallax-current-cyan: #138a94;
+  --parallax-current-green: #2c8a52;
+  --parallax-current-pink: #b8386c;
+  --parallax-current-white: var(--parallax-ink);
+
+  /* series colours: the graph's lines, a time series' columns — distinct in hue, readable on the sheet */
+  --parallax-series-1: #2f6fb0;
+  --parallax-series-2: #c2412d;
+  --parallax-series-3: #2f8a5a;
+  --parallax-series-4: #7d4fb8;
+  --parallax-series-5: #b5740b;
+  --parallax-series-6: #1d8585;
+
+  /* the instrument group: what a schematic, a scope screen and the readings around them are drawn on */
+  --parallax-instrument-background: var(--parallax-background);
+  --parallax-instrument-surface: var(--parallax-surface);
+  --parallax-instrument-well: var(--parallax-well);
+  --parallax-instrument-ink: var(--parallax-ink);
+  --parallax-instrument-muted: var(--parallax-muted);
+  --parallax-instrument-line: var(--parallax-line);
+  --parallax-instrument-line-strong: var(--parallax-line-strong);
+  --parallax-instrument-font: var(--parallax-font-technical);
+}
+
+@media (max-height: 900px) {
+  :where(:root) {
+    --parallax-scope-height: 36%;
+  }
+}
+
+:where(.dark, .theme-dark, [data-theme="dark"]) {
+  --parallax-current-amber: #e3b34a;
+  --parallax-current-cyan: #3fd0d4;
+  --parallax-current-green: #58cf8c;
+  --parallax-current-pink: #e8609a;
+  --parallax-current-white: #e6e8ec;
+  --parallax-background: #121419;
+  --parallax-surface: #191c23;
+  --parallax-surface-2: #15181e;
+  --parallax-well: #0f1115;
+  --parallax-ink: #e6e8ee;
+  --parallax-secondary: #b4bac6;
+  --parallax-muted: #8e96a5;
+  --parallax-line: #2a2f3a;
+  --parallax-line-strong: #4b5262;
+  --parallax-accent: #8c93c4;
+  --parallax-accent-soft: #8c93c418;
+  --parallax-accent-strong: #a0a7d6;
+  --parallax-on-accent: #0f1218;
+  --parallax-good: #83b8ac;
+  --parallax-warn: #c6aa88;
+  --parallax-danger: #c69a9a;
+  --parallax-shadow-pop: 0 16px 40px -12px #00000099, 0 1px 2px #00000066;
+  --parallax-sheet-grid: #ffffff10;
+  --parallax-wire: #b8bfcc;
+  --parallax-screen: #0b0d11;
+  --parallax-series-1: #6ea8e6;
+  --parallax-series-2: #ec8170;
+  --parallax-series-3: #68c494;
+  --parallax-series-4: #b591e4;
+  --parallax-series-5: #e3b35c;
+  --parallax-series-6: #5fc7c7;
+}
+
+@layer jmouse-parallax {
+  /* A visible focus ring on every library control that does not draw its own. */
+  :where([class*="parallax-"]):focus-visible { outline: 2px solid var(--parallax-focus-ring); outline-offset: 1px; }
+
+  /* Inside an instrument the page tokens take the instrument group's values. */
+  :where(.parallax-circuit-diagram, .parallax-scope-screen, .parallax-computed-scope, .parallax-logic-timing, .parallax-part-load, .parallax-voltage-legend) {
+    --parallax-background: var(--parallax-instrument-background);
+    --parallax-surface: var(--parallax-instrument-surface);
+    --parallax-well: var(--parallax-instrument-well);
+    --parallax-ink: var(--parallax-instrument-ink);
+    --parallax-muted: var(--parallax-instrument-muted);
+    --parallax-line: var(--parallax-instrument-line);
+    --parallax-line-strong: var(--parallax-instrument-line-strong);
+    --parallax-font-technical: var(--parallax-instrument-font);
+  }
+
+  /* ---- text and layout helpers ---- */
+  .parallax-scope-foot { scrollbar-width: none; }
+  .parallax-scope-foot::-webkit-scrollbar { display: none; }
+  .parallax-label { font-size: var(--parallax-text-xs); color: var(--parallax-muted); font-family: var(--parallax-font-technical); }
+  .parallax-muted { color: var(--parallax-muted); }
+  .parallax-secondary { color: var(--parallax-secondary); }
+  .parallax-small { font-size: var(--parallax-text-sm); }
+  .parallax-monospace, .parallax-value, .parallax-numeric { font-family: var(--parallax-font-technical); font-variant-numeric: tabular-nums; }
+  .parallax-value { font-size: var(--parallax-text-sm); }
+  .parallax-technical { font-family: var(--parallax-font-technical); font-size: var(--parallax-text-xs); color: var(--parallax-muted); font-variant-numeric: tabular-nums; }
+  .parallax-formula { font-family: var(--parallax-font-technical); letter-spacing: -0.02em; }
+  .parallax-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .parallax-screen-reader-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .parallax-row { display: flex; align-items: center; gap: var(--parallax-space-2); min-width: 0; }
+  .parallax-row-wrap { display: flex; align-items: center; gap: var(--parallax-space-2); flex-wrap: wrap; }
+  .parallax-stack { display: grid; gap: var(--parallax-space-3); align-content: start; }
+  .parallax-stack-tight { display: grid; gap: var(--parallax-space-2); align-content: start; }
+  .parallax-spread { display: flex; align-items: center; justify-content: space-between; gap: var(--parallax-space-3); }
+  .parallax-grow { flex: 1 1 auto; min-width: 0; }
+  .parallax-push { margin-left: auto; }
+  .parallax-icon { width: var(--parallax-icon); height: var(--parallax-icon); flex: none; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .parallax-icon-large { width: var(--parallax-icon-large); height: var(--parallax-icon-large); }
+
+  /* ---- controls, panels, lists, tables ---- */
+  .parallax-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--parallax-space-2); min-height: var(--parallax-control); padding: 0 var(--parallax-space-3); border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-control); background: var(--parallax-surface); color: var(--parallax-ink); font: var(--parallax-weight-control) var(--parallax-text-sm) / 1.2 var(--parallax-font-control); white-space: nowrap; text-decoration: none; cursor: pointer; user-select: none; }
+  .parallax-button:hover { border-color: var(--parallax-accent); background: var(--parallax-accent-soft); text-decoration: none; }
+  .parallax-button:active { background: var(--parallax-well); }
+  .parallax-button:disabled, .parallax-button[aria-disabled="true"] { opacity: 0.5; cursor: default; pointer-events: none; }
+  .parallax-button.parallax-primary { background: var(--parallax-accent); border-color: var(--parallax-accent); color: var(--parallax-on-accent); }
+  .parallax-button.parallax-primary:hover { background: var(--parallax-accent-strong); border-color: var(--parallax-accent-strong); }
+  .parallax-button.parallax-quiet { border-color: transparent; background: transparent; color: var(--parallax-secondary); }
+  .parallax-button.parallax-quiet:hover { background: var(--parallax-well); color: var(--parallax-ink); border-color: transparent; }
+  .parallax-button.parallax-danger { color: var(--parallax-danger); border-color: color-mix(in srgb, var(--parallax-danger) 50%, var(--parallax-line-strong)); }
+  .parallax-button.parallax-danger:hover { background: var(--parallax-danger-soft); border-color: var(--parallax-danger); }
+  /* A running bench's Pause / Stop: tinted, its word in the tone — white on a full red shouted over the sheet. */
+  .parallax-button.parallax-danger.parallax-primary { background: color-mix(in srgb, var(--parallax-danger) 24%, transparent); border-color: var(--parallax-danger); color: var(--parallax-danger); }
+  .parallax-button.parallax-danger.parallax-primary:hover { background: color-mix(in srgb, var(--parallax-danger) 34%, transparent); }
+  .parallax-button.parallax-good { color: var(--parallax-good); border-color: color-mix(in srgb, var(--parallax-good) 50%, var(--parallax-line-strong)); }
+  .parallax-button.parallax-good:hover { background: var(--parallax-good-soft); border-color: var(--parallax-good); }
+  .parallax-button.parallax-good.parallax-primary { background: var(--parallax-good); border-color: var(--parallax-good); color: #0f1218; }
+  .parallax-button.parallax-good.parallax-primary:hover { background: color-mix(in srgb, var(--parallax-good) 85%, #fff); }
+  .parallax-button.parallax-warn { color: var(--parallax-warn); border-color: color-mix(in srgb, var(--parallax-warn) 50%, var(--parallax-line-strong)); }
+  .parallax-button.parallax-warn:hover { background: var(--parallax-warn-soft); border-color: var(--parallax-warn); }
+  .parallax-button.parallax-accent { color: var(--parallax-accent); border-color: color-mix(in srgb, var(--parallax-accent) 55%, var(--parallax-line-strong)); }
+  .parallax-button.parallax-accent:hover { background: var(--parallax-accent-soft); border-color: var(--parallax-accent); }
+  .parallax-button.parallax-small { min-height: var(--parallax-control-small); padding: 0 var(--parallax-space-2); font-size: var(--parallax-text-xs); gap: var(--parallax-space-1); }
+  .parallax-button.parallax-icon-only { width: var(--parallax-control); padding: 0; }
+  .parallax-button.parallax-icon-only.parallax-small { width: var(--parallax-control-small); }
+  .parallax-button[aria-pressed="true"] { background: var(--parallax-accent-soft); border-color: var(--parallax-accent); color: var(--parallax-ink); }
+  .parallax-button .parallax-icon { color: inherit; }
+  .parallax-button.parallax-is-loading { position: relative; color: transparent; }
+  .parallax-button.parallax-is-loading::after { content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--parallax-line-strong); border-top-color: var(--parallax-accent); border-radius: 50%; animation: parallax-spin 700ms linear infinite; }
+  .parallax-button.parallax-primary.parallax-is-loading::after { border-color: #ffffff66; border-top-color: var(--parallax-on-accent); }
+  .parallax-button-group { display: inline-flex; }
+  .parallax-button-group .parallax-button { border-radius: 0; margin-left: -1px; }
+  .parallax-button-group .parallax-button:first-child { border-radius: var(--parallax-radius-control) 0 0 var(--parallax-radius-control); margin-left: 0; }
+  .parallax-button-group .parallax-button:last-child { border-radius: 0 var(--parallax-radius-control) var(--parallax-radius-control) 0; }
+  .parallax-field { display: grid; gap: var(--parallax-space-1); min-width: 0; }
+  .parallax-field > label, .parallax-field > .parallax-field-label { font-size: var(--parallax-text-sm); color: var(--parallax-secondary); font-weight: var(--parallax-weight-control); display: flex; justify-content: space-between; gap: var(--parallax-space-2); }
+  .parallax-field .parallax-hint { font-size: var(--parallax-text-xs); color: var(--parallax-muted); }
+  .parallax-field .parallax-error-text { font-size: var(--parallax-text-xs); color: var(--parallax-danger); display: flex; gap: var(--parallax-space-1); align-items: center; }
+  .parallax-field-inline { display: grid; grid-template-columns: minmax(80px, 110px) minmax(0, 1fr); align-items: center; gap: var(--parallax-space-2); }
+  .parallax-field-inline > label { font-size: var(--parallax-text-sm); color: var(--parallax-secondary); }
+  .parallax-input, select.parallax-input, textarea.parallax-input { width: 100%; min-height: var(--parallax-control); padding: 0 var(--parallax-space-2); border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-control); background: var(--parallax-surface); color: var(--parallax-ink); font: var(--parallax-weight-body) var(--parallax-text-sm) / 1.4 var(--parallax-font-control); }
+  textarea.parallax-input { padding: var(--parallax-space-2); min-height: calc(var(--parallax-control) * 2.6); resize: vertical; line-height: 1.5; }
+  textarea.parallax-code { font-family: var(--parallax-font-technical); tab-size: 4; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .parallax-input::placeholder { color: var(--parallax-muted); opacity: 0.8; }
+  .parallax-input:hover:not(:disabled):not([readonly]) { border-color: var(--parallax-muted); }
+  .parallax-input:focus-visible { outline: 0; border-color: var(--parallax-accent); box-shadow: 0 0 0 3px var(--parallax-accent-soft); }
+  .parallax-input[readonly] { background: var(--parallax-well); color: var(--parallax-secondary); }
+  .parallax-input:disabled { background: var(--parallax-well); opacity: 0.6; cursor: not-allowed; }
+  .parallax-input[aria-invalid="true"] { border-color: var(--parallax-danger); }
+  .parallax-input[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 3px var(--parallax-danger-soft); }
+  .parallax-input.parallax-small { min-height: var(--parallax-control-small); font-size: var(--parallax-text-xs); padding: 0 var(--parallax-space-2); }
+  .parallax-input.parallax-monospace { font-family: var(--parallax-font-technical); }
+  select.parallax-input { appearance: none; padding-right: calc(var(--parallax-space-5) + 4px); background-image: linear-gradient(45deg, transparent 50%, var(--parallax-muted) 50%), linear-gradient(135deg, var(--parallax-muted) 50%, transparent 50%); background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  .parallax-input-group { display: flex; align-items: stretch; min-width: 0; }
+  .parallax-input-group .parallax-input { border-radius: var(--parallax-radius-control) 0 0 var(--parallax-radius-control); min-width: 0; }
+  .parallax-input-group .parallax-addon { display: inline-flex; align-items: center; padding: 0 var(--parallax-space-2); border: 1px solid var(--parallax-line-strong); border-left: 0; border-radius: 0 var(--parallax-radius-control) var(--parallax-radius-control) 0; background: var(--parallax-well); color: var(--parallax-muted); font: var(--parallax-text-xs) var(--parallax-font-technical); white-space: nowrap; }
+  .parallax-input-group .parallax-button { border-radius: 0 var(--parallax-radius-control) var(--parallax-radius-control) 0; margin-left: -1px; }
+  .parallax-input-group select.parallax-addon { appearance: none; cursor: pointer; }
+  .parallax-search { position: relative; display: flex; align-items: center; min-width: 0; }
+  .parallax-search .parallax-icon { position: absolute; left: var(--parallax-space-2); color: var(--parallax-muted); pointer-events: none; }
+  .parallax-search .parallax-input { padding-left: calc(var(--parallax-space-2) * 2 + var(--parallax-icon)); }
+  .parallax-search kbd { position: absolute; right: var(--parallax-space-2); }
+  input[type="checkbox"].parallax-check, input[type="radio"].parallax-check { appearance: none; display: inline-grid; place-content: center; flex: none; width: 16px; height: 16px; margin: 0; border: 1px solid var(--parallax-line-strong); background: var(--parallax-surface); cursor: pointer; vertical-align: middle; }
+  input[type="checkbox"].parallax-check { border-radius: var(--parallax-radius-small); }
+  input[type="radio"].parallax-check { border-radius: 50%; }
+  input.parallax-check:hover { border-color: var(--parallax-accent); }
+  input.parallax-check:checked { border-color: var(--parallax-accent); background: var(--parallax-accent); }
+  input[type="checkbox"].parallax-check:checked::before { content: ""; width: 9px; height: 5px; border-left: 2px solid var(--parallax-on-accent); border-bottom: 2px solid var(--parallax-on-accent); transform: translateY(-1px) rotate(-45deg); }
+  input[type="radio"].parallax-check:checked::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--parallax-on-accent); }
+  input.parallax-check:indeterminate::before { content: ""; width: 8px; height: 2px; background: var(--parallax-on-accent); }
+  input.parallax-check:indeterminate { border-color: var(--parallax-accent); background: var(--parallax-accent); }
+  input.parallax-check:disabled { opacity: 0.5; cursor: not-allowed; }
+  .parallax-choice { display: inline-flex; align-items: center; gap: var(--parallax-space-2); font-size: var(--parallax-text-sm); cursor: pointer; min-height: var(--parallax-control-small); }
+  input[type="checkbox"].parallax-switch { appearance: none; flex: none; width: 30px; height: 18px; margin: 0; border-radius: calc(var(--parallax-radius-control) + 1px); cursor: pointer; vertical-align: middle; background: var(--parallax-line-strong); position: relative; transition: background-color var(--parallax-ease); }
+  input.parallax-switch::before { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: var(--parallax-radius-control); background: #fff; transition: transform var(--parallax-ease); }
+  input.parallax-switch:checked { background: var(--parallax-accent); }
+  input.parallax-switch:checked::before { transform: translateX(12px); }
+  input.parallax-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="range"].parallax-range { appearance: none; width: 100%; height: 18px; margin: 0; background: transparent; cursor: ew-resize; }
+  input.parallax-range::-webkit-slider-runnable-track { height: 3px; border-radius: var(--parallax-radius-small); background: linear-gradient(90deg, var(--parallax-accent) var(--parallax-fill, 50%), var(--parallax-line-strong) var(--parallax-fill, 50%)); }
+  input.parallax-range::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border-radius: 50%; border: 2px solid var(--parallax-accent); background: var(--parallax-surface); }
+  input.parallax-range::-moz-range-track { height: 3px; border-radius: var(--parallax-radius-small); background: var(--parallax-line-strong); }
+  input.parallax-range::-moz-range-progress { height: 3px; border-radius: var(--parallax-radius-small); background: var(--parallax-accent); }
+  input.parallax-range::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--parallax-accent); background: var(--parallax-surface); }
+  input.parallax-range:focus-visible { outline: 0; }
+  input.parallax-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--parallax-accent-soft); }
+  .parallax-segmented { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-control); background: var(--parallax-well); max-width: 100%; vertical-align: middle; }
+  .parallax-segmented > button, .parallax-segmented > label { display: inline-flex; align-items: center; justify-content: center; gap: var(--parallax-space-1); min-height: var(--parallax-control-small); padding: 0 var(--parallax-space-2); border-radius: var(--parallax-radius-small); color: var(--parallax-secondary); font: var(--parallax-weight-control) var(--parallax-text-sm) / 1.2 var(--parallax-font-control); white-space: nowrap; cursor: pointer; }
+  .parallax-segmented > button:hover, .parallax-segmented > label:hover { color: var(--parallax-ink); }
+  .parallax-segmented > button[aria-pressed="true"], .parallax-segmented > label:has(input:checked) { background: var(--parallax-surface); color: var(--parallax-ink); box-shadow: 0 1px 2px #0d111926; }
+  .parallax-segmented > label input { position: absolute; opacity: 0; pointer-events: none; }
+  .parallax-segmented > label:has(input:focus-visible) { outline: 2px solid var(--parallax-accent); outline-offset: 1px; }
+  /* A segment is focused inside its track: a ring outside it would sit on the track's own border and read as two. */
+  .parallax-segmented > button:focus-visible { outline: 2px solid var(--parallax-focus-ring); outline-offset: -2px; }
+  .parallax-segmented.parallax-accent > button[aria-pressed="true"], .parallax-segmented.parallax-accent > label:has(input:checked) { background: var(--parallax-accent); color: var(--parallax-on-accent); box-shadow: none; }
+  .parallax-segmented.parallax-small > button, .parallax-segmented.parallax-small > label { min-height: calc(var(--parallax-control-small) - 4px); font-size: var(--parallax-text-xs); padding: 0 var(--parallax-space-2); }
+  .parallax-segmented.parallax-stretch { display: flex; }
+  .parallax-segmented.parallax-stretch > button, .parallax-segmented.parallax-stretch > label { flex: 1; }
+  .parallax-stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-control); background: var(--parallax-surface); min-height: var(--parallax-control-small); }
+  .parallax-stepper > button { width: var(--parallax-control-small); display: grid; place-items: center; color: var(--parallax-secondary); }
+  .parallax-stepper > button:hover { background: var(--parallax-well); color: var(--parallax-ink); }
+  .parallax-stepper > button:first-child { border-radius: var(--parallax-radius-control) 0 0 var(--parallax-radius-control); }
+  .parallax-stepper > button:last-child { border-radius: 0 var(--parallax-radius-control) var(--parallax-radius-control) 0; }
+  .parallax-stepper > output { flex: 1; display: grid; place-items: center; padding: 0 var(--parallax-space-2); font: var(--parallax-text-sm) var(--parallax-font-technical); border-left: 1px solid var(--parallax-line); border-right: 1px solid var(--parallax-line); font-variant-numeric: tabular-nums; min-width: 68px; }
+  .parallax-quantity { display: inline-flex; align-items: stretch; min-width: 0; }
+  .parallax-quantity .parallax-input { border-radius: var(--parallax-radius-control) 0 0 var(--parallax-radius-control); font-family: var(--parallax-font-technical); text-align: right; min-width: 72px; }
+  .parallax-quantity .parallax-addon { display: inline-flex; align-items: center; padding: 0 var(--parallax-space-2); border: 1px solid var(--parallax-line-strong); border-left: 0; border-radius: 0 var(--parallax-radius-control) var(--parallax-radius-control) 0; background: var(--parallax-well); color: var(--parallax-muted); font: var(--parallax-text-xs) var(--parallax-font-technical); }
+  .parallax-panel { background: var(--parallax-surface); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); min-width: 0; box-shadow: var(--parallax-shadow-surface); }
+  .parallax-panel-head { display: flex; align-items: center; gap: var(--parallax-space-2); padding: var(--parallax-space-2) var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); min-height: calc(var(--parallax-control) + 8px); }
+  .parallax-panel-head h2, .parallax-panel-head h3 { font-size: var(--parallax-text-base); }
+  .parallax-panel-head .parallax-actions { margin-left: auto; display: flex; gap: var(--parallax-space-1); }
+  .parallax-panel-body { padding: var(--parallax-space-3); }
+  .parallax-panel-body.parallax-flush { padding: 0; }
+  .parallax-panel-foot { padding: var(--parallax-space-2) var(--parallax-space-3); border-top: 1px solid var(--parallax-line); display: flex; align-items: center; gap: var(--parallax-space-2); font-size: var(--parallax-text-xs); color: var(--parallax-muted); }
+  .parallax-panel > .parallax-panel-body + .parallax-panel-body { border-top: 1px solid var(--parallax-line); }
+  .parallax-inspector { display: grid; gap: var(--parallax-space-3); align-content: start; min-width: 0; }
+  .parallax-inspector .parallax-panel-head { min-height: calc(var(--parallax-control) + 12px); }
+  .parallax-inspector-title { display: grid; gap: 2px; min-width: 0; }
+  .parallax-inspector-title h2 { font-size: var(--parallax-text-md); }
+  .parallax-inspector-title .parallax-technical { font-size: var(--parallax-text-2xs); }
+  .parallax-inspector-group { padding: var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); display: grid; gap: var(--parallax-space-2); }
+  .parallax-inspector-group:last-child { border-bottom: 0; }
+  .parallax-inspector-group > h3 { font-size: var(--parallax-text-xs); color: var(--parallax-muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+  .parallax-disclosure { border-top: 1px solid var(--parallax-line); }
+  .parallax-disclosure > summary { display: flex; align-items: center; gap: var(--parallax-space-2); min-height: var(--parallax-control); padding: 0 var(--parallax-space-3); cursor: pointer; list-style: none; font-weight: var(--parallax-weight-control); font-size: var(--parallax-text-sm); color: var(--parallax-ink); }
+  .parallax-disclosure > summary::-webkit-details-marker { display: none; }
+  .parallax-disclosure > summary .parallax-chevron { margin-left: auto; color: var(--parallax-muted); transition: transform var(--parallax-ease); }
+  .parallax-disclosure[open] > summary .parallax-chevron { transform: rotate(180deg); }
+  .parallax-disclosure > summary:hover { background: var(--parallax-well); }
+  .parallax-disclosure > summary .parallax-metadata { color: var(--parallax-muted); font-weight: 400; font-size: var(--parallax-text-xs); }
+  .parallax-disclosure > .parallax-disclosure-body { padding: var(--parallax-space-2) var(--parallax-space-3) var(--parallax-space-3); display: grid; gap: var(--parallax-space-2); }
+  /* A panel section: its title takes the room, a summary in brief beside it, its actions (Reset) before the chevron. */
+  .parallax-panel-section-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .parallax-panel-section > summary .parallax-metadata { white-space: nowrap; }
+  .parallax-panel-section-actions { margin-left: auto; display: inline-flex; }
+  .parallax-panel-section-actions + .parallax-chevron { margin-left: 0; }
+  .parallax-split-handle { width: 6px; cursor: col-resize; background: transparent; position: relative; flex: none; }
+  .parallax-split-handle::after { content: ""; position: absolute; inset: 0 2px; border-radius: var(--parallax-radius-small); background: transparent; transition: background-color var(--parallax-ease); }
+  .parallax-split-handle:hover::after, .parallax-split-handle:focus-visible::after { background: var(--parallax-accent); }
+  .parallax-split-handle.parallax-horizontal { width: auto; height: 6px; cursor: row-resize; }
+  .parallax-split-handle.parallax-horizontal::after { inset: 2px 0; }
+  .parallax-table { width: 100%; font-size: var(--parallax-text-sm); }
+  .parallax-table th { text-align: left; font-size: var(--parallax-text-xs); font-weight: 600; color: var(--parallax-muted); padding: var(--parallax-space-2) var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); white-space: nowrap; vertical-align: bottom; }
+  .parallax-table td { padding: var(--parallax-space-2) var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); vertical-align: middle; }
+  .parallax-table tbody tr:last-child td { border-bottom: 0; }
+  .parallax-table tbody tr:hover { background: var(--parallax-surface-2); }
+  .parallax-table tbody tr[aria-selected="true"] { background: var(--parallax-accent-soft); }
+  .parallax-table tbody tr[aria-selected="true"] td:first-child { position: relative; }
+  .parallax-table tbody tr[aria-selected="true"] td:first-child::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--parallax-band); background: var(--parallax-accent); pointer-events: none; }
+  .parallax-table .parallax-numeric, .parallax-table td.parallax-numeric, .parallax-table th.parallax-numeric { text-align: right; font-family: var(--parallax-font-technical); font-variant-numeric: tabular-nums; }
+  .parallax-table th[aria-sort] button { display: inline-flex; align-items: center; gap: var(--parallax-space-1); color: inherit; font: inherit; }
+  .parallax-table th[aria-sort="ascending"] button .parallax-icon, .parallax-table th[aria-sort="descending"] button .parallax-icon { color: var(--parallax-accent); }
+  .parallax-table th[aria-sort="descending"] button .parallax-icon { transform: rotate(180deg); }
+  .parallax-table th[aria-sort="none"] button .parallax-icon { opacity: 0.4; }
+  .parallax-table.parallax-dense td, .parallax-table.parallax-dense th { padding: var(--parallax-space-1) var(--parallax-space-2); }
+  .parallax-table-scroll { overflow-x: auto; }
+  .parallax-list { display: grid; }
+  .parallax-list-item { position: relative; overflow: hidden; display: flex; align-items: center; gap: var(--parallax-space-2); min-height: var(--parallax-control); padding: 0 var(--parallax-space-3); color: var(--parallax-ink); text-align: left; width: 100%; border-radius: 0; font-size: var(--parallax-text-sm); }
+  .parallax-list-item::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--parallax-band); background: var(--parallax-accent); opacity: 0; pointer-events: none; }
+  .parallax-list-item:hover { background: var(--parallax-surface-2); text-decoration: none; }
+  .parallax-list-item[aria-selected="true"], .parallax-list-item[aria-current="true"] { background: var(--parallax-accent-soft); }
+  .parallax-list-item[aria-selected="true"]::before, .parallax-list-item[aria-current="true"]::before { opacity: 1; }
+  .parallax-list-item .parallax-value { margin-left: auto; color: var(--parallax-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+  .parallax-list-item .parallax-kind { flex: none; }
+  .parallax-list.parallax-dense .parallax-list-item { min-height: var(--parallax-control-small); }
+  .parallax-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--parallax-space-1) var(--parallax-space-3); font-size: var(--parallax-text-sm); align-items: baseline; }
+  .parallax-facts dt { color: var(--parallax-muted); font-size: var(--parallax-text-xs); }
+  .parallax-facts dd { font-family: var(--parallax-font-technical); font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+  .parallax-kind { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; min-height: 18px; border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-small); font: 500 var(--parallax-text-2xs) / 1 var(--parallax-font-technical); color: var(--parallax-secondary); letter-spacing: 0.03em; white-space: nowrap; }
+  .parallax-badge { display: inline-flex; align-items: center; gap: 5px; padding: 0 7px; min-height: 18px; border-radius: var(--parallax-radius-small); font: 500 var(--parallax-text-2xs) / 1 var(--parallax-font-control); white-space: nowrap; background: var(--parallax-well); color: var(--parallax-secondary); }
+  .parallax-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .parallax-badge.parallax-good { background: var(--parallax-good-soft); color: var(--parallax-good); }
+  .parallax-badge.parallax-warn { background: var(--parallax-warn-soft); color: var(--parallax-warn); }
+  .parallax-badge.parallax-danger { background: var(--parallax-danger-soft); color: var(--parallax-danger); }
+  .parallax-badge.parallax-accent { background: var(--parallax-accent-soft); color: var(--parallax-accent); }
+  .parallax-badge.parallax-live::before { animation: parallax-pulse 1.2s ease-in-out infinite; }
+  .parallax-tag { display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; min-height: 20px; border-radius: var(--parallax-radius-small); background: var(--parallax-well); color: var(--parallax-secondary); font-size: var(--parallax-text-xs); white-space: nowrap; }
+  .parallax-tag:hover { background: var(--parallax-accent-soft); color: var(--parallax-ink); text-decoration: none; }
+  .parallax-tag button { display: grid; place-items: center; color: var(--parallax-muted); }
+  .parallax-tags { display: flex; flex-wrap: wrap; gap: var(--parallax-space-1); }
+  .parallax-chip { display: inline-flex; align-items: center; gap: var(--parallax-space-1); min-height: var(--parallax-control-small); padding: 0 var(--parallax-space-2); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-control); background: var(--parallax-surface); color: var(--parallax-secondary); font: var(--parallax-weight-control) var(--parallax-text-xs) / 1 var(--parallax-font-control); white-space: nowrap; }
+  .parallax-chip:hover { border-color: var(--parallax-accent); color: var(--parallax-ink); }
+  .parallax-chip[aria-pressed="true"] { background: var(--parallax-accent-soft); border-color: var(--parallax-accent); color: var(--parallax-ink); }
+  .parallax-chips { display: flex; flex-wrap: wrap; gap: var(--parallax-space-1); }
+  pre.parallax-code { margin: 0; padding: var(--parallax-space-3); background: var(--parallax-well); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); font: var(--parallax-text-sm) / 1.6 var(--parallax-font-technical); overflow: auto; tab-size: 4; color: var(--parallax-ink); }
+  code.parallax-inline { padding: 1px 5px; border-radius: var(--parallax-radius-small); background: var(--parallax-well); font-size: 0.92em; }
+  .parallax-formula-band { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--parallax-space-3) var(--parallax-space-5); align-items: center; padding: var(--parallax-space-4) 0; border-top: 1px solid var(--parallax-line); border-bottom: 1px solid var(--parallax-line); }
+  .parallax-formula-band .parallax-display-formula { font: var(--parallax-weight-body) clamp(18px, 2vw, 28px) / 1.4 var(--parallax-font-technical); letter-spacing: -0.03em; overflow-wrap: anywhere; }
+  .parallax-formula-band .parallax-notation { display: grid; gap: var(--parallax-space-1); justify-items: end; }
+  progress.parallax-progress { appearance: none; width: 100%; height: 6px; border: 0; border-radius: var(--parallax-radius-small); background: var(--parallax-well); overflow: hidden; }
+  progress.parallax-progress::-webkit-progress-bar { background: var(--parallax-well); border-radius: var(--parallax-radius-small); }
+  progress.parallax-progress::-webkit-progress-value { background: var(--parallax-accent); border-radius: var(--parallax-radius-small); }
+  progress.parallax-progress::-moz-progress-bar { background: var(--parallax-accent); }
+  .parallax-meter { height: 6px; border-radius: var(--parallax-radius-small); background: var(--parallax-well); overflow: hidden; }
+  .parallax-meter > span { display: block; height: 100%; background: var(--parallax-accent); border-radius: var(--parallax-radius-small); }
+  .parallax-parameter { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--parallax-space-2); align-items: center; }
+  .parallax-parameter > label { font-size: var(--parallax-text-sm); display: flex; gap: var(--parallax-space-1); align-items: baseline; min-width: 0; }
+  .parallax-parameter > label .parallax-symbol { font-family: var(--parallax-font-technical); font-weight: 600; }
+  .parallax-parameter > label .parallax-unit { color: var(--parallax-muted); font-size: var(--parallax-text-xs); }
+  .parallax-parameter > output { font: var(--parallax-text-sm) var(--parallax-font-technical); font-variant-numeric: tabular-nums; color: var(--parallax-ink); }
+  .parallax-parameter > .parallax-range { grid-column: 1 / -1; }
+  .parallax-parameter .parallax-limits { grid-column: 1 / -1; display: flex; justify-content: space-between; font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); margin-top: -4px; }
+  .parallax-notice { position: relative; display: flex; gap: var(--parallax-space-2); padding: var(--parallax-space-2) var(--parallax-space-3) var(--parallax-space-2) calc(var(--parallax-space-3) + 2px); border-radius: var(--parallax-radius-control); background: var(--parallax-well); color: var(--parallax-ink); font-size: var(--parallax-text-sm); overflow: hidden; }
+  .parallax-notice::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--parallax-band); background: var(--parallax-accent); }
+  .parallax-notice .parallax-icon { flex: none; margin-top: 2px; color: var(--parallax-accent); }
+  .parallax-notice strong { font-weight: 600; }
+  .parallax-notice p { color: var(--parallax-secondary); }
+  .parallax-notice .parallax-actions { margin-left: auto; display: flex; gap: var(--parallax-space-1); align-self: center; }
+  .parallax-notice.parallax-good { background: var(--parallax-good-soft); }
+  .parallax-notice.parallax-good::before, .parallax-notice.parallax-good .parallax-icon { background: var(--parallax-good); color: var(--parallax-good); }
+  .parallax-notice.parallax-warn { background: var(--parallax-warn-soft); }
+  .parallax-notice.parallax-warn::before, .parallax-notice.parallax-warn .parallax-icon { background: var(--parallax-warn); color: var(--parallax-warn); }
+  .parallax-notice.parallax-danger { background: var(--parallax-danger-soft); }
+  .parallax-notice.parallax-danger::before, .parallax-notice.parallax-danger .parallax-icon { background: var(--parallax-danger); color: var(--parallax-danger); }
+  .parallax-empty { display: grid; justify-items: center; text-align: center; gap: var(--parallax-space-2); padding: var(--parallax-space-6) var(--parallax-space-4); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); color: var(--parallax-muted); font-size: var(--parallax-text-sm); }
+  .parallax-empty .parallax-icon-large { color: var(--parallax-line-strong); width: 28px; height: 28px; }
+  .parallax-empty strong { color: var(--parallax-ink); font-weight: var(--parallax-weight-heading); }
+  .parallax-empty.parallax-inline { padding: var(--parallax-space-4); border-style: solid; }
+  .parallax-skeleton { position: relative; overflow: hidden; background: var(--parallax-well); border-radius: var(--parallax-radius-small); min-height: 12px; }
+  .parallax-skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--parallax-surface) 60%, transparent), transparent); animation: parallax-shimmer 1.4s infinite; }
+  .parallax-appearance-field { min-width: 0; }
+  .parallax-appearance-field legend { font-size: var(--parallax-text-xs); color: var(--parallax-muted); margin-bottom: var(--parallax-space-1); font-family: var(--parallax-font-technical); }
+  .parallax-appearance-field .parallax-segmented { max-width: 100%; }
+  .parallax-color-dot { width: 10px; height: 10px; border-radius: var(--parallax-radius-small); background: var(--parallax-swatch); display: inline-block; flex: none; }
+  [data-intensity="calm"] .parallax-color-dot { filter: saturate(0.42); }
+  .parallax-swatch { display: inline-block; width: 12px; height: 3px; border-radius: var(--parallax-radius-small); background: var(--parallax-muted); flex: none; vertical-align: middle; }
+  .parallax-diagnostic { display: flex; align-items: center; gap: var(--parallax-space-2); font-size: var(--parallax-text-xs); color: var(--parallax-secondary); }
+  .parallax-diagnostic .parallax-icon { flex: none; }
+  .parallax-diagnostic.parallax-warn .parallax-icon { color: var(--parallax-warn); }
+  .parallax-diagnostic.parallax-danger .parallax-icon { color: var(--parallax-danger); }
+  .parallax-diagnostic.parallax-good .parallax-icon { color: var(--parallax-good); }
+  @media (max-width: 600px) { .parallax-facts { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .parallax-facts dt { margin-bottom: -2px; } }
+  @media (max-width: 600px) { .parallax-formula-band { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 600px) { .parallax-formula-band .parallax-notation { justify-items: start; } }
+
+  /* ---- the bench: columns, stage, sheet, scope ---- */
+  .parallax-run-status { display: inline-flex; align-items: center; gap: var(--parallax-space-2); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .parallax-run-status .parallax-badge { min-height: 20px; }
+  .parallax-bench { min-width: 0; }
+  .parallax-bench-grid { display: grid; grid-template-columns: var(--parallax-panel-width) 6px minmax(0, 1fr) 6px var(--parallax-inspector-width); height: calc(var(--parallax-bench-height) - var(--parallax-bench-bar)); min-height: 480px; }
+  .parallax-bench-grid.parallax-no-side { grid-template-columns: minmax(0, 1fr) 6px var(--parallax-inspector-width); }
+  .parallax-bench-side, .parallax-bench-inspector { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; background: var(--parallax-surface); }
+  .parallax-bench-side { border-right: 1px solid var(--parallax-line); }
+  .parallax-bench-inspector { border-left: 1px solid var(--parallax-line); }
+  .parallax-bench-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--parallax-background); }
+  .parallax-bench-grid > .parallax-split-handle { background: var(--parallax-background); }
+  .parallax-bench-edge { position: relative; display: flex; min-width: 0; min-height: 0; background: var(--parallax-background); }
+  .parallax-bench-edge > .parallax-split-handle { flex: 1; }
+  .parallax-bench-edge > .parallax-split-handle::after { inset: 0 2px; }
+  .parallax-bench-edge.parallax-horizontal { flex-direction: column; flex: none; }
+  .parallax-bench-edge.parallax-horizontal > .parallax-split-handle::after { inset: 2px 0; }
+  .parallax-bench-edge.parallax-horizontal > .parallax-split-handle { flex: none; }
+  .parallax-bench-folds { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3; display: flex; gap: var(--parallax-space-1); }
+  .parallax-bench-folds > .parallax-bench-fold { position: static; transform: none; }
+  /* On a horizontal handle the knobs stand just above the line, on the sheet's side, clear of the instrument's toolbar below. */
+  .parallax-bench-edge.parallax-horizontal > .parallax-bench-folds, .parallax-bench-edge.parallax-horizontal > .parallax-bench-fold { transform: translate(-50%, calc(-100% - 1px)); }
+  .parallax-bench-fold { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3; display: grid; place-items: center; width: 16px; height: 40px; padding: 0; border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-control); background: var(--parallax-surface); color: var(--parallax-muted); cursor: pointer; transition: color var(--parallax-ease), border-color var(--parallax-ease); }
+  .parallax-bench-edge.parallax-horizontal > .parallax-bench-fold, .parallax-bench-edge.parallax-horizontal > .parallax-bench-folds > .parallax-bench-fold { width: 40px; height: 16px; }
+  .parallax-bench-fold:hover, .parallax-bench-fold:focus-visible { color: var(--parallax-ink); border-color: var(--parallax-accent); }
+  .parallax-bench-fold .parallax-icon { width: 12px; height: 12px; }
+  .parallax-bench-folded { display: flex; flex-direction: column; align-items: center; gap: var(--parallax-space-2); width: 100%; height: 100%; padding: var(--parallax-space-2) 0; border: 0; background: var(--parallax-surface); color: var(--parallax-secondary); cursor: pointer; font: var(--parallax-weight-heading) var(--parallax-text-xs) / 1 var(--parallax-font-heading); transition: background-color var(--parallax-ease), color var(--parallax-ease); }
+  .parallax-bench-folded > .parallax-label { writing-mode: vertical-rl; white-space: nowrap; }
+  .parallax-bench-folded:hover, .parallax-bench-folded:focus-visible { background: var(--parallax-well); color: var(--parallax-ink); }
+  .parallax-bench-folded.parallax-horizontal { flex-direction: row; height: var(--parallax-bench-folded); flex: none; padding: 0 var(--parallax-space-3); border-top: 1px solid var(--parallax-line); }
+  .parallax-bench-folded.parallax-horizontal > .parallax-label { writing-mode: horizontal-tb; }
+  .parallax-bench-side.parallax-folded, .parallax-bench-inspector.parallax-folded { overflow: hidden; }
+  .parallax-bench-column { display: contents; }
+  .parallax-bench-column[hidden] { display: none; }
+  .parallax-stage-body.parallax-instrument-folded > :is(.parallax-scope, .parallax-stage-instrument, .parallax-bench-instruments) { display: none; }
+  .parallax-stage-top { display: contents; }
+  .parallax-stage-top[hidden] { display: none; }
+  .parallax-stage-body.parallax-sheet-folded > :is(.parallax-scope, .parallax-stage-instrument, .parallax-bench-instruments) { flex: 1; height: auto; }
+  .parallax-pane-split { display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--parallax-pane-right, 32%); min-width: 0; min-height: 0; }
+  .parallax-pane-split > * { min-width: 0; min-height: 0; }
+  .parallax-side-group { padding: var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); display: grid; gap: var(--parallax-space-2); }
+  .parallax-side-group > h3 { display: flex; align-items: center; gap: var(--parallax-space-2); font-size: var(--parallax-text-sm); font-weight: var(--parallax-weight-heading); }
+  .parallax-side-group > h3 .parallax-push { margin-left: auto; font: 400 var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); }
+  .parallax-side-group > p { font-size: var(--parallax-text-xs); color: var(--parallax-muted); line-height: 1.5; }
+  .parallax-side-group.parallax-flush { padding: 0; gap: 0; }
+  .parallax-side-group.parallax-flush > h3 { padding: var(--parallax-space-2) var(--parallax-space-3); }
+  .parallax-side-note { padding: var(--parallax-space-3); font-size: var(--parallax-text-xs); color: var(--parallax-muted); line-height: 1.5; display: grid; gap: var(--parallax-space-2); justify-items: start; }
+  .parallax-stage-toolbar { display: flex; align-items: center; gap: var(--parallax-space-2); padding: var(--parallax-space-1) var(--parallax-space-3); min-height: calc(var(--parallax-control) + 6px); border-bottom: 1px solid var(--parallax-line); background: var(--parallax-surface); flex-wrap: wrap; }
+  .parallax-stage-toolbar .parallax-title { font: var(--parallax-weight-heading) var(--parallax-text-sm) var(--parallax-font-heading); }
+  .parallax-stage-toolbar .parallax-hint { margin-left: auto; font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); white-space: nowrap; }
+  .parallax-stage-body { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+  .parallax-stage-foot { display: flex; align-items: center; gap: var(--parallax-space-3); padding: var(--parallax-space-1) var(--parallax-space-3); min-height: calc(var(--parallax-control-small) + 4px); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); flex-wrap: wrap; }
+  .parallax-stage-foot .parallax-diagnostic { font-family: var(--parallax-font-ui); }
+  .parallax-sheet { flex: 1; min-height: 0; position: relative; overflow: hidden; background-color: var(--parallax-sheet); background-image: radial-gradient(var(--parallax-sheet-grid) 1px, transparent 1px); background-size: 20px 20px; background-position: 10px 10px; }
+  .parallax-scope { display: flex; flex-direction: column; min-height: 0; flex: none; height: var(--parallax-scope-height); border-top: 1px solid var(--parallax-line); background: var(--parallax-screen); color: var(--parallax-screen-text); }
+  .parallax-scope-toolbar { display: flex; align-items: center; gap: var(--parallax-space-2); padding: var(--parallax-space-1) var(--parallax-space-3); min-height: calc(var(--parallax-control) + 4px); background: var(--parallax-surface); border-bottom: 1px solid var(--parallax-line); color: var(--parallax-ink); flex-wrap: wrap; }
+  /* A list on the toolbar is as wide as its words: the math list read «M = ✱» at the inputs' fixed width. */
+  .parallax-scope-toolbar select.parallax-input { width: auto; min-width: 0; flex: none; padding-right: 26px; }
+  .parallax-scope-toolbar .parallax-hint { margin-left: auto; font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); }
+  .parallax-scope { container-type: inline-size; }
+  /* A narrow panel drops the group captions — the groups stay apart by their gaps — so the tools take two rows, not three. */
+  @container (max-width: 1100px) { .parallax-scope-toolbar-caption { display: none; } }
+  /* …and its legend keeps the channels' readings alone: the time base, the trigger and the memory are on the panel beside it. */
+  @container (max-width: 1100px) { .parallax-scope-foot > .parallax-scope-foot-setting { display: none; } }
+  @container (max-width: 760px) { .parallax-scope-toolbar .parallax-hint { display: none; } }
+  .parallax-scope-screen { flex: 1; min-height: 0; position: relative; }
+  .parallax-scope-screen canvas { width: 100%; height: 100%; }
+  /* XYZ: the stage fills the screen; the camera presets sit over its top right corner, out of the legend's way. */
+  .parallax-scope-space-stage { position: absolute; inset: 0; }
+  .parallax-scope-space-camera { position: absolute; top: var(--parallax-space-2); right: var(--parallax-space-2); z-index: 1; }
+  /* The legend wraps rather than cuts: a fourth channel's reading half off the edge read as no reading. */
+  .parallax-scope-foot { display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); color: var(--parallax-ink); }
+  /* One line a channel — its name and its reading side by side —: two lines each, five channels took 70 px off a screen that had 150. */
+  .parallax-scope-foot > div { display: flex; align-items: baseline; gap: var(--parallax-space-2); padding: 2px var(--parallax-space-3); border-right: 1px solid var(--parallax-line); font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); min-width: 150px; flex: none; }
+  .parallax-scope-foot > div > strong { display: flex; align-items: center; gap: var(--parallax-space-1); color: var(--parallax-ink); font-weight: 500; }
+  .parallax-scope-foot > div > span { font-variant-numeric: tabular-nums; }
+  .parallax-channel { padding: var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); display: grid; gap: var(--parallax-space-2); }
+  .parallax-channel > header { display: flex; align-items: center; gap: var(--parallax-space-2); }
+  .parallax-channel > header h3 { font: var(--parallax-weight-heading) var(--parallax-text-sm) var(--parallax-font-technical); display: flex; align-items: center; gap: var(--parallax-space-2); }
+  .parallax-channel > header h3::before { content: ""; width: 3px; height: 14px; border-radius: var(--parallax-radius-small); background: var(--parallax-channel-color, var(--parallax-muted)); }
+  .parallax-channel > header .parallax-choice { margin-left: auto; }
+  /* A folded channel: what it reads and at what scale, one press from being the active one and open. */
+  .parallax-channel-summary { display: flex; justify-content: space-between; gap: var(--parallax-space-2); width: 100%; padding: var(--parallax-space-1) 0; border: 0; background: none; color: var(--parallax-muted); font: var(--parallax-text-sm) var(--parallax-font-technical); text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .parallax-channel-summary:hover { color: var(--parallax-ink); }
+  .parallax-channel-summary:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: 2px; }
+  .parallax-channel-summary > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .parallax-channel.parallax-off > :not(header) { display: none; }
+  .parallax-control-row { display: grid; grid-template-columns: minmax(56px, 72px) minmax(0, 1fr); align-items: center; gap: var(--parallax-space-2); }
+  .parallax-control-row > label, .parallax-control-row > span:first-child { font-size: var(--parallax-text-xs); color: var(--parallax-muted); }
+  .parallax-control-row .parallax-segmented { width: 100%; display: flex; }
+  .parallax-control-row .parallax-segmented > button { flex: 1; }
+  .parallax-control-row .parallax-stepper { width: 100%; }
+  /* The list opened from the value: it reads as the stepper's output, and its popup paints from its own background. */
+  .parallax-choice-stepper > select { appearance: none; border: 0; border-left: 1px solid var(--parallax-line); border-right: 1px solid var(--parallax-line); border-radius: 0; background: var(--parallax-surface); color: var(--parallax-ink); font: var(--parallax-text-sm) var(--parallax-font-technical); font-variant-numeric: tabular-nums; text-align: center; text-align-last: center; min-width: 64px; padding: 0 var(--parallax-space-2); cursor: pointer; }
+  .parallax-choice-stepper > select:hover { background: var(--parallax-well); }
+  .parallax-choice-stepper > select:focus-visible { outline: 2px solid var(--parallax-focus-ring); outline-offset: -2px; }
+  .parallax-choice-stepper option { background: var(--parallax-surface); color: var(--parallax-ink); }
+  .parallax-palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: var(--parallax-space-1); padding: 0 var(--parallax-space-3) var(--parallax-space-3); }
+  .parallax-palette-item { display: grid; justify-items: center; gap: 2px; padding: var(--parallax-space-1); border: 1px solid transparent; border-radius: var(--parallax-radius-control); color: var(--parallax-ink); font: var(--parallax-text-2xs) var(--parallax-font-technical); cursor: grab; text-align: center; }
+  .parallax-palette-item:hover { border-color: var(--parallax-accent); background: var(--parallax-accent-soft); }
+  .parallax-palette-item[aria-pressed="true"] { border-color: var(--parallax-accent); background: var(--parallax-accent-soft); }
+  .parallax-palette-item svg { width: 44px; height: auto; color: var(--parallax-ink); }
+  .parallax-palette-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .parallax-symbol-hero { display: grid; place-items: center; padding: var(--parallax-space-4); background: var(--parallax-sheet); background-image: radial-gradient(var(--parallax-sheet-grid) 1px, transparent 1px); background-size: 12px 12px; border-bottom: 1px solid var(--parallax-line); color: var(--parallax-ink); }
+  .parallax-symbol-hero .parallax-symbol-drawing { width: 180px; height: auto; }
+  .parallax-pins-table td:first-child { font-family: var(--parallax-font-technical); font-weight: 600; }
+  .parallax-pins-table .parallax-input.parallax-small { min-width: 54px; }
+  .parallax-draw-canvas { flex: 1; min-height: 0; position: relative; overflow: hidden; background-color: var(--parallax-sheet); display: grid; place-items: center; }
+  .parallax-draw-canvas svg { max-width: 100%; max-height: 100%; }
+  .parallax-draw-canvas .parallax-grid-minor { stroke: var(--parallax-sheet-grid); stroke-width: 0.1; }
+  .parallax-draw-canvas .parallax-grid-major { stroke: color-mix(in srgb, var(--parallax-line-strong) 40%, transparent); stroke-width: 0.15; }
+  .parallax-draw-canvas .parallax-frame { fill: none; stroke: var(--parallax-line-strong); stroke-width: 0.25; stroke-dasharray: 1 1; }
+  .parallax-draw-canvas .parallax-axis { stroke: var(--parallax-line-strong); stroke-width: 0.15; }
+  .parallax-draw-canvas .parallax-drawing { fill: none; stroke: var(--parallax-ink); stroke-width: var(--parallax-stroke-symbol); stroke-linecap: round; stroke-linejoin: round; }
+  .parallax-draw-canvas .parallax-drawing.parallax-selected { stroke: var(--parallax-accent); }
+  .parallax-draw-canvas .parallax-pin { fill: var(--parallax-surface); stroke: var(--parallax-node); stroke-width: 0.5; cursor: move; }
+  .parallax-draw-canvas .parallax-pin.parallax-selected { fill: var(--parallax-accent-soft); stroke-width: 0.8; }
+  .parallax-draw-canvas .parallax-pin-name { font: 2.8px var(--parallax-font-technical); fill: var(--parallax-secondary); }
+  .parallax-draw-canvas .parallax-anchor { fill: none; stroke: var(--parallax-muted); stroke-width: 0.3; stroke-dasharray: 0.6 0.6; }
+  .parallax-draw-canvas .parallax-anchor-name { font: 2.4px var(--parallax-font-technical); fill: var(--parallax-muted); }
+  .parallax-draw-canvas .parallax-coordinates { position: absolute; left: var(--parallax-space-3); bottom: var(--parallax-space-2); font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); }
+  .parallax-layer-list { display: grid; }
+  .parallax-layer-list .parallax-choice { padding: 0 var(--parallax-space-3); min-height: var(--parallax-control); border-radius: 0; }
+  .parallax-layer-list .parallax-choice:hover { background: var(--parallax-surface-2); }
+  .parallax-layer-list .parallax-choice .parallax-push { color: var(--parallax-muted); font: var(--parallax-text-xs) var(--parallax-font-technical); }
+  .parallax-tool-list .parallax-list-item .parallax-icon { color: var(--parallax-muted); }
+  .parallax-tool-list .parallax-list-item[aria-selected="true"] .parallax-icon { color: var(--parallax-accent); }
+  .parallax-tool-list .parallax-list-item kbd { margin-left: auto; }
+  .parallax-live-part { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--parallax-space-2); align-items: center; }
+  .parallax-live-part > label { font-size: var(--parallax-text-sm); }
+  .parallax-live-part > output { font: var(--parallax-text-sm) var(--parallax-font-technical); }
+  .parallax-live-part > .parallax-range { grid-column: 1 / -1; }
+  .parallax-live-part .parallax-switch { justify-self: end; }
+  @media (max-width: 1200px) { .parallax-bench-grid { grid-template-columns: var(--parallax-panel-width) 6px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; height: auto; min-height: calc(var(--parallax-bench-height) - var(--parallax-bench-bar)); } }
+  @media (max-width: 1200px) { .parallax-bench-grid > .parallax-bench-edge.parallax-inspector-edge { display: none; } }
+  @media (max-width: 1200px) { .parallax-bench-inspector .parallax-bench-folded { flex-direction: row; height: var(--parallax-bench-folded); padding: 0 var(--parallax-space-3); } }
+  @media (max-width: 1200px) { .parallax-bench-inspector .parallax-bench-folded > .parallax-label { writing-mode: horizontal-tb; } }
+  @media (max-width: 1200px) { .parallax-bench-inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--parallax-line); max-height: 50dvh; } }
+  @media (max-width: 1200px) { .parallax-bench-grid.parallax-no-side { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 1200px) { .parallax-bench-grid.parallax-no-side > .parallax-bench-edge { display: none; } }
+  @media (max-width: 1200px) { .parallax-bench-grid.parallax-no-side .parallax-bench-inspector { grid-column: 1; } }
+  @media (max-width: 1200px) { .parallax-bench-side, .parallax-bench-stage { height: calc(var(--parallax-bench-height) - var(--parallax-bench-bar)); } }
+  @media (max-width: 900px) { .parallax-bench-grid, .parallax-bench-grid.parallax-no-side { display: flex; flex-direction: column; height: auto; } }
+  @media (max-width: 900px) { .parallax-bench-grid > .parallax-bench-edge { display: none; } }
+  @media (max-width: 900px) { .parallax-bench-side, .parallax-bench-stage, .parallax-bench-inspector { height: auto; max-height: none; border: 0; border-top: 1px solid var(--parallax-line); } }
+  @media (max-width: 900px) { .parallax-bench-stage { min-height: 70dvh; } }
+  @media (max-width: 900px) { .parallax-sheet { min-height: 320px; } }
+  @media (max-width: 900px) { .parallax-scope { height: 320px; } }
+  /* A phone does not share one stage between the sheet and its instrument: each gets a height of its own and the page scrolls. */
+  @media (max-width: 900px) { .parallax-bench-stage .parallax-stage-body > .parallax-stage-top > .parallax-circuit-diagram, .parallax-bench-stage .parallax-stage-body > .parallax-sheet { min-height: 60dvh; } }
+  @media (max-width: 900px) { .parallax-bench-stage .parallax-stage-body > .parallax-bench-instruments { height: min(440px, 75dvh); } }
+  @media (max-width: 900px) { .parallax-bench-stage .parallax-stage-body > .parallax-bench-edge > .parallax-split-handle { display: none; } }
+  /* Toolbars keep one row and scroll sideways rather than stacking four rows above the sheet. */
+  @media (max-width: 600px) { .parallax-stage-toolbar, .parallax-scope-toolbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } }
+  @media (max-width: 600px) { .parallax-stage-toolbar > *, .parallax-scope-toolbar > * { flex: none; } }
+  @media (max-width: 900px) { .parallax-bench-side { order: 2; } }
+  @media (max-width: 900px) { .parallax-bench-inspector { order: 3; } }
+  @media (max-width: 900px) { .parallax-bench-stage { order: 1; } }
+
+  /* ---- the stand and an object's views ---- */
+  .parallax-stand { display: grid; grid-template-columns: var(--parallax-panel) minmax(0, 1fr) var(--parallax-inspector); gap: var(--parallax-space-4); align-items: start; }
+  .parallax-stand-stage { display: grid; gap: var(--parallax-space-3); }
+  .parallax-viewport { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 320px; background: var(--parallax-sheet); background-image: radial-gradient(var(--parallax-sheet-grid) 1px, transparent 1px); background-size: 20px 20px; border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); overflow: hidden; }
+  .parallax-viewport canvas { width: 100%; height: 100%; }
+  .parallax-viewport .parallax-viewport-status { position: absolute; left: var(--parallax-space-3); bottom: var(--parallax-space-2); font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); display: flex; gap: var(--parallax-space-3); }
+  .parallax-viewport .parallax-viewport-tools { position: absolute; top: var(--parallax-space-2); right: var(--parallax-space-2); display: flex; gap: var(--parallax-space-1); }
+  .parallax-representations { display: flex; gap: var(--parallax-space-1); flex-wrap: wrap; }
+  .parallax-explanation { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); background: var(--parallax-surface); overflow: hidden; }
+  .parallax-explanation > div { padding: var(--parallax-space-3) var(--parallax-space-4); border-right: 1px solid var(--parallax-line); display: grid; gap: var(--parallax-space-1); align-content: start; }
+  .parallax-explanation > div:last-child { border-right: 0; }
+  .parallax-explanation h3 { font-size: var(--parallax-text-xs); color: var(--parallax-muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .parallax-explanation p { font-size: var(--parallax-text-sm); }
+  .parallax-explanation .parallax-from { font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); }
+  .parallax-explanation .parallax-from a { color: var(--parallax-muted); }
+  @media (max-width: 1200px) { .parallax-stand { grid-template-columns: var(--parallax-panel) minmax(0, 1fr); } }
+  @media (max-width: 1200px) { .parallax-stand > .parallax-inspector { grid-column: 1 / -1; } }
+  @media (max-width: 1200px) { .parallax-explanation { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 1200px) { .parallax-explanation > div:nth-child(2n) { border-right: 0; } }
+  @media (max-width: 1200px) { .parallax-explanation > div:nth-child(-n+2) { border-bottom: 1px solid var(--parallax-line); } }
+  @media (max-width: 900px) { .parallax-stand { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .parallax-explanation { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .parallax-explanation > div { border-right: 0; border-bottom: 1px solid var(--parallax-line); } }
+  @media (max-width: 600px) { .parallax-explanation > div:last-child { border-bottom: 0; } }
+  @media (max-width: 600px) { .parallax-viewport { min-height: 240px; } }
+
+  /* ---- computed views ---- */
+  .parallax-visual-view { position: relative; width: 100%; height: 100%; min-height: 0; flex: 1; overflow: hidden; background: var(--parallax-sheet); }
+  .parallax-visual-host { position: absolute; inset: 0; touch-action: none; cursor: crosshair; outline: none; }
+  .parallax-visual-host:active { cursor: grabbing; }
+  .parallax-visual-host:focus-visible { box-shadow: inset 0 0 0 2px var(--parallax-accent); }
+  .parallax-visual-host > .parallax-visual-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; max-width: none; pointer-events: none; }
+  .parallax-computed-frame .parallax-visual-host { cursor: inherit; }
+  .parallax-visual-tools { position: absolute; top: var(--parallax-space-2); right: var(--parallax-space-2); display: grid; gap: var(--parallax-space-1); }
+  .parallax-visual-tools .parallax-button { background: var(--parallax-surface); }
+  .parallax-visual-readout { position: absolute; left: var(--parallax-space-2); bottom: var(--parallax-space-2); display: inline-flex; align-items: center; gap: var(--parallax-space-2); padding: 2px var(--parallax-space-2); background: var(--parallax-surface); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-control); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-ink); font-variant-numeric: tabular-nums; pointer-events: none; }
+  .parallax-visual-readout .parallax-muted { color: var(--parallax-muted); }
+  .parallax-viewport .parallax-visual-readout { bottom: calc(var(--parallax-space-2) + 22px); }
+  .parallax-viewport > .parallax-visual-view { position: absolute; inset: 0; }
+  .parallax-steady { display: inline-block; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .parallax-steady.parallax-width-3 { min-width: 3ch; }
+  .parallax-steady.parallax-width-4 { min-width: 4ch; }
+  .parallax-steady.parallax-width-5 { min-width: 5ch; }
+  .parallax-steady.parallax-width-7 { min-width: 7ch; }
+  .parallax-steady.parallax-width-9 { min-width: 9ch; }
+  .parallax-timeline { display: flex; align-items: center; gap: var(--parallax-space-3); padding: var(--parallax-space-2) var(--parallax-space-3); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); flex-wrap: wrap; }
+  .parallax-timeline > label { font-size: var(--parallax-text-sm); color: var(--parallax-ink); }
+  .parallax-timeline-range { flex: 1 1 200px; min-width: 120px; }
+  input.parallax-timeline-range::-webkit-slider-runnable-track { background: linear-gradient(90deg, var(--parallax-accent) var(--parallax-fill, 0%), color-mix(in srgb, var(--parallax-accent) 35%, var(--parallax-line)) var(--parallax-fill, 0%), color-mix(in srgb, var(--parallax-accent) 35%, var(--parallax-line)) var(--parallax-buffered, 0%), var(--parallax-line) var(--parallax-buffered, 0%)); }
+  .parallax-timeline-value { font: var(--parallax-text-sm) var(--parallax-font-technical); color: var(--parallax-ink); width: 8ch; text-align: right; font-variant-numeric: tabular-nums; }
+  /* A series of several units: one pane per unit, one above another, a hairline between, the unit named in the corner. */
+  .parallax-unit-panes { display: grid; width: 100%; height: 100%; min-height: 0; }
+  /* In a frame it fills the frame as one view would, so the panes share its height rather than grow it. */
+  .parallax-viewport > .parallax-unit-panes { position: absolute; inset: 0; }
+  .parallax-unit-pane > .parallax-visual-view { position: absolute; inset: 0; }
+  .parallax-unit-pane { position: relative; min-height: 0; }
+  .parallax-unit-pane + .parallax-unit-pane { border-top: 1px solid var(--parallax-line); }
+  .parallax-unit-pane-label { position: absolute; top: var(--parallax-space-1); left: var(--parallax-space-2); z-index: 1; pointer-events: none; font: 600 10px var(--parallax-font-technical); letter-spacing: 0.08em; text-transform: uppercase; color: var(--parallax-muted); }
+  /* A circuit's replay: the timeline, and under it the course virtual time takes — stretch, order of passes, curve. */
+  .parallax-replay { border-top: 1px solid var(--parallax-accent); }
+  .parallax-replay > .parallax-timeline { border-top: 0; }
+  .parallax-replay-course { display: flex; align-items: center; flex-wrap: wrap; gap: var(--parallax-space-3); padding: 0 var(--parallax-space-3) var(--parallax-space-2); background: var(--parallax-surface); }
+  .parallax-curve-glyph { flex: none; margin-right: var(--parallax-space-1); vertical-align: -1px; }
+  .parallax-timeline-status { margin-left: auto; display: inline-flex; justify-content: flex-end; min-width: 30ch; gap: var(--parallax-space-2); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); font-variant-numeric: tabular-nums; }
+  .parallax-computation-progress { position: absolute; top: var(--parallax-space-3); left: var(--parallax-space-3); z-index: 2; display: grid; gap: var(--parallax-space-1); width: min(300px, calc(100% - 2 * var(--parallax-space-3))); padding: var(--parallax-space-2) var(--parallax-space-3); background: var(--parallax-surface); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); box-shadow: var(--parallax-shadow-pop); }
+  .parallax-computation-progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--parallax-space-2); font-size: var(--parallax-text-sm); }
+  .parallax-computation-progress-head strong { font-weight: var(--parallax-weight-heading); color: var(--parallax-ink); }
+  .parallax-computation-progress-foot { font-size: var(--parallax-text-2xs); color: var(--parallax-muted); }
+  .parallax-computation-meter { position: relative; height: 4px; border-radius: var(--parallax-radius-small); background: var(--parallax-well); overflow: hidden; }
+  .parallax-computation-meter > span { position: absolute; inset: 0 auto 0 0; background: var(--parallax-accent); border-radius: var(--parallax-radius-small); transition: width 300ms ease; }
+  .parallax-computation-meter.parallax-indeterminate > span { width: 35% !important; animation: parallax-computation-sweep 1.4s ease-in-out infinite; }
+  .parallax-computation-running { position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 2; overflow: hidden; pointer-events: none; }
+  .parallax-computation-running::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 30%; background: var(--parallax-accent); animation: parallax-computation-sweep 1.1s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .parallax-computation-running::after, .parallax-computation-meter.parallax-indeterminate > span { animation: none; width: 100% !important; opacity: 0.5; } }
+  .parallax-visual-driver { position: absolute; right: var(--parallax-space-2); bottom: var(--parallax-space-2); z-index: 1; padding: 1px 6px; border-radius: var(--parallax-radius-small); background: color-mix(in srgb, var(--parallax-surface) 80%, transparent); font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .parallax-viewport .parallax-visual-driver { bottom: calc(var(--parallax-space-2) + 22px); }
+  /* The renderer's figures and the idle «drag to pan» hint come up while the pointer is over the view, and stay out of
+     the way otherwise: always on, they covered axes and curves on every plot. A reading under the pointer is the
+     pointer's, so it shows whenever there is one. */
+  .parallax-visual-driver, .parallax-visual-readout:has(> .parallax-muted) { opacity: 0; transition: opacity 120ms ease; }
+  .parallax-visual-view:hover > .parallax-visual-driver, .parallax-visual-view:hover > .parallax-visual-readout { opacity: 1; }
+  /* The frame's technical caption (shape, canvas, cached) likewise: it lay over a bottom pane's axis. */
+  .parallax-viewport > .parallax-viewport-status { opacity: 0; transition: opacity 120ms ease; pointer-events: none; }
+  .parallax-viewport:hover > .parallax-viewport-status, .parallax-viewport:focus-within > .parallax-viewport-status { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .parallax-visual-driver, .parallax-visual-readout { transition: none; } }
+  .parallax-scope-screen .parallax-visual-driver { top: var(--parallax-space-2); bottom: auto; right: var(--parallax-space-5); }
+
+  /* ---- bench parts: palette, meters, channels, graph ---- */
+  .parallax-workbench { display: flex; flex-direction: column; min-height: var(--parallax-bench-height); min-width: 0; }
+  .parallax-workbench > .parallax-bench { flex: 1; min-height: 0; }
+  .parallax-bench-grid.parallax-no-inspector { grid-template-columns: var(--parallax-panel-width) 6px minmax(0, 1fr); }
+  .parallax-bench-grid.parallax-no-side.parallax-no-inspector { grid-template-columns: minmax(0, 1fr); }
+  .parallax-bench-side > .parallax-side-note:last-child { margin-top: auto; }
+  @media (max-width: 1200px) { .parallax-bench-grid.parallax-no-inspector { grid-template-columns: var(--parallax-panel-width) 6px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); } }
+  .parallax-run-status strong { color: var(--parallax-ink); font-weight: 500; }
+  .parallax-buffer-readout { display: inline-flex; align-items: center; gap: var(--parallax-space-1); }
+  .parallax-buffer-meter { display: inline-block; width: 44px; height: 4px; }
+  .parallax-buffer-meter.parallax-low > span { background: var(--parallax-warn); }
+  .parallax-run-status .parallax-limited strong { color: var(--parallax-warn); }
+  /* One line, always: the figures keep their widths so the bar does not jump as they change, and never wrap. */
+  .parallax-tempo { display: inline-flex; align-items: center; flex-wrap: nowrap; flex: none; gap: var(--parallax-space-3); padding: 0 var(--parallax-space-2); border-left: 1px solid var(--parallax-line); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .parallax-tempo-figure { display: inline-flex; align-items: baseline; gap: var(--parallax-space-1); }
+  .parallax-tempo-figure small { font-size: inherit; text-transform: uppercase; letter-spacing: 0.06em; color: var(--parallax-secondary); }
+  .parallax-tempo-figure strong { color: var(--parallax-ink); font-weight: 500; }
+  .parallax-tempo-figure.parallax-buffer-readout { align-items: center; }
+  .parallax-tempo .parallax-limited strong { color: var(--parallax-warn); }
+  .parallax-tempo-verdict { padding: 0 var(--parallax-space-1); border: 1px solid var(--parallax-warn); color: var(--parallax-warn); text-transform: uppercase; letter-spacing: 0.06em; cursor: help; }
+  .parallax-stage-instrument { flex: none; height: var(--parallax-scope-height); min-height: 0; overflow: auto; padding: var(--parallax-space-3); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); display: grid; gap: var(--parallax-space-3); align-content: start; }
+  /* An analysis plot fills the height the instrument is given (the splitter sets it), never 16:10 of a wide stage — at
+     1900 px that was 1186 px tall inside 600, and the lower half of every plot, a Bode plot's phase pane with it, was
+     scrolled out of sight. Facts under it take their own rows. */
+  .parallax-stage-instrument { grid-template-rows: minmax(240px, 1fr); }
+  .parallax-stage-instrument:has(> .parallax-response-heading) { grid-template-rows: auto minmax(240px, 1fr); }
+  .parallax-response-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--parallax-space-3); }
+  .parallax-response-heading > p { flex: 1; min-width: 0; margin: 0; font-size: var(--parallax-text-sm); color: var(--parallax-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .parallax-response-heading > [data-parallax-part="segmented"] { flex: none; }
+  .parallax-response-heading strong { color: var(--parallax-ink); }
+  .parallax-stage-instrument > .parallax-viewport { aspect-ratio: auto; height: 100%; min-height: 240px; }
+  .parallax-readings-sheet { overflow: auto; background-image: none; }
+  .parallax-readings-sheet > .parallax-side-group { border-bottom: 1px solid var(--parallax-line); }
+  .parallax-palette-item svg .parallax-symbol-picture-strokes path { fill: none; stroke: currentColor; stroke-width: 2; }
+  .parallax-palette-problem { padding: 0 var(--parallax-space-3); }
+  .parallax-symbol-picture-strokes path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .parallax-drawing-symbol-pin circle { fill: var(--parallax-surface); stroke: var(--parallax-node); stroke-width: 1.4; }
+  .parallax-drawing-symbol-pin text { fill: var(--parallax-secondary); font: 8px var(--parallax-font-technical); }
+  .parallax-draw-canvas > svg.parallax-symbol-sheet { width: 100%; height: 100%; touch-action: none; }
+  .parallax-draw-canvas > svg.parallax-symbol-sheet:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: -2px; }
+  .parallax-draw-canvas .parallax-drawing.parallax-preview { stroke: var(--parallax-accent); stroke-dasharray: 2 1.5; pointer-events: none; }
+  .parallax-draw-canvas svg[data-tool="select"] .parallax-drawing { cursor: move; }
+  .parallax-draw-canvas svg:not([data-tool="select"]):not([data-tool="pan"]) { cursor: crosshair; }
+  .parallax-draw-canvas svg[data-tool="pan"] { cursor: grab; }
+  .parallax-inspector .parallax-table input.parallax-input.parallax-small { min-width: 0; width: 100%; }
+  .parallax-pins-table tr[aria-selected="true"] td { background: var(--parallax-accent-soft); }
+  .parallax-channel > header { flex-wrap: wrap; }
+  .parallax-channel-heading { display: flex; flex-wrap: wrap; align-items: center; gap: var(--parallax-space-2); min-width: 0; flex: 1 1 auto; }
+  /* A trace's colour bar and its palette sit in the heading's own row: the palette wraps under the name. */
+  .parallax-trace-color { display: contents; }
+  .parallax-channel-color-bar { width: 6px; height: 20px; padding: 0; border: 0; border-radius: 1px; background: var(--parallax-probe); cursor: pointer; flex: none; transition: width 120ms ease; }
+  .parallax-channel-color-bar:hover, .parallax-channel-color-bar[aria-expanded="true"] { width: 10px; }
+  .parallax-channel-color-bar:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: 2px; }
+  .parallax-channel-name { font: var(--parallax-weight-heading) var(--parallax-text-sm) var(--parallax-font-technical); color: var(--parallax-ink); background: transparent; border: 1px solid transparent; padding: 2px var(--parallax-space-1); width: 12ch; min-width: 0; }
+  .parallax-channel-name::placeholder { color: var(--parallax-ink); opacity: 1; }
+  .parallax-channel-name:hover { border-color: var(--parallax-line); }
+  .parallax-channel-name:focus-visible { outline: none; border-color: var(--parallax-accent); }
+  .parallax-channel-name.parallax-active { text-decoration: underline; text-decoration-color: var(--parallax-channel-color); text-underline-offset: 4px; }
+  .parallax-channel > header .parallax-badge { margin-left: var(--parallax-space-1); }
+  .parallax-recordings .parallax-list-item { padding: 0 var(--parallax-space-1) 0 var(--parallax-space-2); gap: var(--parallax-space-1); }
+  .parallax-computed-scope { display: grid; border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); overflow: hidden; }
+  .parallax-computed-scope-drawing { border-bottom: 1px solid var(--parallax-line); overflow: auto; }
+  .parallax-computed-scope-screen > .parallax-scope { height: 440px; border-top: 0; }
+  .parallax-logic-timing { display: grid; gap: var(--parallax-space-2); padding: var(--parallax-space-3); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); background: var(--parallax-surface); }
+  .parallax-component-preview { margin: 0; display: grid; }
+  .parallax-component-preview-drawing { display: grid; }
+  .parallax-component-preview-drawing .parallax-symbol-hero .parallax-symbol-drawing { width: min(100%, 220px); }
+  .parallax-component-preview-body { min-height: 210px; display: grid; grid-template-columns: minmax(70px, 1fr) minmax(120px, 1.5fr) minmax(70px, 1fr); grid-template-rows: auto 1fr auto; gap: var(--parallax-space-2); padding: var(--parallax-space-3); }
+  .parallax-component-preview-pins { display: flex; flex-direction: column; gap: var(--parallax-space-1); min-width: 0; }
+  .parallax-component-preview-pins[data-side="left"] { grid-column: 1; grid-row: 2; }
+  .parallax-component-preview-pins[data-side="right"] { grid-column: 3; grid-row: 2; }
+  .parallax-component-preview-pins[data-side="top"] { grid-column: 2; grid-row: 1; flex-direction: row; justify-content: center; }
+  .parallax-component-preview-pins[data-side="bottom"] { grid-column: 2; grid-row: 3; flex-direction: row; justify-content: center; }
+  .parallax-component-preview-pins span { display: flex; gap: var(--parallax-space-1); align-items: center; justify-content: space-between; padding: 2px var(--parallax-space-1); border-bottom: 1px solid var(--parallax-line); font-size: var(--parallax-text-xs); }
+  .parallax-component-preview-core { grid-column: 2; grid-row: 2; display: grid; place-items: center; padding: var(--parallax-space-3); border: 1.5px solid var(--parallax-ink); border-radius: var(--parallax-radius-small); font: var(--parallax-text-sm) var(--parallax-font-technical); text-align: center; }
+  .parallax-component-preview-core.parallax-triangle { clip-path: polygon(0 0, 100% 50%, 0 100%); border: 0; background: var(--parallax-well); }
+  .parallax-parameter-list .parallax-disclosure:first-child { border-top: 0; }
+  .parallax-parameter-list .parallax-disclosure > summary { gap: var(--parallax-space-3); padding: 0; min-height: var(--parallax-control-small); font-weight: 400; }
+  .parallax-parameter-list .parallax-disclosure > .parallax-disclosure-body { padding: var(--parallax-space-1) 0 var(--parallax-space-2); }
+  .parallax-draw-canvas .parallax-drawing, .parallax-draw-canvas .parallax-frame, .parallax-draw-canvas .parallax-axis, .parallax-draw-canvas .parallax-grid-minor, .parallax-draw-canvas .parallax-grid-major, .parallax-draw-canvas .parallax-anchor { vector-effect: non-scaling-stroke; }
+  .parallax-draw-canvas .parallax-drawing { stroke-width: 2.4; pointer-events: none; }
+  /* The shape's grip: a wide stroke nobody sees, along the line the reader aims at. */
+  .parallax-draw-canvas .parallax-drawing-hit { fill: none; stroke: transparent; stroke-width: 14px; vector-effect: non-scaling-stroke; pointer-events: stroke; }
+  .parallax-draw-canvas svg[data-tool="select"] .parallax-drawing-hit { cursor: move; }
+  .parallax-draw-canvas .parallax-grid-minor { stroke-width: 0.5; }
+  .parallax-draw-canvas .parallax-grid-major { stroke-width: 1; }
+  .parallax-draw-canvas .parallax-frame, .parallax-draw-canvas .parallax-axis, .parallax-draw-canvas .parallax-anchor { stroke-width: 1; }
+  .parallax-graph-stage { padding: 0; }
+  .parallax-graph-lines { list-style: none; margin: 0; padding: 0; display: grid; }
+  .parallax-graph-line { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; gap: var(--parallax-space-2); padding: var(--parallax-space-2) var(--parallax-space-2) var(--parallax-space-2) 0; border-bottom: 1px solid var(--parallax-line); background: var(--parallax-surface); }
+  .parallax-graph-line[aria-current="true"] { background: var(--parallax-surface-2); box-shadow: inset var(--parallax-band) 0 0 var(--parallax-accent); }
+  .parallax-graph-line-color { align-self: stretch; display: grid; place-items: start center; padding-top: 6px; border: 0; background: none; cursor: pointer; font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); }
+  .parallax-graph-line-color > span { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--parallax-line-color); background: var(--parallax-line-color); color: var(--parallax-surface); font-weight: 600; transition: background-color var(--parallax-ease), color var(--parallax-ease); }
+  .parallax-graph-line-color[aria-pressed="false"] > span { background: transparent; color: var(--parallax-line-color); }
+  .parallax-graph-line-color:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: -2px; }
+  .parallax-graph-line-body { display: grid; gap: var(--parallax-space-1); min-width: 0; }
+  .parallax-graph-line-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--parallax-space-1) var(--parallax-space-2); font-size: var(--parallax-text-xs); min-height: 14px; }
+  .parallax-graph-line-value { font: 600 var(--parallax-text-sm) var(--parallax-font-technical); color: var(--parallax-ink); font-variant-numeric: tabular-nums; }
+  .parallax-graph-line-sliders { display: flex; flex-wrap: wrap; align-items: center; gap: var(--parallax-space-1); font-size: var(--parallax-text-xs); }
+  .parallax-graph-line-detail { display: grid; gap: var(--parallax-space-2); padding-top: var(--parallax-space-1); }
+  .parallax-graph-line-detail .katex { font-size: 1.1em; }
+  .parallax-graph-line-remove { opacity: 0.55; }
+  .parallax-graph-line-remove:hover, .parallax-graph-line-remove:focus-visible { opacity: 1; }
+  .parallax-graph-slider { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--parallax-space-2); font-size: var(--parallax-text-2xs); color: var(--parallax-muted); }
+  .parallax-graph-slider input[type="range"] { width: 100%; accent-color: var(--parallax-accent); }
+  .parallax-graph-stage { min-height: 320px; }
+  .parallax-graph-panes { flex: 1; min-height: 0; display: grid; gap: 1px; background: var(--parallax-line); }
+  .parallax-graph-panes-rows { grid-auto-rows: minmax(0, 1fr); }
+  .parallax-graph-panes-columns { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .parallax-graph-panes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); }
+  .parallax-graph-pane { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--parallax-sheet); }
+  .parallax-graph-pane-name { position: absolute; top: var(--parallax-space-2); left: var(--parallax-space-2); z-index: 1; padding: 0 var(--parallax-space-1); font-size: var(--parallax-text-2xs); color: var(--parallax-muted); background: var(--parallax-surface); border: 1px solid var(--parallax-line); text-transform: uppercase; letter-spacing: 0.06em; }
+  .parallax-graph-circuit { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: var(--parallax-space-5) var(--parallax-space-3) var(--parallax-space-3); }
+  .parallax-graph-circuit .parallax-circuit-diagram { flex: 1; min-height: 0; margin: 0; border: 0; background: transparent; }
+  .parallax-graph-circuit .parallax-circuit-diagram svg { width: 100%; height: 100%; min-height: 0; }
+  .parallax-graph-circuit .parallax-circuit-diagram-grid, .parallax-graph-circuit :is(figcaption, .parallax-circuit-diagram-head) { display: none; }
+  .parallax-graph-circuit-time { position: absolute; top: var(--parallax-space-2); right: var(--parallax-space-3); margin: 0; font-size: var(--parallax-text-xs); color: var(--parallax-muted); }
+  .parallax-graph-pane-camera { position: absolute; top: var(--parallax-space-2); left: 50%; transform: translateX(-50%); z-index: 2; }
+  .parallax-graph-pane-later { margin: auto; padding: var(--parallax-space-4); max-width: 44ch; text-align: center; font-size: var(--parallax-text-sm); }
+  @media (max-width: 760px) { .parallax-graph-stage { min-height: 60dvh; } }
+  @media (max-width: 760px) { .parallax-graph-panes-columns, .parallax-graph-panes-grid { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(240px, 1fr); } }
+  .parallax-logic-lanes { display: grid; column-gap: var(--parallax-space-3); align-items: center; }
+  .parallax-logic-lane-name, .parallax-logic-lane-state { font-size: var(--parallax-text-xs); }
+  .parallax-logic-lane-view { position: relative; align-self: stretch; min-height: 0; border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-small); overflow: hidden; }
+  .parallax-logic-lane-view > .parallax-visual-view { position: absolute; inset: 0; }
+  .parallax-graph-checks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--parallax-space-2); }
+  .parallax-graph-checks li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: var(--parallax-space-2); font-size: var(--parallax-text-xs); }
+  .parallax-graph-checks li > span:last-child { display: flex; flex-wrap: wrap; gap: 0 var(--parallax-space-1); align-items: baseline; }
+  .parallax-graph-check-state { font-weight: 700; }
+  .parallax-graph-checks .parallax-holds .parallax-graph-check-state { color: var(--parallax-good, var(--parallax-accent)); }
+  .parallax-graph-checks .parallax-fails .parallax-graph-check-state { color: var(--parallax-danger, var(--parallax-warn)); }
+  .parallax-probe-1 { --parallax-probe: var(--parallax-probe-1); }
+  .parallax-probe-2 { --parallax-probe: var(--parallax-probe-2); }
+  .parallax-probe-3 { --parallax-probe: var(--parallax-probe-3); }
+  .parallax-probe-4 { --parallax-probe: var(--parallax-probe-4); }
+  .parallax-probe-5 { --parallax-probe: var(--parallax-probe-5); }
+  .parallax-probe-6 { --parallax-probe: var(--parallax-probe-6); }
+  .parallax-probe-7 { --parallax-probe: var(--parallax-probe-7); }
+  .parallax-probe-8 { --parallax-probe: var(--parallax-probe-8); }
+  .parallax-probe-9 { --parallax-probe: var(--parallax-probe-9); }
+  .parallax-probe-10 { --parallax-probe: var(--parallax-probe-10); }
+  .parallax-swatch.parallax-probe-swatch { background: var(--parallax-probe); }
+  .parallax-channel.parallax-probe-channel { --parallax-channel-color: var(--parallax-probe); }
+  .parallax-probe-colors-choice { display: flex; flex-wrap: wrap; gap: var(--parallax-space-1); flex-basis: 100%; }
+  .parallax-probe-colors-choice button { width: 18px; height: 18px; padding: 0; border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-small); background: var(--parallax-probe); cursor: pointer; }
+  .parallax-probe-colors-choice button[aria-pressed="true"] { outline: 2px solid var(--parallax-ink); outline-offset: 1px; }
+  .parallax-probe-colors-choice button:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: 2px; }
+  .parallax-inspector-switch { padding: var(--parallax-space-2) var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); }
+  .parallax-channel.parallax-bench-meter > header h3 { flex: 1 1 auto; }
+  .parallax-channel.parallax-bench-meter > header h3::before { content: none; }
+  .parallax-meter-kind { display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--parallax-ink); font: var(--parallax-weight-heading) var(--parallax-text-sm) var(--parallax-font-technical); flex: none; }
+  .parallax-meter-display { display: block; padding: var(--parallax-space-2) var(--parallax-space-3); border: 1px solid var(--parallax-line-strong); background: var(--parallax-surface-2); font: var(--parallax-weight-heading) 22px var(--parallax-font-technical); font-variant-numeric: tabular-nums; text-align: right; }
+  .parallax-meter-range { margin: 0; color: var(--parallax-muted); font: var(--parallax-text-sm) var(--parallax-font-technical); font-variant-numeric: tabular-nums; text-align: right; }
+  .parallax-meter-add { display: flex; flex-wrap: wrap; gap: var(--parallax-space-2); padding: var(--parallax-space-3); }
+  .parallax-current-preview { width: 100%; max-width: 480px; height: 60px; border: 1px solid var(--parallax-line); background: var(--parallax-surface-2); }
+  .parallax-current-preview path { fill: none; stroke-linecap: round; }
+  .parallax-current-preview-wire { stroke: var(--parallax-ink); stroke-width: 2; opacity: .45; }
+  .parallax-current-preview-tube { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 7; }
+  .parallax-current-preview-glow { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 6; animation: parallax-current-preview-glow 1.2s linear infinite; }
+  .parallax-current-preview-core { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 2.2; animation: parallax-current-preview-core 1.2s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .parallax-current-preview-glow, .parallax-current-preview-core { animation: none; } }
+  .parallax-live-part-group { display: grid; gap: var(--parallax-space-1); padding-top: var(--parallax-space-1); }
+  .parallax-live-part-name { margin: 0; font: var(--parallax-weight-heading) var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); letter-spacing: .04em; }
+  .parallax-live-part-group .parallax-live-part > label { font-family: var(--parallax-font-technical); }
+  .parallax-palette-item svg { width: 44px; height: 32px; }
+  .parallax-palette-item span { white-space: normal; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 2.4em; }
+  .parallax-current-preview-alternating { stroke: var(--parallax-flow-alternating-color, var(--parallax-warn)); stroke-width: 4; stroke-dasharray: var(--parallax-alternating-dash, 5 11); }
+  .parallax-current-preview-alternating.parallax-forward { animation: parallax-current-preview-forward var(--parallax-alternating-duration, 700ms) linear infinite; }
+  .parallax-current-preview-alternating.parallax-back { stroke: var(--parallax-flow-alternating-return-color, var(--parallax-flow-alternating-color, var(--parallax-warn))); animation: parallax-current-preview-back var(--parallax-alternating-duration, 700ms) linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .parallax-current-preview-alternating { animation: none; } }
+  .parallax-stage-toolbar .parallax-hint.parallax-probing { color: var(--parallax-ink); display: inline-flex; align-items: center; gap: var(--parallax-space-1); }
+  .parallax-bench-instruments { flex: none; height: var(--parallax-scope-height); display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; border-top: 1px solid var(--parallax-line); }
+  .parallax-bench-instruments > * { min-width: 0; }
+  .parallax-bench-instruments > .parallax-scope, .parallax-bench-instruments > .parallax-pane-split > .parallax-scope { height: auto; min-height: 0; border-top: 0; }
+  .parallax-bench-instruments[data-state="both"] > .parallax-pane-split { height: 100%; }
+  .parallax-bench-instruments[data-state="both"] .parallax-meter-strip { border-left: 1px solid var(--parallax-line); }
+  .parallax-meter-strip { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: auto; background: var(--parallax-surface); }
+  .parallax-meter-displays { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--parallax-space-2); padding: var(--parallax-space-3); align-content: start; }
+  .parallax-meter-card { display: grid; gap: var(--parallax-space-2); padding: var(--parallax-space-2) var(--parallax-space-3); border: 1px solid var(--parallax-line); background: var(--parallax-surface); }
+  .parallax-meter-card > header { display: flex; align-items: center; gap: var(--parallax-space-2); min-width: 0; }
+  .parallax-meter-card > header .parallax-monospace { color: var(--parallax-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
+  .parallax-meter-display.parallax-small { padding: var(--parallax-space-1) var(--parallax-space-2); font-size: 14px; }
+  .parallax-meter-trend { position: relative; height: 96px; min-width: 0; border: 1px solid var(--parallax-line-strong); }
+  /* An analog display: a needle on a dial, in the screen's colours; the needle swings with a movement's inertia. */
+  .parallax-meter-gauge { margin: 0; min-width: 0; border: 1px solid var(--parallax-line-strong); background: var(--parallax-screen); }
+  .parallax-meter-gauge svg { display: block; width: 100%; height: auto; }
+  .parallax-meter-gauge-arc { fill: none; stroke: var(--parallax-screen-text); stroke-width: 1.5; opacity: .8; }
+  .parallax-meter-gauge-tick { stroke: var(--parallax-screen-text); stroke-width: 1; opacity: .55; }
+  .parallax-meter-gauge-tick.parallax-major { stroke-width: 1.6; opacity: .85; }
+  .parallax-meter-gauge-number { fill: var(--parallax-screen-text); font: 11px var(--parallax-font-technical); font-variant-numeric: tabular-nums; }
+  .parallax-meter-gauge-unit { fill: var(--parallax-screen-text); opacity: .7; font: 12px var(--parallax-font-technical); }
+  .parallax-meter-gauge-needle { stroke: var(--parallax-accent); stroke-width: 2.2; stroke-linecap: round; transition: transform 380ms cubic-bezier(.34, 1.3, .64, 1); }
+  .parallax-meter-gauge-pivot { fill: var(--parallax-accent); }
+  @media (prefers-reduced-motion: reduce) { .parallax-meter-gauge-needle { transition: none; } }
+  .parallax-meter-card > div:last-child, .parallax-bench-meter .parallax-control-row { display: flex; flex-wrap: wrap; gap: var(--parallax-space-2); }
+  .parallax-meter-strip > .parallax-side-note { padding: var(--parallax-space-3); }
+
+  /* ---- formulas, editors, documents ---- */
+  .parallax-formula-error-mark { text-decoration: underline wavy var(--parallax-danger); text-underline-offset: 3px; background: var(--parallax-danger-soft); }
+  .parallax-computed-thumbnail, .parallax-computed-frame { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; display: grid; place-items: center; color: var(--parallax-accent); }
+  .parallax-computed-frame > .parallax-visual-view { position: absolute; inset: 0; }
+  .parallax-computed-frame .parallax-viewport-message .parallax-formula { font-size: var(--parallax-text-xs); }
+  .parallax-viewport.parallax-viewport-fill { flex: 1; aspect-ratio: auto; min-height: 0; height: 100%; border: 0; border-radius: 0; }
+  .parallax-viewport.parallax-viewport-linked { aspect-ratio: 4 / 3; min-height: 220px; }
+  .parallax-viewport-message { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--parallax-space-5); text-align: center; color: var(--parallax-ink); overflow: auto; }
+  .parallax-viewport-message .parallax-notice { max-width: 52ch; text-align: left; }
+  .parallax-viewport-drawing { display: grid; place-items: center; color: var(--parallax-ink); }
+  .parallax-viewport-drawing .parallax-symbol-drawing { width: min(60%, 320px); height: auto; max-height: 80%; }
+  .parallax-viewport-tools .parallax-segmented { background: var(--parallax-surface); }
+  .parallax-formula-typeset { position: relative; max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .parallax-formula-typeset .katex { font-size: 1em; color: var(--parallax-accent); }
+  .parallax-formula-plain { margin: 0; font: var(--parallax-text-sm) / 1.6 var(--parallax-font-technical); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--parallax-ink); }
+  .parallax-formula-notation { display: grid; gap: var(--parallax-space-2); min-width: 0; justify-items: start; }
+  .parallax-formula-notation-display .parallax-formula-typeset .katex { font-size: 1.35em; color: var(--parallax-ink); }
+  .parallax-formula-notation-display .parallax-formula-typeset .katex-display { margin: var(--parallax-space-1) 0; text-align: left; }
+  .parallax-formula-band .parallax-display-formula .parallax-formula-typeset .katex { color: var(--parallax-ink); font-size: 1em; }
+  .parallax-formula-band .parallax-display-formula .katex-display { margin: 0; text-align: left; }
+  .parallax-viewport-message .parallax-formula-typeset .katex { font-size: 1.6em; color: var(--parallax-ink); }
+  .parallax-formula-editor { --foreground: var(--parallax-ink); --primary: var(--parallax-accent); --font-mono: var(--parallax-font-technical); --muted-foreground: var(--parallax-muted); --border: var(--parallax-line); background: var(--parallax-surface); border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-control); min-height: var(--parallax-control); }
+  .parallax-formula-editor:focus-within { border-color: var(--parallax-accent); box-shadow: 0 0 0 3px var(--parallax-accent-soft); }
+  .parallax-formula-editor-invalid { border-color: var(--parallax-danger); }
+  .parallax-code-editor { border: 1px solid var(--parallax-line-strong); border-radius: var(--parallax-radius-control); background: var(--parallax-surface); overflow: hidden; min-width: 0; }
+  .parallax-code-editor:focus-within { border-color: var(--parallax-accent); box-shadow: 0 0 0 3px var(--parallax-accent-soft); }
+  .parallax-code-editor.parallax-bare { border: 0; border-radius: 0; }
+  .parallax-code-editor.parallax-bare:focus-within { box-shadow: none; }
+  .parallax-panel > .parallax-code-editor.parallax-bare { border-top: 0; }
+  .parallax-structure-lines { display: grid; gap: var(--parallax-space-1); }
+  .parallax-structure-lines > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--parallax-space-2); font-size: var(--parallax-text-sm); }
+  .parallax-structure-name { font: 600 var(--parallax-text-sm) var(--parallax-font-technical); }
+  .parallax-structure-value, .parallax-structure-expression { font: var(--parallax-text-sm) var(--parallax-font-technical); color: var(--parallax-secondary); overflow-wrap: anywhere; }
+  .parallax-structure-note { flex-basis: 100%; font-size: var(--parallax-text-xs); color: var(--parallax-muted); }
+  .parallax-stand > .parallax-panel, .parallax-stand > .parallax-inspector { position: sticky; top: calc(var(--parallax-topbar) + var(--parallax-space-4)); }
+  .parallax-explanation code { font: var(--parallax-text-2xs) var(--parallax-font-technical); }
+  .parallax-document-sheet { display: grid; align-content: start; }
+  .parallax-document-sheet > .parallax-disclosure:first-of-type { border-top: 0; }
+  .parallax-sheet-lines { display: grid; gap: var(--parallax-space-2); }
+  .parallax-sheet-line { display: grid; gap: var(--parallax-space-1); padding: var(--parallax-space-2); border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-control); background: var(--parallax-surface-2); min-width: 0; }
+  .parallax-sheet-line-new { border-style: dashed; }
+  .parallax-sheet-line .parallax-field-inline { grid-template-columns: minmax(72px, 96px) minmax(0, 1fr); }
+  .parallax-sheet-line .parallax-field-inline > label, .parallax-sheet-label { font-size: var(--parallax-text-xs); color: var(--parallax-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .parallax-sheet-error { grid-column: 1 / -1; }
+  .parallax-disclosure-body > .parallax-row:last-child { justify-content: flex-end; }
+  .parallax-draft-empty { margin: auto; border: 0; }
+  .parallax-side-group pre.parallax-code { max-height: 220px; }
+  @media (max-width: 900px) { .parallax-stand > .parallax-panel, .parallax-stand > .parallax-inspector { position: static; } }
+  .parallax-formula-band .katex-display { margin: 0; text-align: left; }
+  .parallax-formula-band .katex-display > .katex { text-align: left; }
+  .parallax-stand-explanation > summary h2 { flex: none; white-space: nowrap; margin: 0; font: var(--parallax-weight-heading) var(--parallax-text-md) var(--parallax-font-heading); color: var(--parallax-ink); }
+  .parallax-stand-explanation > summary .parallax-metadata { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .parallax-stand-explanation { border-top: 1px solid var(--parallax-line); }
+
+  /* ---- pages ---- */
+  .parallax-specimen-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--parallax-space-3); }
+  .parallax-specimen-tile { margin: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; border: 1px solid var(--parallax-line); border-radius: var(--parallax-radius-surface); background: var(--parallax-sheet); overflow: hidden; }
+  .parallax-specimen-view { position: relative; aspect-ratio: 4 / 3; min-height: 0; }
+  .parallax-specimen-view > .parallax-visual-view, .parallax-specimen-trace > .parallax-visual-view { position: absolute; inset: 0; }
+  .parallax-specimen-view .parallax-visual-driver { display: none; }
+  .parallax-specimen-tile > figcaption { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; column-gap: var(--parallax-space-2); row-gap: 2px; padding: var(--parallax-space-2) var(--parallax-space-3); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); }
+  .parallax-specimen-tile > figcaption strong { font-size: var(--parallax-text-sm); color: var(--parallax-ink); white-space: nowrap; }
+  .parallax-specimen-tile > figcaption .parallax-technical { justify-self: end; font-size: var(--parallax-text-2xs); color: var(--parallax-muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .parallax-specimen-definition { grid-column: 1 / -1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--parallax-font-technical); font-size: var(--parallax-text-2xs); color: var(--parallax-muted); }
+  .parallax-specimen-circuit { position: absolute; inset: 0; display: grid; grid-template-rows: 42% minmax(0, 1fr); }
+  .parallax-specimen-schematic { position: relative; min-height: 0; padding: var(--parallax-space-1) var(--parallax-space-2); border-bottom: 1px solid var(--parallax-line); overflow: hidden; }
+  .parallax-specimen-schematic > * { width: 100%; height: 100%; margin: 0; border: 0; padding: 0; display: block; background: transparent; }
+  .parallax-specimen-schematic .parallax-circuit-diagram { background: transparent; }
+  .parallax-specimen-schematic .parallax-circuit-diagram svg { width: 100%; height: 100%; min-height: 0; display: block; background: transparent; }
+  .parallax-specimen-schematic .parallax-circuit-diagram-grid { display: none; }
+  .parallax-specimen-schematic :is(figcaption, .parallax-circuit-diagram-head) { display: none; }
+  .parallax-specimen-trace { position: relative; min-height: 0; }
+  .parallax-specimen-grid.parallax-compact { gap: var(--parallax-space-2); }
+  .parallax-specimen-representations { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--parallax-space-3); }
+  @media (max-width: 1100px) { .parallax-specimen-representations { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .parallax-specimen-grid.parallax-compact .parallax-specimen-tile > figcaption { padding: var(--parallax-space-1) var(--parallax-space-2); }
+  @media (max-width: 640px) { .parallax-specimen-grid { gap: var(--parallax-space-2); } }
+  @media (max-width: 640px) { .parallax-specimen-tile > figcaption :is(.parallax-technical, .parallax-specimen-definition) { display: none; } }
+
+  /* ---- instruments: schematic, current, loads, timing, readings ---- */
+  .parallax-dataset-facts { display:grid;gap:14px }
+  /* A settings sheet: sections, one row per setting — name in a fixed column, control beside it. */
+  .parallax-appearance-sheet { display:grid; gap:var(--parallax-space-4) }
+  .parallax-appearance-section { display:grid }
+  .parallax-appearance-sheet > .parallax-current-preview { width:100%; height:72px }
+  .parallax-appearance-section > h3 { margin:0 0 var(--parallax-space-1); font:600 11px/1 var(--parallax-font-technical); letter-spacing:.08em; text-transform:uppercase; color:var(--parallax-muted) }
+  .parallax-appearance-row { display:grid; grid-template-columns:9.5rem minmax(0,1fr); align-items:center; gap:var(--parallax-space-1) var(--parallax-space-3); padding:var(--parallax-space-2) 0; margin:0; border:0; border-top:1px solid var(--parallax-line); min-width:0 }
+  .parallax-appearance-row > :is(legend, label) { float:left; margin:0; padding:0; font:500 12px/1.3 var(--parallax-font-technical); color:var(--parallax-secondary) }
+  .parallax-appearance-row > .parallax-segmented { justify-self:start; max-width:100%; flex-wrap:wrap; height:auto }
+  .parallax-appearance-row > .parallax-hint { grid-column:2; margin:0; font:400 11px/1.45 var(--parallax-font-technical); color:var(--parallax-muted) }
+  /* A list of colours lies on an even grid, never wrapping raggedly. */
+  .parallax-appearance-row > .parallax-segmented:has(.parallax-color-dot) { justify-self:stretch; display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr) }
+  .parallax-appearance-row > .parallax-segmented:has(.parallax-color-dot) > button { justify-content:flex-start }
+  .parallax-appearance-slider { display:grid; grid-template-columns:minmax(0,1fr) 7ch; align-items:center; gap:var(--parallax-space-3) }
+  .parallax-appearance-slider > output { font:600 12px/1 var(--parallax-font-technical); font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; color:var(--parallax-ink) }
+  @media (max-width: 600px) { .parallax-appearance-row { grid-template-columns:1fr } .parallax-appearance-row > .parallax-hint { grid-column:1 } }
+  .parallax-measurement-groups { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:var(--parallax-space-3) var(--parallax-space-5); align-items:start }
+  .parallax-measurement-groups h4 { margin:0 0 var(--parallax-space-1); padding-bottom:var(--parallax-space-1); border-bottom:1px solid var(--parallax-line) }
+  .parallax-dataset-symbolic { display:grid;gap:12px }
+  .parallax-dataset-symbolic-row { display:grid;gap:4px;min-width:0 }
+  .parallax-dataset-facts abbr { text-decoration:underline dotted;text-underline-offset:3px }
+  .parallax-empty-inline { padding:24px;text-align:center;color:var(--parallax-muted);font-size:12px;border:1px solid var(--parallax-line);border-radius:var(--parallax-radius-surface) }
+  .parallax-logic-timing { padding:16px;border:1px solid var(--parallax-line-strong);background:var(--parallax-surface) }
+  .parallax-logic-timing-heading { display:flex;justify-content:space-between;font:11px var(--parallax-font-technical);padding-bottom:14px;color:var(--parallax-muted) }
+  .parallax-logic-timing input[type=range] { width:100%;accent-color:var(--parallax-accent) }
+  .parallax-logic-timing p { font:10px var(--parallax-font-technical);margin-top:10px }
+  .parallax-circuit-diagram { min-width:0;margin:0;background:var(--parallax-surface) }
+  .parallax-circuit-diagram-head { display:flex;justify-content:space-between;gap:12px;padding:10px 18px;border-bottom:1px solid var(--parallax-line);font:11px var(--parallax-font-technical) }
+  .parallax-circuit-diagram-head span { color:var(--parallax-muted) }
+  .parallax-circuit-diagram-head > :is(strong, span) { min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+  .parallax-circuit-diagram-head > .parallax-circuit-diagram-view { flex:none }
+  .parallax-circuit-diagram svg { display:block;width:100%;max-height:420px;min-height:250px;color:var(--parallax-line-strong);background:var(--parallax-surface) }
+  .parallax-circuit-diagram-grid { opacity:.35 }
+  .parallax-circuit-diagram-wire { fill:none;stroke:var(--parallax-accent);stroke-width:var(--parallax-stroke-wire);stroke-linecap:square;stroke-linejoin:miter }
+  .parallax-circuit-diagram text { fill:var(--parallax-ink);font:12px var(--parallax-font-technical) }
+  .parallax-circuit-diagram .parallax-circuit-diagram-name { font-weight:700 }
+  .parallax-circuit-diagram .parallax-circuit-diagram-value { fill:var(--parallax-muted) }
+  .parallax-circuit-diagram-node>circle:first-child { fill:var(--parallax-surface);stroke:var(--parallax-accent);stroke-width:2 }
+  .parallax-circuit-diagram-hit { fill:transparent;cursor:crosshair }
+  .parallax-circuit-diagram-hit:focus-visible { outline:3px solid var(--parallax-accent);outline-offset:3px }
+  .parallax-circuit-diagram figcaption { padding:8px 18px;border-top:1px solid var(--parallax-line);font:10px var(--parallax-font-technical);color:var(--parallax-muted) }
+  @media (max-width:700px) { .parallax-circuit-diagram svg { min-height:180px } }
+  .parallax-circuit-diagram-authored svg { height:clamp(320px,45vw,620px);min-height:320px }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-wire { stroke-width:var(--parallax-stroke-wire) }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-element rect { fill:var(--parallax-surface);stroke:var(--parallax-ink);stroke-width:var(--parallax-stroke-symbol) }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-junction { fill:var(--parallax-accent) }
+  .parallax-circuit-diagram-authored .parallax-drawing-symbol,.parallax-circuit-diagram-authored .parallax-drawing-model-lead { fill:none;stroke:var(--parallax-ink);stroke-width:var(--parallax-stroke-symbol);stroke-linecap:round;stroke-linejoin:round }
+  .parallax-circuit-diagram-authored .parallax-drawing-pin-name { font:9px var(--parallax-font-technical);fill:var(--parallax-muted) }
+  .parallax-circuit-diagram-authored .parallax-drawing-model-name { font:600 11px var(--parallax-font-technical);fill:var(--parallax-ink) }
+  .parallax-circuit-diagram-wire-live { stroke-width:var(--parallax-stroke-wire);transition:stroke 120ms ease }
+  .parallax-voltage-legend { display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:6px 12px;border-top:1px solid var(--parallax-line);font:11px var(--parallax-font-technical);color:var(--parallax-muted) }
+  .parallax-voltage-legend-scale i { display:inline-block;width:96px;height:6px;border:1px solid var(--parallax-line) }
+  .parallax-voltage-legend ul { display:flex;flex-wrap:wrap;gap:4px 12px;margin:0;padding:0;list-style:none }
+  .parallax-voltage-legend code { color:var(--parallax-ink) }
+  .parallax-circuit-diagram-flow { pointer-events:none }
+  .parallax-circuit-diagram-flow path { fill:none;stroke-linecap:round }
+  .parallax-circuit-diagram-flow-tube { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:7;opacity:.08;transition:opacity 120ms ease }
+  .parallax-circuit-diagram-flow-glow { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:6;stroke-dasharray:10 14;opacity:0 }
+  .parallax-circuit-diagram-flow-core { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:2.2;stroke-dasharray:4 20;opacity:0 }
+  /* An alternating wire is drawn by the same neon as a flowing one, in its own colours: the row running back in the return colour. */
+  .parallax-circuit-diagram-flow.parallax-alternating path { stroke:var(--parallax-flow-alternating-color,var(--parallax-warn)) }
+  .parallax-circuit-diagram-flow.parallax-alternating path.parallax-circuit-diagram-flow-return { stroke:var(--parallax-flow-alternating-return-color,var(--parallax-flow-alternating-color,var(--parallax-warn))) }
+  .parallax-circuit-diagram-alternation { color:var(--parallax-accent);font-variant-numeric:tabular-nums }
+  /* A glow is heat or delivery, and moves at a pace the eye reads as warmth, not as a signal: 600 ms. */
+  .parallax-circuit-diagram-glow { fill:var(--parallax-glow-taking-color,var(--parallax-warn));stroke:none;transition:opacity 600ms ease }
+  .parallax-heat-source .parallax-circuit-diagram-glow { fill:var(--parallax-glow-giving-color,var(--parallax-accent)) }
+  /* A part past its limits: outlined, the readings beside it say which limit. */
+  .parallax-circuit-diagram-limit { fill:none;stroke:var(--parallax-warn);stroke-width:1.5;vector-effect:non-scaling-stroke }
+  .parallax-circuit-diagram-heat-overheated .parallax-circuit-diagram-limit, .parallax-circuit-diagram-heat-burnt .parallax-circuit-diagram-limit { stroke:var(--parallax-danger,var(--parallax-warn)) }
+  .parallax-circuit-diagram-heat-burnt .parallax-circuit-diagram-limit { stroke-dasharray:4 3 }
+  .parallax-circuit-diagram .parallax-circuit-diagram-load { font:10px var(--parallax-font-technical);fill:var(--parallax-warn);font-variant-numeric:tabular-nums }
+  .parallax-part-load-table { width:100%;border-collapse:collapse;font:11px var(--parallax-font-technical);font-variant-numeric:tabular-nums }
+  .parallax-part-load-table th,.parallax-part-load-table td { padding:3px 12px;border-top:1px solid var(--parallax-line);text-align:right;font-weight:400;background:transparent }
+  .parallax-part-load-table th[scope=row],.parallax-part-load-table thead th:first-child { text-align:left }
+  .parallax-part-load-table thead th { color:var(--parallax-muted) }
+  .parallax-part-load-table code { color:var(--parallax-ink) }
+  @media (prefers-reduced-motion:reduce) { .parallax-circuit-diagram-wire-live { transition:none } }
+  @media (prefers-reduced-motion:reduce) { .parallax-circuit-diagram-glow { transition:none } }
+  .parallax-computed-scope { display: grid; gap: 0; border: 1px solid var(--parallax-line-strong); }
+  .parallax-computed-scope-drawing { border-bottom: 1px solid var(--parallax-line-strong); background: var(--parallax-background); padding: 8px; overflow: auto; }
+  .parallax-computed-scope-screen { height: 440px; }
+  .parallax-scope-screen { position: relative; min-height: 0; background: var(--parallax-screen); cursor: crosshair; touch-action: none; outline: none; }
+  .parallax-scope-screen:focus-visible { box-shadow: inset 0 0 0 2px var(--parallax-accent); }
+  .parallax-scope-screen > .parallax-scope-stage { pointer-events: none; cursor: inherit; }
+  .parallax-scope-screen.parallax-is-panning { cursor: grabbing; }
+  .parallax-part-load > summary { display: flex; gap: 10px; align-items: baseline; padding: 6px 12px; cursor: pointer; font: 600 11px var(--parallax-font-technical); }
+  .parallax-part-load > summary span { font-weight: 400; color: var(--parallax-muted); }
+  .parallax-part-load > summary:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: -2px; }
+  .parallax-computed-scope-drawing .parallax-circuit-diagram { border: 0; margin: 0; background: transparent; }
+  .parallax-computed-scope-drawing :is(.parallax-circuit-diagram-head, figcaption) { display: none; }
+  .parallax-bench-stage .parallax-circuit-diagram { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .parallax-bench-stage .parallax-circuit-diagram > svg { flex: 1; height: auto; min-height: 0; max-height: none; }
+  .parallax-scope > .parallax-scope-screen, .parallax-stage-body > .parallax-scope-screen { flex: 1; }
+  figure.parallax-viewport, .parallax-computed-frame { background-image: none; background-color: transparent; }
+  .parallax-computed-scope { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .parallax-computed-scope-drawing .parallax-circuit-diagram-authored svg { height: auto; aspect-ratio: 16 / 9; min-height: 0; max-height: 560px; }
+  .parallax-circuit-diagram-probe-tip { fill:var(--parallax-probe,var(--parallax-accent));stroke:var(--parallax-surface);stroke-width:2;cursor:grab }
+  .parallax-circuit-diagram-probe.parallax-carried .parallax-circuit-diagram-probe-tip { cursor:grabbing;opacity:.85 }
+  .parallax-circuit-diagram-probe-clip { fill:none;stroke:var(--parallax-probe,var(--parallax-accent));stroke-width:2.5;stroke-dasharray:3 2;pointer-events:none }
+  .parallax-circuit-diagram-probe .parallax-circuit-diagram-probe-tag { fill:var(--parallax-probe,var(--parallax-accent));font:700 10px var(--parallax-font-technical);pointer-events:none }
+  .parallax-circuit-diagram-meter rect { fill:var(--parallax-surface);stroke:var(--parallax-ink);stroke-width:1 }
+  .parallax-circuit-diagram-meter text { fill:var(--parallax-ink);font:700 10px var(--parallax-font-technical);font-variant-numeric:tabular-nums }
+  /* A probed net is marked by a wide, faint halo around its wires — wider than the widest current (11) and too faint to
+     read as one: a 9-wide band at .3 sat exactly where a current is drawn, so a net under an orange probe looked like a
+     strong current and one under a blue probe like a weak one. */
+  .parallax-circuit-diagram-probe-net { fill:none;stroke:var(--parallax-probe,var(--parallax-accent));stroke-width:18;stroke-linecap:round;stroke-linejoin:round;opacity:.14;pointer-events:none }
+  .parallax-circuit-diagram-leader path { fill:none;stroke:var(--parallax-muted);stroke-width:1;opacity:.8 }
+  .parallax-circuit-diagram-leader circle { fill:var(--parallax-muted) }
+  .parallax-circuit-diagram-load[data-state="overloaded"], .parallax-circuit-diagram-load[data-state="overheated"] { fill:var(--parallax-danger,var(--parallax-warn));font-weight:700 }
+  .parallax-circuit-diagram-load[data-state="burnt"] { fill:var(--parallax-danger,var(--parallax-warn));font-weight:700 }
+  .parallax-circuit-diagram-heat-overheated .parallax-circuit-diagram-glow { fill:var(--parallax-danger,var(--parallax-warn)) }
+  .parallax-circuit-diagram-heat-burnt .parallax-circuit-diagram-glow { fill:var(--parallax-danger,var(--parallax-warn)) }
+  .parallax-circuit-diagram-indicator-well { fill:var(--parallax-surface);stroke:none;opacity:.35 }
+  .parallax-circuit-diagram-indicator { stroke:none;opacity:.85;transition:height 120ms ease, y 120ms ease, width 120ms ease }
+  .parallax-circuit-diagram-indicator.parallax-positive { fill:var(--parallax-flow-color,var(--parallax-accent)) }
+  .parallax-circuit-diagram-indicator.parallax-negative { fill:var(--parallax-probe-3) }
+  @media (prefers-reduced-motion: reduce) { .parallax-circuit-diagram-indicator { transition:none } }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-element.parallax-movable { cursor:grab;touch-action:none }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-element.parallax-moving { cursor:grabbing;opacity:.85 }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-element.parallax-movable:hover .parallax-drawing-symbol { color:var(--parallax-accent) }
+  .parallax-circuit-diagram-authored { position:relative }
+  .parallax-circuit-diagram-authored svg.parallax-circuit-diagram-editing { touch-action:none }
+  .parallax-circuit-diagram-authored svg.parallax-circuit-diagram-editing:focus { outline:none }
+  .parallax-circuit-diagram-authored svg.parallax-circuit-diagram-editing:focus-visible { outline:2px solid var(--parallax-accent);outline-offset:-2px }
+  .parallax-circuit-diagram-editing.parallax-tool-wire, .parallax-circuit-diagram-editing.parallax-placing { cursor:crosshair }
+  .parallax-circuit-diagram-editing.parallax-tool-pan { cursor:grab }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-element.parallax-selected .parallax-drawing-symbol { color:var(--parallax-accent) }
+  /* The box a selection is drawn with: what it holds whole is taken. */
+  .parallax-selection-box { fill: color-mix(in srgb, var(--parallax-accent) 10%, transparent); stroke: var(--parallax-accent); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .parallax-selection-frame { fill: none; stroke: var(--parallax-accent); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .parallax-circuit-diagram-wire-hit { fill:none;stroke:transparent;stroke-width:14px;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer }
+  .parallax-circuit-diagram-wire-selected { fill:none;stroke:var(--parallax-accent);stroke-width:7;opacity:.35;pointer-events:none }
+  .parallax-circuit-diagram-port-target { fill:transparent;stroke:var(--parallax-accent);stroke-width:1.5;stroke-dasharray:3 3;cursor:crosshair }
+  .parallax-circuit-diagram-port-target:hover, .parallax-circuit-diagram-port-target.parallax-pending { fill:color-mix(in srgb, var(--parallax-accent) 25%, transparent);stroke-dasharray:none }
+  .parallax-circuit-diagram-wire-preview { fill:none;stroke:var(--parallax-accent);stroke-width:var(--parallax-stroke-wire, 2.6);stroke-dasharray:7 5;pointer-events:none }
+  .parallax-circuit-diagram-magnet { fill:color-mix(in srgb, var(--parallax-accent) 20%, transparent);stroke:var(--parallax-accent);stroke-width:2;pointer-events:none }
+  .parallax-circuit-diagram-view { display:flex;flex:none;margin-left:8px;border:1px solid var(--parallax-line-strong);background:var(--parallax-surface) }
+  .parallax-circuit-diagram-view button { display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:26px;padding:0 8px;border:0;background:transparent;color:var(--parallax-ink);font:inherit;font-size:12px;cursor:pointer }
+  .parallax-circuit-diagram-view button + button { border-left:1px solid var(--parallax-line-strong) }
+  .parallax-circuit-diagram-view button:hover { background:color-mix(in srgb, var(--parallax-accent) 12%, transparent) }
+  .parallax-circuit-diagram-view button:focus-visible { outline:2px solid var(--parallax-accent);outline-offset:-2px }
+  .parallax-circuit-diagram-authored .parallax-circuit-diagram-view svg { width:14px;height:14px;min-height:0;max-height:none;flex:none;background:transparent }
+  .parallax-circuit-diagram-head:has(.parallax-circuit-diagram-view) { align-items:center;padding-block:4px }
+  .parallax-circuit-diagram-authored > .parallax-circuit-diagram-head:has(.parallax-circuit-diagram-view) { position:absolute;top:0;left:0;right:0;z-index:2;justify-content:flex-end;padding:6px 8px;border:0;background:transparent;pointer-events:none }
+  .parallax-circuit-diagram-authored > .parallax-circuit-diagram-head:has(.parallax-circuit-diagram-view) > :is(strong, span:not(.parallax-circuit-diagram-alternation)) { display:none }
+  .parallax-circuit-diagram-authored > .parallax-circuit-diagram-head:has(.parallax-circuit-diagram-view) > * { pointer-events:auto }
+  .parallax-circuit-diagram-authored > .parallax-circuit-diagram-head:has(.parallax-circuit-diagram-view) > .parallax-circuit-diagram-alternation { padding:3px 8px;border:1px solid var(--parallax-line);background:var(--parallax-surface) }
+  .parallax-circuit-diagram-head:has(.parallax-circuit-diagram-view) > span:last-of-type { margin-left:auto }
+  .parallax-circuit-diagram-wire.parallax-circuit-diagram-lead { stroke-linecap:round;stroke-linejoin:round;stroke-width:calc(var(--parallax-stroke-wire, 2.6) * 0.85) }
+  .parallax-circuit-diagram-wire-hit.parallax-lead { cursor:grab }
+  .parallax-circuit-diagram-lead-hold { fill:var(--parallax-surface);stroke:var(--parallax-accent);stroke-width:2;cursor:move }
+  .parallax-circuit-diagram-wire-end { fill:var(--parallax-accent);stroke:var(--parallax-surface);stroke-width:2;cursor:grab }
+  .parallax-circuit-diagram-editing.parallax-tool-cut .parallax-circuit-diagram-wire-hit { cursor:crosshair }
+  .parallax-circuit-diagram-text-movable { cursor:move }
+  .parallax-circuit-diagram-authored { --parallax-lead-red:#d0453b;--parallax-lead-black:#2a2d33;--parallax-lead-white:#ebe8e2;--parallax-lead-green:#3a9e55;--parallax-lead-blue:#3b78d0;--parallax-lead-yellow:#e2b52f;--parallax-lead-grey:#8c9198 }
+  .parallax-circuit-diagram-lead-look .parallax-circuit-diagram-lead { stroke-width:calc(var(--parallax-stroke-wire, 2.6) * 1.35) }
+  .parallax-circuit-diagram-lead-look .parallax-circuit-diagram-lead:first-child { filter:drop-shadow(0 0 0.6px var(--parallax-line-strong)) }
+  .parallax-circuit-diagram-lead-look .parallax-circuit-diagram-lead-stripes { fill:none;stroke-width:1.5;stroke-linecap:butt;pointer-events:none }
+  @keyframes parallax-spin { to { transform: rotate(360deg); } }
+  @keyframes parallax-pulse { 50% { opacity: 0.3; } }
+  @keyframes parallax-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  @keyframes parallax-computation-sweep { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+  @keyframes parallax-current-preview-glow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--parallax-period) * -1px); } }
+  @keyframes parallax-current-preview-core { from { stroke-dashoffset: calc(var(--parallax-period) * -0.125px); } to { stroke-dashoffset: calc(var(--parallax-period) * -1.125px); } }
+  @keyframes parallax-current-preview-forward { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--parallax-alternating-period, 16) * -1px); } }
+  @keyframes parallax-current-preview-back { from { stroke-dashoffset: calc(var(--parallax-alternating-period, 16) * 0.5px); } to { stroke-dashoffset: calc(var(--parallax-alternating-period, 16) * 1.5px); } }
+  @keyframes parallax-circuit-diagram-alternate-forward { from { stroke-dashoffset:0 } to { stroke-dashoffset:calc(var(--parallax-alternating-period,16) * -1px) } }
+  @keyframes parallax-circuit-diagram-alternate-back { from { stroke-dashoffset:calc(var(--parallax-alternating-period,16) * 0.5px) } to { stroke-dashoffset:calc(var(--parallax-alternating-period,16) * 1.5px) } }
+
+  /* Reduced motion: no transition and no loop anywhere in the library. */
+  @media (prefers-reduced-motion: reduce) {
+    [class*="parallax-"], [class*="parallax-"]::before, [class*="parallax-"]::after { transition: none; animation-duration: 0.01ms; animation-iteration-count: 1; }
+  }
+  /* The oscilloscope's strip: groups, each named in small capitals, a rule between them. */
+  .parallax-scope-toolbar-group { display: inline-flex; align-items: center; gap: var(--parallax-space-2); }
+  .parallax-scope-toolbar-group ~ .parallax-scope-toolbar-group { padding-left: var(--parallax-space-3); border-left: 1px solid var(--parallax-line); }
+  .parallax-scope-toolbar-caption { font: 600 10px var(--parallax-font-technical); letter-spacing: 0.08em; text-transform: uppercase; color: var(--parallax-muted); }
+  /* The keyboard shortcuts: a dialog of the browser's own, its groups in columns, each key a keycap. */
+  .parallax-hotkeys { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; border: 1px solid var(--parallax-line-strong); background: var(--parallax-surface); color: var(--parallax-ink); font: var(--parallax-text-sm, 13px) var(--parallax-font-technical); }
+  .parallax-hotkeys::backdrop { background: rgb(0 0 0 / 0.45); }
+  .parallax-hotkeys > header { display: flex; align-items: center; justify-content: space-between; padding: var(--parallax-space-3) var(--parallax-space-4); border-bottom: 1px solid var(--parallax-line); }
+  .parallax-hotkeys h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .parallax-hotkeys-close { border: 1px solid var(--parallax-line); background: transparent; color: var(--parallax-muted); padding: 2px 8px; font: inherit; cursor: pointer; }
+  .parallax-hotkeys-close:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: 2px; }
+  .parallax-hotkeys-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--parallax-space-5) var(--parallax-space-6); padding: var(--parallax-space-4); overflow: auto; }
+  .parallax-hotkeys h3 { margin: 0 0 var(--parallax-space-2); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--parallax-muted); }
+  .parallax-hotkeys dl { margin: 0; display: grid; gap: 6px; }
+  .parallax-hotkeys dl > div { display: grid; grid-template-columns: 112px 1fr; gap: var(--parallax-space-3); align-items: baseline; }
+  .parallax-hotkeys dt { white-space: nowrap; color: var(--parallax-muted); }
+  .parallax-hotkeys dd { margin: 0; }
+  .parallax-hotkeys kbd { display: inline-block; min-width: 18px; padding: 1px 5px; border: 1px solid var(--parallax-line-strong); border-bottom-width: 2px; background: var(--parallax-background); color: var(--parallax-ink); font: inherit; font-size: 11px; text-align: center; }
+  /* A shape that stays upright as the part turns: drawn in the accent, so the editor shows which ones it keeps upright. */
+  .parallax-symbol-sheet .parallax-drawing-upright { stroke: var(--parallax-accent); }
+  /* A component on the bench: its text beside how it is drawn, a dialog of the browser's own. */
+  .parallax-component-workbench { width: min(1280px, calc(100vw - 32px)); height: min(860px, calc(100vh - 48px)); padding: 0; border: 1px solid var(--parallax-line-strong); background: var(--parallax-surface); color: var(--parallax-ink); font: var(--parallax-text-sm, 13px) var(--parallax-font-technical); }
+  .parallax-component-workbench[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; }
+  .parallax-component-workbench::backdrop { background: rgb(0 0 0 / 0.5); }
+  .parallax-component-workbench-head { display: flex; align-items: center; justify-content: space-between; gap: var(--parallax-space-3); padding: var(--parallax-space-3) var(--parallax-space-4); border-bottom: 1px solid var(--parallax-line); }
+  .parallax-component-workbench-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .parallax-component-workbench-body { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); min-height: 0; }
+  .parallax-component-workbench-code { min-height: 0; overflow: auto; border-right: 1px solid var(--parallax-line); }
+  .parallax-component-workbench-side { min-height: 0; overflow: auto; padding: var(--parallax-space-3) var(--parallax-space-4); display: grid; align-content: start; gap: var(--parallax-space-3); }
+  .parallax-component-workbench-side h3, .parallax-component-workbench-symbols h3 { margin: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--parallax-muted); }
+  .parallax-component-workbench-preview { display: grid; place-items: center; min-height: 160px; border: 1px solid var(--parallax-line); background: var(--parallax-background); padding: var(--parallax-space-3); }
+  .parallax-component-workbench-preview svg { width: 100%; max-height: 180px; }
+  .parallax-component-workbench-symbols { display: grid; gap: var(--parallax-space-2); }
+  .parallax-component-workbench-symbol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 1px; background: var(--parallax-line); border: 1px solid var(--parallax-line); max-height: 260px; overflow: auto; }
+  .parallax-component-workbench-symbol-grid button { display: grid; gap: 2px; justify-items: center; padding: 6px 4px; border: 0; background: var(--parallax-surface); color: var(--parallax-ink); font: inherit; font-size: 10px; cursor: pointer; }
+  .parallax-component-workbench-symbol-grid button svg { width: 56px; height: 36px; }
+  .parallax-component-workbench-symbol-grid button[aria-selected="true"] { background: color-mix(in srgb, var(--parallax-accent) 18%, var(--parallax-surface)); box-shadow: inset 0 0 0 1px var(--parallax-accent); }
+  .parallax-component-workbench-symbol-grid button:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: -2px; }
+  .parallax-component-workbench-symbol-grid button:disabled { cursor: default; opacity: 0.5; }
+  .parallax-component-workbench-notes { padding: var(--parallax-space-2) var(--parallax-space-4); border-top: 1px solid var(--parallax-line); background: color-mix(in srgb, var(--parallax-warn) 8%, var(--parallax-surface)); max-height: 120px; overflow: auto; }
+  .parallax-component-workbench-notes ul { margin: 4px 0 0; padding-left: 18px; }
+  .parallax-component-workbench-foot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--parallax-space-2); padding: var(--parallax-space-2) var(--parallax-space-4); border-top: 1px solid var(--parallax-line); }
+  .parallax-component-workbench-status { margin-right: auto; }
+  .parallax-palette-actions { display: flex; flex-wrap: wrap; gap: var(--parallax-space-2); }
+  @media (max-width: 900px) { .parallax-component-workbench-body { grid-template-columns: 1fr; } .parallax-component-workbench-code { border-right: 0; border-bottom: 1px solid var(--parallax-line); } }
+  /* The same editor as a workbench page: the text fills the stage, the symbols take the side column at their full height. */
+  .parallax-component-editor-body { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+  .parallax-component-editor-body .parallax-component-workbench-code { border-right: 0; }
+  .parallax-side-group .parallax-component-workbench-symbol-grid { max-height: none; }
+  .parallax-component-editor-actions { display: flex; flex-wrap: wrap; gap: var(--parallax-space-2); }
+}
+@layer jmouse-parallax {
+  /* One document in two notations: a head with the switch and what the side is, the editor, and what did not convert. */
+  .parallax-source-formats { display: flex; flex-direction: column; min-height: 0; height: 100%; border: 1px solid var(--parallax-line); background: var(--parallax-surface); }
+  .parallax-source-formats-head { display: flex; align-items: center; gap: var(--parallax-space-3); flex-wrap: wrap; padding: var(--parallax-space-2) var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); }
+  .parallax-source-formats-head > .parallax-hint { flex: 1; min-width: 20ch; }
+  .parallax-source-formats > .parallax-code-editor { flex: 1; min-height: 0; overflow: auto; }
+  .parallax-source-formats-blocked { padding: var(--parallax-space-4); }
+  .parallax-source-formats-notes { padding: var(--parallax-space-2) var(--parallax-space-3); border-top: 1px solid var(--parallax-line); background: color-mix(in srgb, var(--parallax-warn) 8%, var(--parallax-surface)); max-height: 140px; overflow: auto; font-size: var(--parallax-text-sm); }
+  .parallax-source-formats-notes ul { margin: 4px 0 0; padding-left: 18px; }
+}
+@layer jmouse-parallax {
+  /* A part's phase dial on the sheet: a faint face, the voltage in the first channel's colour, the current in the second's. */
+  .parallax-phase-dial-face { fill: color-mix(in srgb, var(--parallax-instrument-sheet, var(--parallax-sheet)) 85%, transparent); stroke: var(--parallax-line); stroke-width: 1; }
+  .parallax-phase-dial-voltage { stroke: var(--parallax-channel-1); stroke-width: 2; stroke-linecap: round; fill: none; }
+  .parallax-phase-dial-current { stroke: var(--parallax-channel-2); stroke-width: 2; stroke-linecap: round; fill: none; }
+  .parallax-phase-dial-text { font: 600 8px var(--parallax-font-technical); fill: var(--parallax-muted); }
+}

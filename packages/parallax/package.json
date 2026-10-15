@@ -1,0 +1,101 @@
+{
+  "name": "@jmouse/parallax",
+  "version": "0.1.0",
+  "description": "Parallax's headless machinery — the engine's transport and wire types, the drawing stage, circuits, instruments, graphs and scenes — with no React and no product inside.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bench": {
+      "types": "./dist/bench/index.d.ts",
+      "default": "./dist/bench/index.js"
+    },
+    "./circuit": {
+      "types": "./dist/circuit/index.d.ts",
+      "default": "./dist/circuit/index.js"
+    },
+    "./component": {
+      "types": "./dist/component/index.d.ts",
+      "default": "./dist/component/index.js"
+    },
+    "./computation": {
+      "types": "./dist/computation/index.d.ts",
+      "default": "./dist/computation/index.js"
+    },
+    "./document": {
+      "types": "./dist/document/index.d.ts",
+      "default": "./dist/document/index.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "default": "./dist/editor/index.js"
+    },
+    "./graph": {
+      "types": "./dist/graph/index.d.ts",
+      "default": "./dist/graph/index.js"
+    },
+    "./meters": {
+      "types": "./dist/meters/index.d.ts",
+      "default": "./dist/meters/index.js"
+    },
+    "./oscilloscope": {
+      "types": "./dist/oscilloscope/index.d.ts",
+      "default": "./dist/oscilloscope/index.js"
+    },
+    "./playback": {
+      "types": "./dist/playback/index.d.ts",
+      "default": "./dist/playback/index.js"
+    },
+    "./quantities": {
+      "types": "./dist/quantities/index.d.ts",
+      "default": "./dist/quantities/index.js"
+    },
+    "./routing": {
+      "types": "./dist/routing/index.d.ts",
+      "default": "./dist/routing/index.js"
+    },
+    "./scene": {
+      "types": "./dist/scene/index.d.ts",
+      "default": "./dist/scene/index.js"
+    },
+    "./schematic": {
+      "types": "./dist/schematic/index.d.ts",
+      "default": "./dist/schematic/index.js"
+    },
+    "./scope": {
+      "types": "./dist/scope/index.d.ts",
+      "default": "./dist/scope/index.js"
+    },
+    "./tether": {
+      "types": "./dist/tether/index.d.ts",
+      "default": "./dist/tether/index.js"
+    },
+    "./visual": {
+      "types": "./dist/visual/index.d.ts",
+      "default": "./dist/visual/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "three": ">=0.180.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.180.0",
+    "three": "0.180.0",
+    "typescript": "~6.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
