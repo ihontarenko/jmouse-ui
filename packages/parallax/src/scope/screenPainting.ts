@@ -464,9 +464,22 @@ export function paintScreenMarks(context: CanvasRenderingContext2D, size: Size, 
   context.textAlign = "left";
   // As many digits as tell a tenth of the screen apart: three wrote 52.4 s at both ends of a 2 ms screen.
   const digits = (time: number) => Math.min(10, Math.max(3, Math.ceil(Math.log10(Math.abs(time) / (view.span / 10) + 1)) + 1));
+  // Triggered, the screen's edges are read from the trigger, as a bench oscilloscope reads them — −250 ns, +750 ns —, and
+  // the moment the trigger stands at is written once, under its line. Two absolute times at the edges, 3.54829965 s and
+  // 3.54830065 s, said nothing a reader could use: the difference between them was the whole of what they meant.
+  const origin = view.triggered;
+  if (origin !== null) {
+    context.fillText(formatQuantity(view.start - origin, "s"), 6, height - 5);
+    context.textAlign = "right";
+    context.fillText(`+${formatQuantity(view.start + view.span - origin, "s")}`, width - 6, height - 5);
+    const x = ((origin - view.start) / view.span) * width;
+    context.textAlign = x < 120 ? "left" : x > width - 120 ? "right" : "center";
+    context.fillText(`T at ${formatQuantity(origin, "s", digits(origin))}`, x < 120 ? x + 4 : x > width - 120 ? x - 4 : x, height - 5);
+    return;
+  }
   context.fillText(formatQuantity(view.start, "s", digits(view.start)), 6, height - 5);
   context.textAlign = "right";
-  context.fillText(formatQuantity(view.start + view.span, "s", digits(view.start + view.span)), width - 6, height - 5);
+  context.fillText(`+${formatQuantity(view.span, "s")}`, width - 6, height - 5);
 }
 
 /** An XY screen's marks: which channel is each axis and its scale, and how much time the figure holds. */

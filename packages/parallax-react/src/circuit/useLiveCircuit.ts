@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveControl, LiveProbe } from "@jmouse/parallax";
 import { useParallaxTransport } from "../providers/ParallaxTransportProvider";
 import {
-  type CircuitDefinition, type FlowFeed, LiveCircuitSession, type LiveReading, LiveTelemetry, type RecentFlowFeed, SIMULATION_SPEEDS,
+  type CircuitDefinition, type FlowFeed, type LiveCaptures, LiveCircuitSession, type LiveReading, LiveTelemetry, type RecentFlowFeed, SIMULATION_SPEEDS,
 } from "@jmouse/parallax/circuit";
 import type { PlaybackClock, Recording, SampleMemory } from "@jmouse/parallax/oscilloscope";
 
@@ -55,6 +55,10 @@ export interface LiveCircuit {
   stopRecording: () => Recording | null;
   /** Plays a stretch of the memory again — the run pauses —; null goes back to the stream. */
   replay: (stretch: { from: number; to: number } | null) => void;
+  /** Replays a stretch the run passed, finely, on the server; it arrives in {@link captures}. */
+  capture: (from: number, to: number, samples: number) => void;
+  /** The stretches captured, as a store the screen subscribes to — never the bench's state. */
+  captures: LiveCaptures;
 }
 
 export function useLiveReading(telemetry: LiveTelemetry): LiveReading {
@@ -134,5 +138,6 @@ export function useLiveCircuit(objectId: string, circuit: CircuitDefinition | nu
   return { running, busy, problem, telemetry: session.telemetry, nodes, controls, memory: session.memory, playback: session.playback,
     flow: session.flow, recent: session.recent, speed, sample: session.sample, acquire: session.acquire, run: session.run, pause: session.pause, step: session.step,
     reset: session.reset, set: session.set, probe: session.probe, runText: session.runText, pace, resize: session.resize,
-    recording: recordingShown, record: session.record, stopRecording: session.stopRecording, replay: session.replay };
+    recording: recordingShown, record: session.record, stopRecording: session.stopRecording, replay: session.replay,
+    capture: session.capture, captures: session.captures };
 }

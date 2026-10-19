@@ -226,7 +226,8 @@ function ScreenDisplayMenu({ settings, live, onChange }: { settings: ScopeSettin
         <ToolMenuSection title="Acquisition">
           <Segments wide label="How the run is acquired" value={settings.acquisition ?? "gapless"} onChange={(acquisition) => onChange({ acquisition })}
             options={[{ value: "gapless", label: "Every sample", title: "Every sample read: an unbroken record at any time base; the run slows as far as a fine time base needs" },
-              { value: "realtime", label: "Real time", title: "Real time first: at a fine time base the screen keeps one block of samples a frame, with gaps between" }]} />
+              { value: "realtime", label: "Real time", title: "Real time first: at a fine time base the screen keeps one block of samples a frame, with gaps between" },
+              { value: "capture", label: "Capture edges", title: "The run keeps real time on a coarse stream; each edge the trigger finds is replayed on the server from just before it and shown in full detail" }]} />
         </ToolMenuSection>
       ) : null}
       <ToolMenuSection title="Math channel">
@@ -261,7 +262,8 @@ const ACQUISITION_KEY = "parallax.scope.acquisition";
 
 function readAcquisition(): ScopeSettings["acquisition"] {
   try {
-    return localStorage.getItem(ACQUISITION_KEY) === "realtime" ? "realtime" : "gapless";
+    const kept = localStorage.getItem(ACQUISITION_KEY);
+    return kept === "realtime" || kept === "capture" ? kept : "gapless";
   } catch {
     return "gapless";
   }

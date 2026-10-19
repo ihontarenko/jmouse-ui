@@ -149,7 +149,7 @@ export interface ScopeSettings {
    * How a live run is acquired: `gapless` — every sample read, the run slowed as far as that takes, so a deep time base
    * holds an unbroken record —, or `realtime` — real time first, one block a frame. Absent: gapless.
    */
-  acquisition?: "gapless" | "realtime";
+  acquisition?: "gapless" | "realtime" | "capture";
   /**
    * What the screen plots: each channel against time, or — `xy` — the first channel on, across, against the second, up:
    * two signals as one figure, a Lissajous figure for two sines; or — `fft` — each channel's spectrum over the window shown,

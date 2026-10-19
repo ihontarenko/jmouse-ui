@@ -5,7 +5,7 @@ import { useAsync } from "../support/useAsync";
 import { ParallaxLink } from "../providers/ParallaxNavigation";
 import { SimulatorInstrument } from "../circuit/SimulatorInstrument";
 import {
-  type BenchProbe, type CircuitDefinition, type CircuitElement, circuitFromDrawing, drawCircuit, drawingOfCircuit, elementTypes, isCircuit, layoutOfDrawing, type LiveTelemetry, parametersOf, rewiredElements, type SchematicDocument, serializeDrawing, type SheetProbe, SIMULATION_SPEEDS, wiringOf, withShownValues,
+  type BenchProbe, type CircuitDefinition, type CircuitElement, circuitFromDrawing, drawCircuit, drawingOfCircuit, elementTypes, isCircuit, layoutOfDrawing, type LiveCaptures, type LiveTelemetry, parametersOf, rewiredElements, type SchematicDocument, serializeDrawing, type SheetProbe, SIMULATION_SPEEDS, wiringOf, withShownValues,
 } from "@jmouse/parallax/circuit";
 import { CircuitDetailsForm, circuitDetailsOf, circuitDetailsProblems, PartProperties, type CircuitDetails } from "./CircuitProperties";
 import { CircuitReadings, Schematic, type SheetMeter } from "../circuit/Schematic";
@@ -20,7 +20,7 @@ import { BenchEnvironment } from "./BenchEnvironment";
 import { PartPalette, useAvailableComponentModels } from "../circuit/PartPalette";
 import { usePartLibrary } from "../providers/usePartLibrary";
 import { useLiveCircuit, useLiveReading } from "../circuit/useLiveCircuit";
-import { channelName, holdsWholeRecord, isIdentityExpression, measure, PlaybackClock, Recording, windowOf, type ChannelId, type SampleMemory } from "@jmouse/parallax/oscilloscope";
+import { channelName, holdsWholeRecord, HORIZONTAL_DIVISIONS, isIdentityExpression, measure, PlaybackClock, Recording, windowOf, type ChannelId, type SampleMemory, type ScopeSettings } from "@jmouse/parallax/oscilloscope";
 import { formatQuantity, ladderStep, parseQuantity } from "@jmouse/parallax/quantities";
 import { OscilloscopePanel, OscilloscopeScreen, useOscilloscope, type Recorder } from "../scope/Oscilloscope";
 import { cursorsStretchAvailable, nodeConnections, probesOf, replayStretch, type ReplayStretchKind } from "@jmouse/parallax/scope";
@@ -84,7 +84,54 @@ export interface BenchProperties {
 }
 
 const LIVE = "TRANSIENT_RESPONSE";
+/** The speed choice that follows the server: the fastest speed of the ladder it keeps with room to spare. */
+const AUTO_SPEED = "auto";
+const AUTO_SPEED_KEY = "parallax.bench.auto-speed";
+/** How much of what the server holds Auto plays at: the rest is the room that keeps the buffer full and the screen even. */
+const AUTO_SPEED_ROOM = 0.7;
+/** Below this share of each frame spent, the server has room, and Auto tries the next faster speed. */
+const AUTO_SPEED_IDLE_LOAD = 0.35;
+
+function rememberedAutoSpeed(): boolean {
+  try {
+    return localStorage.getItem(AUTO_SPEED_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
 const SAMPLE_INTERVAL_AT_START = 1e-5;
+/**
+ * The stream a capturing run keeps, at the finest: as many samples a frame as the server reads in one — every sample of
+ * it read, at real time —, fine enough for the trigger to find a switching edge of tens of kilohertz in it.
+ */
+const CAPTURED_STREAM_INTERVAL = 1e-5;
+/** How many samples a capture has across the screen: as many as the time base gives a screen of the stream. */
+const CAPTURED_PER_SCREEN = 1000;
+/** How many samples a capture has at most, whatever stretch the stream's uncertainty asks for around an edge. */
+const CAPTURED_SAMPLES = 200_000;
+
+/**
+ * The scope settings an edge to capture is searched with: the trigger as set, its level moved to the middle of what
+ * its source swings through when it lies outside — as an automatic trigger level does. Left at 0 V, a square from 0 to
+ * 10 V never crosses it, and no edge was ever captured.
+ */
+function edgeSearch(memory: SampleMemory, settings: ScopeSettings): ScopeSettings {
+  let lowest = Infinity;
+  let highest = -Infinity;
+  const stride = Math.max(1, Math.floor(memory.length / 4000));
+  for (let index = 0; index < memory.length; index += stride) {
+    const reading = memory.reading(settings.trigger.source, index);
+    if (Number.isFinite(reading)) {
+      lowest = Math.min(lowest, reading);
+      highest = Math.max(highest, reading);
+    }
+  }
+  const level = settings.trigger.level;
+  if (!(highest > lowest) || (level > lowest && level < highest)) {
+    return settings;
+  }
+  return { ...settings, trigger: { ...settings.trigger, level: (lowest + highest) / 2 } };
+}
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob(["﻿", text], { type: "text/csv;charset=utf-8" }));
@@ -149,8 +196,9 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     return () => window.clearTimeout(timer);
   }, [setup, problem, untouched]);
 
-  const computation = useComputation(applied ? { objectId: summary.id, definition: applied } : { subject: reference }, analysis, values, view === "analysis",
-    declared.find((declaration) => declaration.kind === analysis)?.settings);
+  const computationTarget = applied ? { objectId: summary.id, definition: applied } : { subject: reference };
+  const analysisSettings = declared.find((declaration) => declaration.kind === analysis)?.settings;
+  const computation = useComputation(computationTarget, analysis, values, view === "analysis", analysisSettings);
   // The computed transient by either engine: ours, or SPICE over the saved text at the sliders' values — a second
   // opinion, so the bench's unsaved changes are not in it.
   const [engine, setEngine] = useState<"parallax" | "spice">("parallax");
@@ -165,15 +213,19 @@ export function Bench({ reference, detail, editable, representation, onRepresent
   // The time base decides how finely a live circuit is sampled, as on a bench oscilloscope: a thousand samples a
   // screen, asked for a moment after the wheel stops, and the circuit goes on rather than starting again.
   const timeBase = scope.settings.secondsPerDivision;
+  // Capturing edges, the run keeps real time on a coarse stream, every sample of it read, and each edge the trigger
+  // finds in it is replayed finely on the server: the time base no longer decides how finely the run is sampled.
+  const capturing = scope.settings.acquisition === "capture";
+  const streamInterval = (base: number) => capturing ? Math.max(samplesForScreen(base), CAPTURED_STREAM_INTERVAL) : samplesForScreen(base);
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const interval = samplesForScreen(timeBase);
+      const interval = streamInterval(timeBase);
       setLiveInterval(interval);
       circuit.sample(interval);
     }, 250);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `circuit.sample` is stable
-  }, [timeBase]);
+  }, [timeBase, capturing]);
 
   // How the run is acquired is the oscilloscope's choice: every sample read — the run slowed as a fine time base needs —
   // or real time first.
@@ -193,7 +245,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     circuit.memory.keepWhole(wholeRecord);
     if (!wholeRecord) {
       // Back to divisions: the time base's own sampling again, not the record's sparse one.
-      const interval = samplesForScreen(timeBase);
+      const interval = streamInterval(timeBase);
       if (interval !== sampledEvery.current) {
         setLiveInterval(interval);
         circuit.sample(interval);
@@ -203,7 +255,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     const timer = window.setInterval(() => {
       const memory = circuit.memory;
       const recordBase = memory.length > 1 ? (memory.lastTime() - memory.firstTime()) / 10 : 0;
-      const interval = samplesForScreen(Math.max(timeBase, recordBase));
+      const interval = streamInterval(Math.max(timeBase, recordBase));
       if (interval >= sampledEvery.current * 1.9) {
         sampledEvery.current = interval;
         setLiveInterval(interval);
@@ -212,7 +264,45 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     }, 500);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `circuit.memory` and `circuit.sample` are stable
-  }, [wholeRecord, timeBase]);
+  }, [wholeRecord, timeBase, capturing]);
+
+  // Each new edge the trigger finds in the coarse stream is captured: the stretch around it, the screen's own width plus
+  // two of the stream's samples either side — where in that stretch the edge is the stream cannot say more finely —,
+  // replayed on the server once it has been run. The captured screen's own trigger then places the edge exactly.
+  const capturedEdge = useRef(Number.NEGATIVE_INFINITY);
+  // The scope settings as they are now, read by the timer: an effect keyed on them would start its timer again on every
+  // change of a scope that changes several times a second, and never fire.
+  const scopeSettings = useRef(scope.settings);
+  scopeSettings.current = scope.settings;
+  useEffect(() => {
+    if (!capturing || !circuit.running) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      const memory = circuit.memory;
+      if (memory.length < 2) {
+        return;
+      }
+      const settings = edgeSearch(memory, scopeSettings.current);
+      const crossing = windowOf(memory, settings, 0).triggered;
+      const span = settings.secondsPerDivision * HORIZONTAL_DIVISIONS;
+      if (crossing === null || crossing <= capturedEdge.current + span) {
+        return;
+      }
+      const position = Math.min(0.9, Math.max(0.1, settings.trigger.position));
+      const uncertainty = 2 * sampledEvery.current;
+      const from = Math.max(0, crossing - span * position - uncertainty);
+      const to = crossing + span * (1 - position) + uncertainty;
+      if (memory.lastTime() < to) {
+        return;
+      }
+      capturedEdge.current = crossing;
+      const samples = Math.min(CAPTURED_SAMPLES, Math.max(2, Math.ceil((to - from) / span * CAPTURED_PER_SCREEN)));
+      circuit.capture(from, to, samples);
+    }, 250);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `circuit.memory` and `circuit.capture` are stable
+  }, [capturing, circuit.running]);
 
   const shownElements = useMemo(() => running ? withShownValues(running.elements, detail.parameters, values) : [], [running, detail.parameters, values]);
   // The meters are the instrument parts the run has: what the server reads.
@@ -381,8 +471,10 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     },
     cancel: () => circuit.stopRecording(),
     keep: () => {
-      const visible = windowOf(shownMemory, scope.settings, scope.back);
-      const slice = shownMemory.slice(visible.start, visible.start + visible.span);
+      // While capturing, the screen shows the last edge captured: that is what is kept.
+      const source = !shown && capturing ? circuit.captures.current().capture ?? shownMemory : shownMemory;
+      const visible = windowOf(source, scope.settings, scope.back);
+      const slice = source.slice(visible.start, visible.start + visible.span);
       const recording = new Recording(Date.now() % 100000, slice.time.length, `SCREEN ${formatQuantity(visible.start, "s")}`);
       recording.append(slice.time, slice.channels);
       kept(recording);
@@ -532,7 +624,8 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     : <Schematic elements={shownElements} drawing={drawing} sheetLabels={sheetLabels} caption={`${summary.title} · r${detail.definitionRevision}`} />;
 
   // The frame under the sheet: the oscilloscope's screen, the meters, or both side by side.
-  const screen = <OscilloscopeScreen memory={shownMemory} scope={scope} live={!shown} clock={shown ? undefined : circuit.playback} onSingleShot={circuit.pause}
+  const screen = <LiveScreen captures={circuit.captures} capturing={capturing && !shown} running={circuit.running}
+    memory={shownMemory} scope={scope} live={!shown} clock={shown ? undefined : circuit.playback} onSingleShot={circuit.pause}
     replaying={live && !shown ? { stretch: replayKind, start: startReplay, end: () => circuit.replay(null) } : undefined}
     leading={instrumentSwitch}
     waiting={shown ? null : circuit.problem ? circuit.problem : circuit.busy ? "Solving the first steps…" : null}
@@ -579,6 +672,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
             <section data-parallax-part="stage-instrument" className="parallax-stage-instrument" aria-label={analysis ? representationLabel(analysis) : "Analysis"}>
               {analysis ? <SimulatorInstrument representation={analysis} computation={spiceShown ? spice : computation} title={spiceShown ? `${summary.title} · ngspice` : summary.title} facts
                 focus={scope.settings.channels.filter((channel) => channel.enabled).map((channel) => channel.node)}
+                refinement={!spiceShown && analysis ? { target: computationTarget, representation: analysis, values, settings: analysisSettings } : undefined}
                 context={{ circuit: `${summary.slug}@${detail.definitionRevision}`, settings: JSON.stringify({ values }) }} />
                 : <p className="parallax-side-note">This circuit admits no analysis yet.</p>}
             </section>
@@ -670,6 +764,47 @@ export function Bench({ reference, detail, editable, representation, onRepresent
 
   // Every shortcut of the bench in one list: what runs them, and what the help lists — the sheet's and the screen's
   // own keys are listed beside them, so the list is the whole truth.
+  // Auto: the run plays at the fastest speed of the ladder the server keeps with room to spare — lowered at once when it
+  // falls behind, raised a step when it idles. Asked for real time, a switching circuit the server computes at a
+  // twenty-ninth of it was held there with an empty buffer, and the screen stuttered with nothing to say why.
+  const [autoSpeed, setAutoSpeed] = useState(rememberedAutoSpeed);
+  const chooseAutoSpeed = (on: boolean) => {
+    setAutoSpeed(on);
+    try {
+      localStorage.setItem(AUTO_SPEED_KEY, on ? "on" : "off");
+    } catch {
+      // A private window keeps no habit.
+    }
+  };
+  useEffect(() => {
+    if (!autoSpeed || !circuit.running) {
+      return;
+    }
+    let idleSince: number | null = null;
+    const timer = window.setInterval(() => {
+      const { held, load } = circuit.telemetry.current();
+      const speeds = SIMULATION_SPEEDS.map((choice) => Number(choice.value));
+      const current = speeds.findIndex((speed) => speed === circuit.speed);
+      if (held !== null && held < circuit.speed * 0.9) {
+        idleSince = null;
+        const kept = speeds.filter((speed) => speed <= held * AUTO_SPEED_ROOM);
+        circuit.pace(kept.length ? kept[kept.length - 1] : speeds[0]);
+        return;
+      }
+      if (load !== null && load < AUTO_SPEED_IDLE_LOAD && current >= 0 && current < speeds.length - 1) {
+        idleSince ??= performance.now();
+        if (performance.now() - idleSince > 3000) {
+          idleSince = null;
+          circuit.pace(speeds[current + 1]);
+        }
+      } else {
+        idleSince = null;
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `circuit.pace` and `circuit.telemetry` are stable
+  }, [autoSpeed, circuit.running, circuit.speed]);
+
   const speedIndex = SIMULATION_SPEEDS.findIndex((choice) => Number(choice.value) === circuit.speed);
   const paceBy = (step: 1 | -1) => {
     const next = SIMULATION_SPEEDS[Math.max(0, Math.min(SIMULATION_SPEEDS.length - 1, speedIndex + step))];
@@ -750,12 +885,22 @@ export function Bench({ reference, detail, editable, representation, onRepresent
           </Tool>
         </div>
       ) : null}
-      {live ? <ChoiceStepper label="Simulation speed" value={String(circuit.speed)} onChange={(value) => circuit.pace(Number(value))} choices={SIMULATION_SPEEDS} /> : null}
+      {live ? <ChoiceStepper label="Simulation speed" value={autoSpeed ? AUTO_SPEED : String(circuit.speed)}
+        onChange={(value) => {
+          chooseAutoSpeed(value === AUTO_SPEED);
+          if (value !== AUTO_SPEED) {
+            circuit.pace(Number(value));
+          }
+        }}
+        choices={[{ value: AUTO_SPEED, label: autoSpeed ? `Auto · ${SIMULATION_SPEEDS.find((choice) => Number(choice.value) === circuit.speed)?.label ?? ""}` : "Auto",
+          title: "As fast as the server keeps up with room to spare: lowered at once when it falls behind, raised when it idles — the screen plays evenly" },
+          ...SIMULATION_SPEEDS]} /> : null}
       <span data-parallax-part="run-status" className="parallax-run-status">
         <span data-parallax-part="run-state" data-state={state.toLowerCase()} className={stateTone} role="status">{state}</span>
         {live ? <LiveTime telemetry={circuit.telemetry} /> : null}
       </span>
-      {live && circuit.running ? <LiveTempo telemetry={circuit.telemetry} playback={circuit.playback} requested={circuit.speed} /> : null}
+      {live && circuit.running ? <LiveTempo telemetry={circuit.telemetry} playback={circuit.playback} requested={circuit.speed}
+        onSmooth={autoSpeed ? undefined : () => chooseAutoSpeed(true)} /> : null}
       {setup ? <Segments label="How parts take overheating" value={setup.realistic ? "realistic" : "ideal"}
         onChange={(mode) => setSetup((current) => current && ({ ...current, realistic: mode === "realistic" }))}
         options={[{ value: "ideal", label: "Ideal", title: "A part past its temperature limit is only marked" },
@@ -796,6 +941,29 @@ export function Bench({ reference, detail, editable, representation, onRepresent
   );
 }
 
+/**
+ * The screen of a live run: the stream, or — capturing edges — the last edge captured, read from its own store, so a
+ * capture redraws the screen and nothing else of the bench. A capture is shown by the screen's own trigger, and a
+ * level the edge never crosses is moved to the middle of its swing, as the search that found the edge moved it.
+ */
+function LiveScreen({ captures, capturing, running, memory, clock, waiting, scope, ...screen }: ComponentProps<typeof OscilloscopeScreen>
+  & { captures: LiveCaptures; capturing: boolean; running: boolean }) {
+  const { capture, refused } = useSyncExternalStore(captures.subscribe, captures.current);
+  const shown = capturing ? capture : null;
+  useEffect(() => {
+    if (!shown) {
+      return;
+    }
+    const searched = edgeSearch(shown, scope.settings);
+    if (searched.trigger.level !== scope.settings.trigger.level) {
+      scope.update({ trigger: searched.trigger });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per capture
+  }, [shown]);
+  return <OscilloscopeScreen {...screen} scope={scope} memory={shown ?? memory} clock={shown ? undefined : clock}
+    waiting={waiting ?? (capturing && running && !capture ? refused ?? "Waiting for the trigger to find an edge to capture…" : null)} />;
+}
+
 /** The circuit's own time: how far it has run. */
 function LiveTime({ telemetry }: { telemetry: LiveTelemetry }) {
   const { reached } = useLiveReading(telemetry);
@@ -808,7 +976,13 @@ function LiveTime({ telemetry }: { telemetry: LiveTelemetry }) {
  * plays slower than asked it says why: the server at its limit, or frames reaching the screen late while the server
  * idles — the browser or the network.
  */
-function LiveTempo({ telemetry, playback, requested }: { telemetry: LiveTelemetry; playback: PlaybackClock; requested: number }) {
+function LiveTempo({ telemetry, playback, requested, onSmooth }: {
+  telemetry: LiveTelemetry;
+  playback: PlaybackClock;
+  requested: number;
+  /** Turns Auto on; offered while the server cannot keep the speed asked for. */
+  onSmooth?: () => void;
+}) {
   const { speed, load, held, interval } = useLiveReading(telemetry);
   const buffered = playback.bufferedMilliseconds();
   const fill = Math.min(1, buffered / (2 * PlaybackClock.LEAD_MILLISECONDS));
@@ -840,6 +1014,14 @@ function LiveTempo({ telemetry, playback, requested }: { telemetry: LiveTelemetr
       <span className={`parallax-tempo-figure parallax-tempo-server${serverBound ? " parallax-limited" : ""}`}>
         <small>server</small><strong><span className="parallax-steady parallax-width-3">{serverShare ?? "…"}</span>%</strong>
       </span>
+      {/* Offered on what the server says it holds — steady —, not on the measured speed, which jumps frame to frame: the
+          button came and went four times a second. */}
+      {held !== null && held < requested * 0.9 && onSmooth ? (
+        <Tool tone="primary" onClick={onSmooth}
+          title={`The server computes this circuit at most ${shareOfRealTime(held)} of real time — every switching edge is solved in fine steps, and that, not the screen or the zoom, is what costs. Asked for ${shareOfRealTime(requested)}, it plays as fast as it can with nothing in reserve, and the screen stutters. Auto plays at the fastest speed the server keeps with room to spare, evenly, and raises it when the server is free.`}>
+          Play smoothly
+        </Tool>
+      ) : null}
     </span>
   );
 }

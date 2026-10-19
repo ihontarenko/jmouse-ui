@@ -12,13 +12,14 @@ import { Segments } from "../controls/BenchControls";
 import { ExpandTool } from "../controls/BenchGrid";
 import { LogicTimingView } from "./LogicTimingView";
 import { ComputedOscilloscope } from "../scope/ComputedOscilloscope";
+import type { Refinement } from "../viewers/useDeeperZoom";
 
 /**
  * A computed circuit result, mounted in the simulator, an object page or another host: a transient on the oscilloscope
  * screen, digital timing as a timing diagram, a frequency response as a Bode plot that says what it shows, anything else
  * as a plot. The live transient is the bench's own.
  */
-export function SimulatorInstrument({ representation, computation, title, facts = false, diagram, focus }: {
+export function SimulatorInstrument({ representation, computation, title, facts = false, diagram, focus, refinement }: {
   representation: string;
   computation: Computation;
   title: string;
@@ -28,6 +29,8 @@ export function SimulatorInstrument({ representation, computation, title, facts 
   diagram?: (attachProbe?: (node: string) => void) => ReactNode;
   /** The nodes the reader probes: a frequency response shows these first, every node on request. */
   focus?: readonly string[];
+  /** What the result was computed from: a transient zoomed past its own samples computes the stretch in sight again. */
+  refinement?: Refinement;
 }) {
   const dataset = computation.ready?.dataset ?? null;
   const levels = isLogicLevels(dataset);
@@ -49,7 +52,7 @@ export function SimulatorInstrument({ representation, computation, title, facts 
     </>;
   }
   return <>
-    {surface === "oscilloscope" ? <ComputedOscilloscope dataset={dataset} diagram={diagram} />
+    {surface === "oscilloscope" ? <ComputedOscilloscope dataset={dataset} diagram={diagram} refinement={refinement} />
       : <>
         {diagram?.()}
         {response ? <ResponseHeading response={response} probed={probed} everyNode={everyNode} onEveryNode={setEveryNode} /> : null}

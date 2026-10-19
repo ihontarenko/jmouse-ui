@@ -54,7 +54,8 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
   // The cursors' tags, handed up the same way: their readings move with the signal, so at most ten times a second.
   const [cursorTags, setCursorTags] = useState<CursorPlate[]>([]);
   const frame = useRef<HTMLDivElement>(null);
-  const state = useRef({ settings, back, waiting, idle, onTriggered, clock, trails: { count: 8, intensity: 0.5 }, drawn: -1, drawnMemory: null as SampleMemory | null, drawnTime: Number.NaN, drawnStart: Number.NaN, heldKey: "" });
+  const state = useRef({ memory, settings, back, waiting, idle, onTriggered, clock, trails: { count: 8, intensity: 0.5 }, drawn: -1, drawnMemory: null as SampleMemory | null, drawnTime: Number.NaN, drawnStart: Number.NaN, heldKey: "" });
+  state.current.memory = memory;
   state.current.settings = settings;
   state.current.trails = { count: appearance.scopeTrails ?? 8, intensity: appearance.scopeTrailIntensity ?? 0.5 };
   state.current.back = back;
@@ -82,10 +83,14 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-screen", "data-palette", "style"] });
     // The phosphor's afterglow: past traces fading under the live one while the screen is a phosphor screen.
-    const persistence = new Persistence();
+    let persistence = new Persistence();
     // The FFT and phasor displays read a few times a second and averaged, not at every frame: they shook otherwise.
-    const analysis = new ScreenAnalysis();
-    const screenWindow = new ScreenWindow();
+    let analysis = new ScreenAnalysis();
+    let screenWindow = new ScreenWindow();
+    // What these three hold belongs to one memory: a new one — a capture, a computed stretch — starts them afresh, and
+    // the stage stays. Keyed on the memory, the stage itself was destroyed and its WebGL context made again for every
+    // capture, a third of a second to the better part of one each time, and the bench froze at every edge.
+    let shownMemory: SampleMemory | null = null;
     let plateKey = "";
     const handPlate = (plate: ReadoutPlate | null) => {
       const key = plate ? JSON.stringify(plate) : "";
@@ -108,6 +113,15 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
     const draw = () => {
       animation = requestAnimationFrame(draw);
       const current = state.current;
+      const memory = current.memory;
+      if (memory !== shownMemory) {
+        if (shownMemory !== null) {
+          persistence = new Persistence();
+          analysis = new ScreenAnalysis();
+          screenWindow = new ScreenWindow();
+        }
+        shownMemory = memory;
+      }
       // Where the screen looks is decided in one place, apart from drawing: `ScreenWindow`.
       const now = performance.now();
       const { view, shownTime, newlyTriggered, source } = screenWindow.frame(memory, current.settings, { back: current.back, clock: current.clock, now });
@@ -187,7 +201,7 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
       observer.disconnect();
       stage.destroy();
     };
-  }, [memory]);
+  }, []);
 
   // The wheel has to be a non-passive listener to keep the page from scrolling under it.
   useEffect(() => {

@@ -35,7 +35,9 @@ export type LiveMessage =
   | { type: "started"; interval: number; nodes: string[]; controls: LiveControl[]; probes: LiveProbe[] }
   | LiveFrame
   | { type: "changed"; continued: boolean; controls: LiveControl[]; time: number }
-  | { type: "problem"; message: string };
+  | { type: "problem"; message: string }
+  /** A capture the server could not make — the stretch older than it keeps, or not yet run —; the run goes on. */
+  | { type: "capture-refused"; message: string };
 
 export interface LiveStart {
   objectId: string;
@@ -45,9 +47,12 @@ export interface LiveStart {
   probes: LiveProbe[];
 }
 
-/** A frame of samples, decoded from the binary message the server sends (`FrameEncoding` on the server). */
+/**
+ * A frame of samples, decoded from the binary message the server sends (`FrameEncoding` on the server): a frame of the
+ * run, or a `capture` — a stretch the run passed, replayed finely from just before it, with channels and peaks only.
+ */
 export interface LiveFrame {
-  type: "frame";
+  type: "frame" | "capture";
   time: Float64Array;
   /** The time between two samples: the frame's samples are evenly spaced by it, and so is the stream they continue. */
   interval: number;
@@ -102,7 +107,7 @@ function decodeFrame(buffer: ArrayBuffer): LiveFrame {
   const view = new DataView(buffer);
   const headerLength = view.getInt32(0, true);
   const header = JSON.parse(HEADER_DECODER.decode(new Uint8Array(buffer, 4, headerLength))) as
-    { channels: string[]; levels: Record<string, number>; load: number; played?: number; parts?: Record<string, [number | null, number | null, Record<string, number>, (number | null)?, (number | null)?, ("open" | "short" | null)?, Record<string, number>?, ("overheated" | "overvoltage" | "overcurrent" | null)?, ("overheated" | "overvoltage" | "overcurrent" | "overloaded" | null)?]>;
+    { type?: string; channels: string[]; levels: Record<string, number>; load: number; played?: number; parts?: Record<string, [number | null, number | null, Record<string, number>, (number | null)?, (number | null)?, ("open" | "short" | null)?, Record<string, number>?, ("overheated" | "overvoltage" | "overcurrent" | null)?, ("overheated" | "overvoltage" | "overcurrent" | "overloaded" | null)?]>;
       trace?: string[]; traceUnits?: string[]; peaks?: string[] };
   let offset = (4 + headerLength + 7) & ~7;
   const first = view.getFloat64(offset, true);
@@ -155,7 +160,7 @@ function decodeFrame(buffer: ArrayBuffer): LiveFrame {
     parts[part] = { power, temperature, terminals: terminals ?? {}, maximum: maximum ?? null, rating: rating ?? null, failure: failure ?? null,
       displays: displays ?? {}, cause: cause ?? null, past: past ?? null };
   }
-  return { type: "frame", time, interval: step, channels, peaks, levels: header.levels, load: header.load, played: header.played ?? null, parts, trace: traced };
+  return { type: header.type === "capture" ? "capture" : "frame", time, interval: step, channels, peaks, levels: header.levels, load: header.load, played: header.played ?? null, parts, trace: traced };
 }
 
 export interface LiveSocket {

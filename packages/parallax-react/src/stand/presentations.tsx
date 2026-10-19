@@ -76,6 +76,7 @@ function InstrumentPresentation({ detail, target, values, representation, onData
     return null;
   }
   return <SimulatorInstrument representation={shown} computation={computation}
+    refinement={{ target, representation: shown, values, settings: declaredSettings(detail, shown) }}
     title={detail.summary.title} context={{ circuit: `${detail.summary.slug}@${detail.definitionRevision}`, settings: "{}" }}
     diagram={circuit ? (selectNode) => <Schematic elements={withShownValues(circuit.elements, detail.parameters, values)}
       drawing={drawingOfCircuit(circuit)} onProbeSelect={selectNode} /> : undefined} />;

@@ -1138,7 +1138,8 @@
   @media (prefers-reduced-motion:reduce) { .parallax-circuit-diagram-glow { transition:none } }
   .parallax-computed-scope { display: grid; gap: 0; border: 1px solid var(--parallax-line-strong); }
   .parallax-computed-scope-drawing { border-bottom: 1px solid var(--parallax-line-strong); background: var(--parallax-background); padding: 8px; overflow: auto; }
-  .parallax-computed-scope-screen { height: 440px; }
+  .parallax-computed-scope-screen { position: relative; height: 440px; }
+  .parallax-computed-scope-status { position: absolute; right: 8px; bottom: 8px; margin: 0; padding: 2px 8px; border: 1px solid var(--parallax-line); background: var(--parallax-surface); color: var(--parallax-muted); font: 11px var(--parallax-font-technical); pointer-events: none; }
   .parallax-scope-screen { position: relative; min-height: 0; background: var(--parallax-screen); cursor: crosshair; touch-action: none; outline: none; }
   .parallax-scope-screen:focus-visible { box-shadow: inset 0 0 0 2px var(--parallax-accent); }
   .parallax-scope-screen > .parallax-scope-stage { pointer-events: none; cursor: inherit; }

@@ -61,6 +61,36 @@ export class LiveTelemetry {
   }
 }
 
+/** The last stretch captured finely, and why the last capture could not be made — what a capturing screen shows. */
+export interface LiveCapture {
+  capture: SampleMemory | null;
+  refused: string | null;
+}
+
+/**
+ * The captures as a store of their own, like the telemetry: the screen subscribes to it, so a capture arriving several
+ * times a second redraws the screen and nothing else. Held in the bench's state, each one redrew the whole bench —
+ * a third of a second a time, half of every second spent on it.
+ */
+export class LiveCaptures {
+  private state: LiveCapture = { capture: null, refused: null };
+  private readonly listeners = new Set<() => void>();
+
+  readonly subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  readonly current = (): LiveCapture => this.state;
+
+  update(change: Partial<LiveCapture>) {
+    this.state = { ...this.state, ...change };
+    this.listeners.forEach((listener) => listener());
+  }
+}
+
 /** The circuit time the screen plays now; the newest traced moment while no screen is drawing. */
 export function playedTime(playback: PlaybackClock, traced: LiveFlow, now: number): number {
   const shown = playback.shownTime(now);
@@ -131,6 +161,8 @@ export interface LiveCircuitListener {
 export class LiveCircuitSession {
   /** Time, speed and node voltages as they change while it runs. */
   readonly telemetry = new LiveTelemetry();
+  /** The stretches captured finely ({@link capture}), as they arrive. */
+  readonly captures = new LiveCaptures();
   readonly memory = new SampleMemory(10_000);
   /** Where the live screen is in the stream; also what the buffer indicator reads. */
   readonly playback = new PlaybackClock();
@@ -309,6 +341,17 @@ export class LiveCircuitSession {
     }
   };
 
+  /**
+   * A stretch the run has passed, replayed on the server from just before it and sampled on `samples` samples: an edge
+   * a few nanoseconds long, seen in a stream sampled every ten microseconds, as it happened. The run goes on; the
+   * capture arrives in {@link captures}.
+   */
+  readonly capture = (from: number, to: number, samples: number) => {
+    if (this.socket && this.started) {
+      this.socket.send({ type: "capture", from, to, samples });
+    }
+  };
+
   /** Every sample read from now on, or real time first; the circuit goes on. */
   readonly acquire = (gapless: boolean) => {
     if (Boolean(this.input.gapless) === gapless) {
@@ -464,6 +507,7 @@ export class LiveCircuitSession {
     if (message.type === "started") {
       this.started = true;
       this.memory.clear();
+      this.captures.update({ capture: null, refused: null });
       this.traced.clear();
       this.paced = null;
       this.loadShown = null;
@@ -476,6 +520,12 @@ export class LiveCircuitSession {
       // What changed while the circuit was starting — a bench switched to realistic just before Run, a slider moved —
       // was refused by `edit` then, since nothing ran yet; it is applied now, or the run would go on without it.
       this.edit(this.input.circuit, this.input.values);
+    } else if (message.type === "capture") {
+      const captured = new SampleMemory(Math.max(2, message.time.length));
+      captured.append(message.time, message.channels, message.peaks, message.interval);
+      this.captures.update({ capture: captured, refused: null });
+    } else if (message.type === "capture-refused") {
+      this.captures.update({ refused: message.message });
     } else if (message.type === "frame") {
       this.memory.append(message.time, message.channels, message.peaks, message.interval);
       this.traced.append(message.trace.time, message.trace.columns, message.trace.units, message.trace.rms);
@@ -525,7 +575,7 @@ export class LiveCircuitSession {
     } else if (message.type === "changed") {
       this.controls = message.controls;
       this.listener.onControls(message.controls);
-    } else {
+    } else if (message.type === "problem") {
       this.listener.onProblem(message.message);
       this.listener.onRunning(false);
       this.listener.onBusy(false);
