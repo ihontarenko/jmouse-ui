@@ -1,4 +1,4 @@
-import { readableFileSize, reasonOf, saveBlob } from "@jmouse/file-handling"
+import { readableFileSize, reasonOf, saveBlob, type FileFamily } from "@jmouse/file-handling"
 import {
   Button,
   ConfirmDialog,
@@ -12,6 +12,7 @@ import {
   Tree,
   type FileWorkspaceEntry,
   type FileWorkspaceLabels,
+  type FileWorkspaceLocation,
   type IconSource,
   type MenuEntry,
   type TreeNode,
@@ -52,6 +53,7 @@ const explorerLabels = {
   moveDescription: "Choose the folder it goes into.",
   moveHere: "Move here",
   remove: "Delete",
+  restore: "Restore",
   removeTitle: (name: string) => `Delete “${name}”`,
   removeFileDescription: "The file is deleted. This cannot be undone.",
   removeFolderDescription: "The folder is deleted. A folder that still holds something is refused rather than emptied.",
@@ -66,6 +68,7 @@ const explorerLabels = {
   renameFailed: (name: string, reason: string) => withReason(`“${name}” could not be renamed`, reason),
   moveFailed: (name: string, reason: string) => withReason(`“${name}” could not be moved`, reason),
   removeFailed: (name: string, reason: string) => withReason(`“${name}” could not be deleted`, reason),
+  restoreFailed: (name: string, reason: string) => withReason(`“${name}” could not be restored`, reason),
   uploadFailed: (name: string, reason: string) => withReason(`“${name}” could not be uploaded`, reason),
   downloadFailed: (name: string, reason: string) => withReason(`“${name}” could not be downloaded`, reason),
   copyFailed: (name: string, reason: string) => withReason(`The link to “${name}” could not be copied`, reason),
@@ -80,8 +83,44 @@ const explorerLabels = {
 
 export type ExplorerLabels = typeof explorerLabels & FileWorkspaceLabels
 
+/** Where the explorer is — for a host that draws the breadcrumb and the count itself, in the page presentation. */
+export interface ExplorerLocation {
+  /** The folders from the top down to the one shown; empty at the root. */
+  trail: ExplorerEntry[]
+  /** The file in front, when one is. */
+  activeFile?: ExplorerEntry
+  /** What the listing shows once filtered, and what the folder holds. */
+  shown: number
+  total: number
+}
+
+/**
+ * A way of looking the host offers and the explorer only draws — "show removed", "only mine". On or off, in the
+ * toolbar; what it changes is the host's, usually through the adapter it hands over next.
+ */
+export interface ExplorerToggle {
+  id: string
+  label: string
+  icon?: IconSource
+  pressed: boolean
+  onPressedChange(pressed: boolean): void
+}
+
 export interface ExplorerProperties {
   adapter: ExplorerAdapter
+  /**
+   * `window` (the default) frames the explorer as a tool of its own. `page` makes it the page: no frame, no path bar,
+   * no status bar — the host draws the breadcrumb and the count from {@link ExplorerProperties.onLocationChange}, and
+   * may put its own controls at the end of the tab strip with {@link ExplorerProperties.tabsEnd}.
+   */
+  presentation?: "window" | "page"
+  onLocationChange?(location: ExplorerLocation): void
+  tabsEnd?: ReactNode
+  /** The file families the listing is narrowed to — the host's when it keeps them, in the address usually. */
+  families?: FileFamily[]
+  onFamiliesChange?(families: FileFamily[]): void
+  /** The host's ways of looking, drawn in the toolbar as toggles. */
+  toggles?: ExplorerToggle[]
   /** The folder shown, when the host keeps it — in the address, usually. Left out, the explorer keeps its own. */
   folderId?: string | null
   onFolderChange?(folderId: string | null): void
@@ -116,6 +155,7 @@ interface ActHandlers {
   download(entry: ExplorerEntry): void
   copyLink(entry: ExplorerEntry): void
   startRename(entry: ExplorerEntry): void
+  restore(entry: ExplorerEntry): void
   ask(pending: Pending): void
   chooseUploads(): void
 }
@@ -138,6 +178,7 @@ const ACTIONS: Record<ExplorerAction, ActionPresentation> = {
   rename: { icon: "edit", label: (text) => text.rename, key: "F2", perform: (handlers, entry) => handlers.startRename(entry) },
   move: { icon: "folder", label: (text) => text.move, perform: (handlers, entry) => handlers.ask({ act: "move", entry }) },
   remove: { icon: "trash", label: (text) => text.remove, key: "Delete", danger: true, perform: (handlers, entry) => handlers.ask({ act: "remove", entry }) },
+  restore: { icon: "reset", label: (text) => text.restore, perform: (handlers, entry) => handlers.restore(entry) },
   createFolder: { icon: "plus", label: (text) => text.newFolder },
   upload: { icon: "upload", label: (text) => text.upload },
 }
@@ -182,7 +223,7 @@ function nameProblem(name: string, siblings: ExplorerEntry[], text: ExplorerLabe
  * ⚠️ **A failed act leaves the listing usable.** It is said in a band above the panes, in the server's own words, and
  * the band can be dismissed — a failure that replaced the listing would punish a refused rename with a lost place.
  */
-export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defaultFolderId = null, openFileIds, activeFileId, onOpenFilesChange, renderFile, extraActions, labels, formatDate = formatIsoDate, formatSize = readableFileSize, defaultView, storageKey, className }: ExplorerProperties) {
+export function Explorer({ adapter, presentation, onLocationChange, tabsEnd, families, onFamiliesChange, toggles, folderId: hostFolderId, onFolderChange, defaultFolderId = null, openFileIds, activeFileId, onOpenFilesChange, renderFile, extraActions, labels, formatDate = formatIsoDate, formatSize = readableFileSize, defaultView, storageKey, className }: ExplorerProperties) {
   const text = { ...explorerLabels, ...labels } as ExplorerLabels
   const [ownFolderId, setOwnFolderId] = useState<string | null>(defaultFolderId)
   const folderId = hostFolderId === undefined ? ownFolderId : hostFolderId
@@ -212,6 +253,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
     mediaType: entry.mediaType,
     size: entry.size,
     modified: entry.modified === undefined ? undefined : formatDate(entry.modified),
+    removed: entry.removed,
   })), [catalogue.entries, formatDate])
 
   function changeFolder(next: string | null) {
@@ -276,11 +318,22 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   /** ⚠️ The confirmation closes either way — a refusal is said in the band, where it stays readable. */
   async function remove(entry: ExplorerEntry) {
     await attempt((reason) => text.removeFailed(entry.name, reason), async () => {
-      await adapter.remove!(entry)
-      catalogue.forget(entry.id)
+      const kept = await adapter.remove!(entry)
+
+      if (kept) {
+        catalogue.record(kept)
+      } else {
+        catalogue.forget(entry.id)
+      }
       setSelectedId(undefined)
     })
     setPending(undefined)
+  }
+
+  function restore(entry: ExplorerEntry) {
+    return attempt((reason) => text.restoreFailed(entry.name, reason), async () => {
+      catalogue.record(await adapter.restore!(entry))
+    })
   }
 
   function download(entry: ExplorerEntry) {
@@ -345,6 +398,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
     download: (entry) => void download(entry),
     copyLink: (entry) => void copyLink(entry),
     startRename,
+    restore: (entry) => void restore(entry),
     ask: setPending,
     chooseUploads: () => uploadInput.current?.click(),
   }
@@ -407,6 +461,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   const selectionActions = selected === undefined ? [] : entryActions(adapter, selected)
 
   const toolbar = <>
+    {(toggles ?? []).map((toggle) => <Button key={toggle.id} size="small" variant="quiet" icon={toggle.icon} pressed={toggle.pressed} onClick={() => toggle.onPressedChange(!toggle.pressed)}>{toggle.label}</Button>)}
     {selected !== undefined ? selectionActions.map((action) => <IconButton key={action} size="small" icon={ACTIONS[action].icon}
       label={`${ACTIONS[action].label(text)}: ${selected.name}`} onClick={() => ACTIONS[action].perform?.(handlers, selected)} />) : null}
     {offered.includes("createFolder") ? <Button size="small" icon={ACTIONS.createFolder.icon} onClick={() => setPending({ act: "createFolder" })}>{ACTIONS.createFolder.label(text)}</Button> : null}
@@ -437,6 +492,16 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   return <>
     <FileWorkspace
       className={className}
+      presentation={presentation}
+      onLocationChange={onLocationChange === undefined ? undefined : (location: FileWorkspaceLocation) => onLocationChange({
+        trail: location.trail.map((entry) => byId.get(entry.id)).filter((entry): entry is ExplorerEntry => entry !== undefined),
+        activeFile: location.activeFile === undefined ? undefined : byId.get(location.activeFile.id),
+        shown: location.shown,
+        total: location.total,
+      })}
+      tabsEnd={tabsEnd}
+      families={families}
+      onFamiliesChange={onFamiliesChange}
       entries={workspaceEntries}
       directoryId={folderId}
       onDirectoryChange={changeFolder}

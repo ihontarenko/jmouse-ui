@@ -1,8 +1,9 @@
-﻿import { readableFileSize } from "@jmouse/file-handling"
-import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
+﻿import { fileFamilyOf, readableFileSize, type FileFamily } from "@jmouse/file-handling"
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { Button, IconButton } from "../controls/Button"
 import { Segmented } from "../controls/Choices"
 import { Input, SearchField, Select } from "../controls/Inputs"
+import { Chip } from "../controls/Labels"
 import { Split } from "../containers/Split"
 import { Tile, TileGrid } from "../data/Records"
 import { Table, type TableColumn, type TableSort } from "../data/Table"
@@ -26,10 +27,19 @@ export interface FileWorkspaceEntry {
   kind: "folder" | "file"
   mediaType?: string
   glyphKind?: FileGlyphKind
+  /** Bytes — of the file, or of everything a folder holds when the host knows it. */
   size?: number
   /** Display-ready metadata; the product owns locale and date formatting. */
   modified?: string
+  /**
+   * Taken out, and still there to be put back. Drawn receded, struck through and marked with a word — never by colour
+   * alone.
+   */
+  removed?: boolean
 }
+
+/** The order the type filter lists families in: what is read, then what is looked at, then the rest. */
+const FAMILY_ORDER: readonly FileFamily[] = ["document", "code", "data", "sheet", "image", "audio", "video", "archive", "file"]
 
 const defaultLabels = {
   folders: "Folders", files: "Files", root: "All files", path: "Folder path", up: "Parent folder",
@@ -39,7 +49,12 @@ const defaultLabels = {
   emptyDescription: "Choose another folder or add files here.", noResults: "No matching files",
   clearSearch: "Clear search", loading: "Loading files", unavailable: "Folder is unavailable",
   unavailableDescription: "It may have been moved, removed, or access may have changed.",
-  preview: "File preview", close: "Close", options: "Options", items: "items", newName: "New name", dropFiles: "Drop files to add them to this folder",
+  preview: "File preview", close: "Close", options: "Options", newName: "New name", dropFiles: "Drop files to add them to this folder",
+  type: "Type", allTypes: "All",
+  familyNames: { document: "Documents", code: "Code", data: "Data", sheet: "Sheets", image: "Images", audio: "Audio", video: "Video", archive: "Archives", file: "Other" } as Record<FileFamily, string>,
+  noneOfTypes: "Nothing here is of the chosen types", showAllTypes: "Show every type",
+  removed: "Removed",
+  itemCount: (count: number): string => (count === 1 ? "1 item" : `${count} items`),
 }
 export type FileWorkspaceLabels = typeof defaultLabels
 
@@ -55,6 +70,17 @@ export interface FileWorkspaceRename {
    * keeping one the host would refuse.
    */
   problemWith?(name: string): string | undefined
+}
+
+/** Where the workspace is, for a host that draws the way there itself — a page breadcrumb, a title. */
+export interface FileWorkspaceLocation {
+  /** The folders from the top down to the one shown; empty at the root. */
+  trail: FileWorkspaceEntry[]
+  /** The file in front, when one is. */
+  activeFile?: FileWorkspaceEntry
+  /** What the listing shows once filtered, and what the folder holds. */
+  shown: number
+  total: number
 }
 
 /**
@@ -137,6 +163,19 @@ export interface FileWorkspaceProperties {
   onDirectoryChange(id: string | null): void
   /** The product provides its viewer/editor; no fetching or product policy lives here. */
   renderFile(entry: FileWorkspaceEntry): ReactNode
+  /**
+   * How the workspace sits on its page.
+   *
+   * - `window` (the default): a framed tool of its own, with its path above the panes and its counts below them.
+   * - `page`: the workspace IS the page — no frame, no path bar, no status bar. The folders are the page's left column,
+   *   the tab strip is its header line, and the host draws the way here in its own breadcrumb from
+   *   {@link FileWorkspaceProperties.onLocationChange}. Give it the height of the page; the reader is the one scroll.
+   */
+  presentation?: "window" | "page"
+  /** Where the workspace is, each time that changes — for a host that draws the breadcrumb itself. */
+  onLocationChange?(location: FileWorkspaceLocation): void
+  /** At the end of the tab strip — in page presentation, the page's own controls. */
+  tabsEnd?: ReactNode
   /** Upload, new folder, and other product capabilities, composed from kit controls. */
   actions?: ReactNode
   entryActions?(entry: FileWorkspaceEntry): MenuEntry[]
@@ -171,18 +210,37 @@ export interface FileWorkspaceProperties {
   /** The opened file in front; undefined shows the folder. */
   activeFileId?: string
   onOpenFilesChange?(openFileIds: string[], activeFileId: string | undefined): void
+  /**
+   * The file families the listing is narrowed to; empty or absent shows every file. Given with
+   * {@link FileWorkspaceProperties.onFamiliesChange}, the choice is the host's — kept in its address, usually.
+   * Folders are never filtered away: they are the way to the files.
+   */
+  families?: FileFamily[]
+  onFamiliesChange?(families: FileFamily[]): void
   /** Keys pressed anywhere inside — where a host binds F2 or Delete to the selection. */
   onKeyDown?(event: KeyboardEvent<HTMLElement>): void
   className?: string
 }
 
+/** The narrow layout stacks the folders above the listing; there they start hidden, so the listing is what is seen. */
+const NARROW = "(max-width: 640px)"
+
+function startsNarrow(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(NARROW).matches
+}
+
+function familyOf(entry: FileWorkspaceEntry): FileFamily {
+  return entry.glyphKind !== undefined && entry.glyphKind !== "folder" ? entry.glyphKind : fileFamilyOf(entry.name, entry.mediaType)
+}
+
 /**
- * A second file-manager presentation, composed from the kit's existing workspace parts.
- * The product owns location, data and capabilities. Tabs, selection and presentation are local UI state.
- * Entries form an acyclic tree, with stable unique IDs and folders as parents; null names the root.
+ * A file manager composed from the kit's workspace parts — framed as a tool of its own, or as the page itself.
+ * The product owns location, data and capabilities. Tabs, selection and presentation are local UI state unless the
+ * host takes them. Entries form an acyclic tree, with stable unique IDs and folders as parents; null names the root.
  */
-export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, unavailable, labels, formatSize = readableFileSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, openFileIds: hostOpenFileIds, activeFileId: hostActiveFileId, onOpenFilesChange, onKeyDown, className }: FileWorkspaceProperties) {
+export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, presentation = "window", onLocationChange, tabsEnd, actions, entryActions, loading, error, unavailable, labels, formatSize = readableFileSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, openFileIds: hostOpenFileIds, activeFileId: hostActiveFileId, onOpenFilesChange, families: hostFamilies, onFamiliesChange, onKeyDown, className }: FileWorkspaceProperties) {
   const text = { ...defaultLabels, ...labels }
+  const page = presentation === "page"
   const browserId = useId()
   const [ownOpenIds, setOwnOpenIds] = useState<string[]>([])
   const [ownActiveFileId, setOwnActiveFileId] = useState<string>()
@@ -195,6 +253,16 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
     } else {
       setOwnOpenIds(nextOpenIds)
       setOwnActiveFileId(nextActiveId)
+    }
+  }
+  const [ownFamilies, setOwnFamilies] = useState<FileFamily[]>([])
+  const familiesControlled = onFamiliesChange !== undefined
+  const chosenFamilies = familiesControlled ? (hostFamilies ?? []) : ownFamilies
+  function chooseFamilies(next: FileFamily[]) {
+    if (familiesControlled) {
+      onFamiliesChange(next)
+    } else {
+      setOwnFamilies(next)
     }
   }
   const [ownSelection, setOwnSelection] = useState<{ directoryId: string | null; id: string }>()
@@ -212,7 +280,7 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
   const query = search.directoryId === directoryId ? search.value : ""
   const [view, setView] = useState(defaultView)
   const [sort, setSort] = useState<TableSort>({ key: "name", direction: "ascending" })
-  const [treeVisible, setTreeVisible] = useState(true)
+  const [treeVisible, setTreeVisible] = useState(() => !startsNarrow())
   const [expandedIds, setExpandedIds] = useState<string[]>([])
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries])
   const directory = directoryId === null ? undefined : byId.get(directoryId)
@@ -244,7 +312,7 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
     setExpandedIds((previous) => Array.from(new Set([...previous, ...parents])))
   }, [directoryId, byId])
   const glyph = (entry: FileWorkspaceEntry, size: "small" | "large" = "small") => <FileGlyph name={entry.name} mediaType={entry.mediaType} kind={entry.kind === "folder" ? "folder" : entry.glyphKind} size={size} />
-  const metadata = (entry: FileWorkspaceEntry) => entry.kind === "folder" ? text.folder : entry.size === undefined ? "\u2014" : formatSize(entry.size)
+  const metadata = (entry: FileWorkspaceEntry) => entry.size === undefined ? (entry.kind === "folder" ? text.folder : "—") : formatSize(entry.size)
   const menu = (entry: FileWorkspaceEntry) => {
     const items = entryActions?.(entry)
     return items?.length ? <span onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><RowMenu label={`${text.options}: ${entry.name}`} items={items} /></span> : undefined
@@ -261,11 +329,35 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
       id: entry.id, name: entry.name, glyph: glyph(entry), children: treeNodes(entry.id), end: menu(entry),
     }))
   }
-  const rows = (childrenByParent.get(directoryId) ?? []).filter((entry) => entry.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())).sort((first, second) => {
-    if (first.kind !== second.kind) { return first.kind === "folder" ? -1 : 1 }
+
+  const directoryEntries = childrenByParent.get(directoryId) ?? []
+  const directoryFiles = directoryEntries.filter((entry) => entry.kind === "file")
+  const familyCounts = new Map<FileFamily, number>()
+  for (const file of directoryFiles) {
+    const family = familyOf(file)
+    familyCounts.set(family, (familyCounts.get(family) ?? 0) + 1)
+  }
+  // A family chosen elsewhere stays on the strip at zero, so the reader sees why this folder shows less.
+  const offeredFamilies = FAMILY_ORDER.filter((family) => familyCounts.has(family) || chosenFamilies.includes(family))
+  const typeFilterShown = offeredFamilies.length > 1 || chosenFamilies.length > 0
+  const ofChosenType = (entry: FileWorkspaceEntry) => entry.kind === "folder" || chosenFamilies.length === 0 || chosenFamilies.includes(familyOf(entry))
+  const rows = directoryEntries.filter(ofChosenType).filter((entry) => entry.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())).sort((first, second) => {
+    if (first.kind !== second.kind) {
+      return first.kind === "folder" ? -1 : 1
+    }
     const comparison = sort.key === "size" ? (first.size ?? 0) - (second.size ?? 0) : first.name.localeCompare(second.name, undefined, { numeric: true })
     return sort.direction === "descending" ? -comparison : comparison
   })
+
+  // ⚠️ Told only when something the host would draw has changed: the effect is keyed on that, not on a fresh object
+  // each render — a host that stores the location would otherwise render, be told again, and never stop.
+  const locationKey = [...ancestors.map((entry) => `${entry.id}\u0000${entry.name}`), showingFile ? activeFile.id : "", rows.length, directoryEntries.length].join("\u0001")
+  const location: FileWorkspaceLocation = { trail: ancestors, activeFile: showingFile ? activeFile : undefined, shown: rows.length, total: directoryEntries.length }
+  const latestLocation = useRef(location)
+  latestLocation.current = location
+  useEffect(() => {
+    onLocationChange?.(latestLocation.current)
+  }, [locationKey]) // eslint-disable-line react-hooks/exhaustive-deps -- the key is the location's identity
 
   function navigate(id: string | null) {
     if (activeFileId !== undefined) {
@@ -283,29 +375,68 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
     }
   }
   function close(id: string) {
-    if (id === browserId) { return }
+    if (id === browserId) {
+      return
+    }
     const remaining = openIds.filter((openId) => openId !== id)
     setOpenFiles(remaining, activeFileId === id ? remaining.at(-1) : activeFileId)
+  }
+  function toggleFamily(family: FileFamily) {
+    chooseFamilies(chosenFamilies.includes(family) ? chosenFamilies.filter((chosen) => chosen !== family) : [...chosenFamilies, family])
   }
   const tabs: OpenFile[] = [
     { id: browserId, name: directory?.name ?? text.root, icon: "folder", pinned: true },
     ...openedFiles.map((entry) => ({ id: entry.id, name: entry.name, glyph: glyph(entry), hint: entry.parentId ? byId.get(entry.parentId)?.name : text.root })),
   ]
+  const entryName = (entry: FileWorkspaceEntry) => <span className="kit-file-name" data-removed={entry.removed ? "" : undefined}>
+    {glyph(entry)}
+    {renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : <span title={entry.name}>{entry.name}</span>}
+    {entry.removed ? <span className="kit-file-mark">{text.removed}</span> : null}
+  </span>
   const columns: TableColumn<FileWorkspaceEntry>[] = [
-    { key: "name", header: text.name, sortable: true, cell: (entry) => <span className="kit-file-name">{glyph(entry)}{renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : <span>{entry.name}</span>}</span> },
+    { key: "name", header: text.name, sortable: true, truncate: true, cell: entryName },
     { key: "size", header: text.size, sortable: true, align: "end", technical: true, shrink: true, cell: metadata },
-    { key: "modified", header: text.modified, shrink: true, cell: (entry) => entry.modified ?? "\u2014" },
-    ...(entryActions ? [{ key: "actions", header: text.options, shrink: true, cell: menu } satisfies TableColumn<FileWorkspaceEntry>] : []),
+    { key: "modified", header: text.modified, technical: true, shrink: true, cell: (entry) => entry.modified ?? "—" },
+    ...(entryActions ? [{ key: "actions", header: "", headerLabel: text.options, shrink: true, cell: menu } satisfies TableColumn<FileWorkspaceEntry>] : []),
   ]
+
+  const filteredAway = chosenFamilies.length > 0 && directoryFiles.length > 0 && !directoryFiles.some(ofChosenType)
+  const listing = error ? <Notice tone="danger">{error}</Notice>
+    : loading ? <Waiting label={text.loading} />
+      : !directoryAvailable ? <EmptyState flush icon="folder" title={text.unavailable} description={text.unavailableDescription} actions={<Button onClick={() => navigate(null)}>{text.root}</Button>} />
+        : rows.length === 0 && query ? <EmptyState flush icon="search" title={text.noResults} actions={<Button onClick={() => setSearch({ directoryId, value: "" })}>{text.clearSearch}</Button>} />
+          : rows.length === 0 && filteredAway ? <EmptyState flush icon="filter" title={text.noneOfTypes} actions={<Button onClick={() => chooseFamilies([])}>{text.showAllTypes}</Button>} />
+            : rows.length === 0 ? <EmptyState flush icon="folder" title={text.empty} description={text.emptyDescription} />
+              : view === "list" ? <Table label={text.files} columns={columns} rows={rows} rowKey={(entry) => entry.id} sort={sort} onSortChange={setSort} selectedKey={rows.some((entry) => entry.id === selectedId) ? selectedId : undefined} onRowSelect={(entry) => setSelection({ directoryId, id: entry.id })} onRowActivate={open} />
+                : <TileGrid>
+                  {rows.map((entry) => <Tile key={entry.id} className={entry.removed ? "kit-file-tile-removed" : undefined} name={entry.name} glyph={glyph(entry, "large")} meta={entry.removed ? text.removed : metadata(entry)} active={selectedId === entry.id} onOpen={() => setSelection({ directoryId, id: entry.id })} onActivate={() => open(entry)} actions={menu(entry)} editor={renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : undefined} />)}
+                </TileGrid>
 
   const browser = <div className="kit-file-browser">
     <Toolbar label={text.files}>
+      {page ? <>
+        <IconButton icon="sidebar" size="small" label={treeVisible ? text.hideFolders : text.showFolders} aria-expanded={treeVisible} onClick={() => setTreeVisible(!treeVisible)} />
+        <IconButton icon="arrow-up" size="small" label={text.up} disabled={!parentKnown} onClick={() => {
+          if (directory !== undefined) {
+            navigate(directory.parentId)
+          }
+        }} />
+      </> : null}
       <SearchField label={text.search} placeholder={text.search} size="small" value={query} onValueChange={(value) => setSearch({ directoryId, value })} />
       <ToolbarPush />
-      <Select aria-label={text.sort} size="small" value={sort.direction} onChange={(event) => setSort({ key: "name", direction: event.target.value as TableSort["direction"] })} options={[{ value: "ascending", label: text.ascending }, { value: "descending", label: text.descending }]} />
+      {/* The list sorts by its column heads; only the tiles, which have none, need the menu. */}
+      {view === "tiles" ? <Select aria-label={text.sort} size="small" value={sort.direction} onChange={(event) => setSort({ key: "name", direction: event.target.value as TableSort["direction"] })} options={[{ value: "ascending", label: text.ascending }, { value: "descending", label: text.descending }]} /> : null}
       <Segmented<"tiles" | "list"> label={text.view} size="small" value={view} onValueChange={setView} options={[{ value: "tiles", label: text.tiles }, { value: "list", label: text.list }]} />
       {actions}
     </Toolbar>
+    {typeFilterShown ? <div className="kit-file-facets" role="group" aria-label={text.type}>
+      <span className="kit-micro-label" aria-hidden="true">{text.type}</span>
+      <Chip pressed={chosenFamilies.length === 0} count={directoryFiles.length} onClick={() => chooseFamilies([])}>{text.allTypes}</Chip>
+      {offeredFamilies.map((family) => <Chip key={family} pressed={chosenFamilies.includes(family)} count={familyCounts.get(family) ?? 0} onClick={() => toggleFamily(family)}>
+        <span className="kit-file-family" style={{ "--kit-file-family-color": `var(--kit-file-${family}, var(--kit-muted))` } as CSSProperties} aria-hidden="true" />
+        {text.familyNames[family]}
+      </Chip>)}
+    </div> : null}
     <div className="kit-file-listing" aria-busy={loading || undefined} data-targeted={dropTargeted ? "" : undefined} {...(onDropFiles && directoryAvailable ? {
       onDragOver: (event: DragEvent) => {
         if (event.dataTransfer.types.includes("Files")) {
@@ -330,14 +461,12 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
       {/* ⚠️ The live region is always there and only its words change: one inserted together with its text is
           usually not announced at all. */}
       <p className="kit-file-drop-hint" aria-live="polite">{dropTargeted ? text.dropFiles : ""}</p>
-      {error ? <Notice tone="danger">{error}</Notice> : loading ? <Waiting label={text.loading} /> : !directoryAvailable ? <EmptyState flush icon="folder" title={text.unavailable} description={text.unavailableDescription} actions={<Button onClick={() => navigate(null)}>{text.root}</Button>} /> : rows.length === 0 ? <EmptyState flush icon={query ? "search" : "folder"} title={query ? text.noResults : text.empty} description={query ? undefined : text.emptyDescription} actions={query ? <Button onClick={() => setSearch({ directoryId, value: "" })}>{text.clearSearch}</Button> : undefined} /> : view === "list" ? <Table label={text.files} columns={columns} rows={rows} rowKey={(entry) => entry.id} sort={sort} onSortChange={setSort} selectedKey={rows.some((entry) => entry.id === selectedId) ? selectedId : undefined} onRowSelect={(entry) => setSelection({ directoryId, id: entry.id })} onRowActivate={open} /> : <TileGrid>
-        {rows.map((entry) => <Tile key={entry.id} name={entry.name} glyph={glyph(entry, "large")} meta={metadata(entry)} active={selectedId === entry.id} onOpen={() => setSelection({ directoryId, id: entry.id })} onActivate={() => open(entry)} actions={menu(entry)} editor={renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : undefined} />)}
-      </TileGrid>}
+      {listing}
     </div>
   </div>
 
-  return <section className={joinClassNames("kit-file-workspace", className)} aria-label={text.files} data-tree-visible={treeVisible ? "" : undefined} onKeyDown={onKeyDown}>
-    <div className="kit-file-location">
+  return <section className={joinClassNames("kit-file-workspace", className)} aria-label={text.files} data-presentation={presentation} data-tree-visible={treeVisible ? "" : undefined} onKeyDown={onKeyDown}>
+    {page ? null : <div className="kit-file-location">
       <IconButton icon="folder" size="small" label={treeVisible ? text.hideFolders : text.showFolders} aria-expanded={treeVisible} onClick={() => setTreeVisible(!treeVisible)} />
       <IconButton icon="arrow-up" size="small" label={text.up} disabled={!parentKnown} onClick={() => {
         if (directory !== undefined) {
@@ -345,19 +474,18 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
         }
       }} />
       <Crumbs label={text.path} items={[{ label: text.root, onNavigate: () => navigate(null) }, ...ancestors.map((entry) => ({ label: entry.name, onNavigate: () => navigate(entry.id) }))]} renderLink={(crumb, className) => <button className={className} type="button" onClick={crumb.onNavigate}>{crumb.label}</button>} />
-    </div>
+    </div>}
     {notice ? <div className="kit-file-notice">{notice}</div> : null}
     <div className="kit-file-panes">
-      <Split label={text.folders} defaultSize={260} minimum={180} maximum={480} collapsed={!treeVisible} storageKey={storageKey}>
-        <ToolWindow title={text.folders} onHide={() => setTreeVisible(false)} hideLabel={text.hideFolders} toolbar={<Button variant="quiet" size="small" icon="folder" onClick={() => navigate(null)}>{text.root}</Button>}>
+      <Split label={text.folders} defaultSize={page ? 240 : 260} minimum={180} maximum={480} collapsed={!treeVisible} storageKey={storageKey}>
+        <ToolWindow title={text.folders} onHide={() => setTreeVisible(false)} hideLabel={text.hideFolders}>
           <Tree label={text.folders} nodes={treeNodes(null)} selectedId={directoryId ?? undefined} expandedIds={expandedIds} onExpandedChange={setExpandedIds} onSelect={navigate} />
         </ToolWindow>
-        <Editor tabs={<EditorTabs label={text.files} files={tabs} activeId={showingFile ? activeFile.id : browserId} onActivate={(id) => setOpenFiles(openIds, id === browserId ? undefined : id)} onClose={close} closeLabel={text.close} />}>
+        <Editor tabs={<EditorTabs label={text.files} files={tabs} activeId={showingFile ? activeFile.id : browserId} onActivate={(id) => setOpenFiles(openIds, id === browserId ? undefined : id)} onClose={close} closeLabel={text.close} end={tabsEnd} />}>
           {showingFile ? <section className="kit-file-preview" aria-label={`${text.preview}: ${activeFile.name}`}>{renderFile(activeFile)}</section> : browser}
         </Editor>
       </Split>
     </div>
-    <StatusBar start={<StatusItem>{showingFile ? activeFile.name : directory?.name ?? text.root}</StatusItem>} end={<StatusItem>{loading ? text.loading : `${rows.length} ${text.items}`}</StatusItem>} />
+    {page ? null : <StatusBar start={<StatusItem>{showingFile ? activeFile.name : directory?.name ?? text.root}</StatusItem>} end={<StatusItem>{loading ? text.loading : text.itemCount(rows.length)}</StatusItem>} />}
   </section>
 }
-

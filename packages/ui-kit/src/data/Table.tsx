@@ -87,6 +87,7 @@ export function Table<Row>({ label, columns, rows, rowKey, sort, onSortChange, o
                 <th
                   key={column.key}
                   scope="col"
+                  data-column={column.key}
                   aria-sort={sorted}
                   aria-label={column.headerLabel}
                   data-align={column.align === "start" ? undefined : column.align}
@@ -127,6 +128,7 @@ export function Table<Row>({ label, columns, rows, rowKey, sort, onSortChange, o
                   {columns.map((column) => (
                     <td
                       key={column.key}
+                      data-column={column.key}
                       data-align={column.align === "start" ? undefined : column.align}
                       data-technical={column.technical ? "" : undefined}
                       data-shrink={column.shrink ? "" : undefined}
