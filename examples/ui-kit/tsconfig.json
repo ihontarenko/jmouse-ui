@@ -20,6 +20,9 @@
       "@jmouse/ui-kit": [
         "../../packages/ui-kit/src/index.ts"
       ],
+      "@jmouse/explorer": [
+        "../../packages/explorer/src/index.ts"
+      ],
       "@jmouse/ui-kit/code": [
         "../../packages/ui-kit/src/code/index.ts"
       ]

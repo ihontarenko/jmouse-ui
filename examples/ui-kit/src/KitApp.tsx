@@ -25,6 +25,7 @@ import { DataSection } from "./sections/Data"
 import { FeedbackSection } from "./sections/Feedback"
 import { OverviewSection, ThemesSection } from "./sections/Foundations"
 import { ThemeGeneratorSection } from "./sections/ThemeGenerator"
+import { ExplorerSection } from "./sections/Explorer"
 import { FilesSection } from "./sections/Files"
 import { MediaSection } from "./sections/Media"
 import { NavigationSection } from "./sections/Navigation"
@@ -50,6 +51,7 @@ const routes: Route[] = [
   { path: "media", label: "Media", icon: "image", group: "Components", anchors: [["shelf", "Shelf and media tile"], ["transport", "Transport"]] },
   { path: "workspace", label: "Workspace", icon: "file-code", group: "Compositions", anchors: [["workspace", "IDE frame"]] },
   { path: "files", label: "File workspace", icon: "folder", group: "Compositions", anchors: [["file-workspace", "File workspace"], ["file-glyphs", "File glyphs"]] },
+  { path: "explorer", label: "Explorer", icon: "folder-open", group: "Compositions", anchors: [["explorer", "Explorer"], ["explorer-capabilities", "Adapter capabilities"]] },
   { path: "catalogue", label: "Catalogue", icon: "list", group: "Compositions", anchors: [["catalogue", "List and inspector"]] },
 ]
 
@@ -135,6 +137,7 @@ export function KitApp() {
     workspace: <WorkspaceSection />,
     catalogue: <CatalogueSection />,
     files: <FilesSection />,
+    explorer: <ExplorerSection />,
   }
 
   const groups = ["Foundations", "Components", "Compositions"] as const
