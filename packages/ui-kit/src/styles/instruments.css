@@ -1,0 +1,113 @@
+/*
+ * `@jmouse/ui-kit/instruments.css` — Parallax's instruments in the kit's themes. Import it once, after
+ * `@jmouse/ui-kit/styles.css`, only in a product that imports `@jmouse/ui-kit/instruments`.
+ *
+ * It loads the instruments' own stylesheet and maps the kit's tokens onto theirs (`--parallax-*`, the contract
+ * `@jmouse/parallax-react/styles.css` documents), so every kit theme and mode, every axis, reaches the bench, the
+ * schematic and the scope — the canvas tokens become the screen and the sheet.
+ *
+ * ⚠️ The mapping is UNLAYERED on purpose. The instruments' defaults are unlayered `:where(:root)` rules, and an unlayered
+ * rule beats any layered one whatever its specificity — inside the kit's layer this bridge would lose to them. Here,
+ * `:root` (0,1,0) beats `:where(:root)` (0,0,0). Declared on [data-theme] as well, so a region in another theme maps too.
+ */
+@import "@jmouse/parallax-react/styles.css";
+
+:root,
+[data-theme] {
+  /* page */
+  --parallax-background: var(--kit-bg);
+  --parallax-surface: var(--kit-surface);
+  --parallax-surface-2: var(--kit-surface-2);
+  --parallax-well: var(--kit-well);
+  --parallax-ink: var(--kit-ink);
+  --parallax-secondary: var(--kit-secondary);
+  --parallax-muted: var(--kit-muted);
+  --parallax-line: var(--kit-line);
+  --parallax-line-strong: var(--kit-line-strong);
+  --parallax-accent: var(--kit-accent);
+  --parallax-accent-soft: var(--kit-accent-soft);
+  --parallax-accent-strong: var(--kit-accent-strong);
+  --parallax-on-accent: var(--kit-on-accent);
+  --parallax-good: var(--kit-good);
+  --parallax-warn: var(--kit-warn);
+  --parallax-danger: var(--kit-danger);
+  --parallax-good-soft: var(--kit-good-soft);
+  --parallax-warn-soft: var(--kit-warn-soft);
+  --parallax-danger-soft: var(--kit-danger-soft);
+  --parallax-focus-ring: var(--kit-focus-ring);
+
+  /* geometry and type */
+  --parallax-space-1: var(--kit-space-1);
+  --parallax-space-2: var(--kit-space-2);
+  --parallax-space-3: var(--kit-space-3);
+  --parallax-space-4: var(--kit-space-4);
+  --parallax-space-5: var(--kit-space-5);
+  --parallax-space-6: var(--kit-space-6);
+  --parallax-space-7: var(--kit-space-7);
+  --parallax-radius-small: var(--kit-radius-small);
+  --parallax-radius-control: var(--kit-radius-control);
+  --parallax-radius-surface: var(--kit-radius-surface);
+  --parallax-control: var(--kit-control);
+  --parallax-control-small: var(--kit-control-small);
+  --parallax-icon: var(--kit-icon);
+  --parallax-icon-large: var(--kit-icon-large);
+  --parallax-band: var(--kit-band);
+  --parallax-shadow-surface: var(--kit-shadow-surface);
+  --parallax-shadow-pop: var(--kit-shadow-pop);
+  --parallax-ease: var(--kit-ease);
+  --parallax-ui-scale: var(--kit-ui-scale);
+  --parallax-font-ui: var(--kit-font-ui);
+  --parallax-font-heading: var(--kit-font-heading);
+  --parallax-font-control: var(--kit-font-control);
+  --parallax-font-technical: var(--kit-font-technical);
+  --parallax-text-2xs: var(--kit-text-2xs);
+  --parallax-text-xs: var(--kit-text-xs);
+  --parallax-text-sm: var(--kit-text-sm);
+  --parallax-text-base: var(--kit-text-base);
+  --parallax-text-md: var(--kit-text-md);
+  --parallax-weight-body: var(--kit-weight-body);
+  --parallax-weight-control: var(--kit-weight-control);
+  --parallax-weight-heading: var(--kit-weight-heading);
+  --parallax-topbar: var(--kit-topbar);
+  --parallax-panel: var(--kit-panel);
+  --parallax-inspector: var(--kit-inspector);
+
+  /* the drawing sheet and the screen are the kit's canvas: dark glass or the mode, as the canvas axis says */
+  --parallax-sheet: var(--kit-canvas);
+  --parallax-sheet-grid: color-mix(in srgb, var(--kit-canvas-ink) 8%, transparent);
+  --parallax-wire: var(--kit-canvas-ink);
+  --parallax-wire-live: var(--kit-canvas-accent);
+  --parallax-node: var(--kit-canvas-accent);
+  --parallax-screen: var(--kit-canvas);
+  --parallax-screen-grid: color-mix(in srgb, var(--kit-canvas-ink) 7%, transparent);
+  --parallax-screen-grid-strong: color-mix(in srgb, var(--kit-canvas-ink) 14%, transparent);
+  --parallax-screen-text: var(--kit-canvas-muted);
+
+  /* the instruments sit on the page's own surfaces */
+  --parallax-instrument-background: var(--kit-bg);
+  --parallax-instrument-surface: var(--kit-surface);
+  --parallax-instrument-well: var(--kit-well);
+  --parallax-instrument-ink: var(--kit-ink);
+  --parallax-instrument-muted: var(--kit-muted);
+  --parallax-instrument-line: var(--kit-line);
+  --parallax-instrument-line-strong: var(--kit-line-strong);
+}
+
+/*
+ * The colour sets the instruments own (series, currents) keep their light values in light mode; in dark mode they take
+ * the instruments' own dark values. ⚠️ Their dark block is keyed on `.dark` / `[data-theme="dark"]`, which the kit never
+ * writes — the kit's mode is `data-mode` — so the values are repeated here under it.
+ */
+[data-theme][data-mode="dark"] {
+  --parallax-current-amber: #e3b34a;
+  --parallax-current-cyan: #3fd0d4;
+  --parallax-current-green: #58cf8c;
+  --parallax-current-pink: #e8609a;
+  --parallax-current-white: #e6e8ec;
+  --parallax-series-1: #6ea8e6;
+  --parallax-series-2: #ec8170;
+  --parallax-series-3: #68c494;
+  --parallax-series-4: #b591e4;
+  --parallax-series-5: #e3b35c;
+  --parallax-series-6: #5fc7c7;
+}

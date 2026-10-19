@@ -1,0 +1,160 @@
+/*
+ * jMouse UI-kit — the appearance axes: what the reader adjusts over the theme. Each is a data-* attribute on <html>,
+ * and each defaults to "theme" (or no attribute), which matches nothing here — so an axis overrides only what the
+ * reader chose to override, and the theme's own numbers stand otherwise.
+ *
+ * It sits in the layer after the themes (styles/index.css). ⚠️ An axis overrides a theme's NUMBER
+ * (`--kit-shape-radius-control`, `--kit-density-factor`, `--kit-intensity`), never a derived role (`--kit-radius-control`),
+ * so the interface size still multiplies whatever the axis chose.
+ *
+ * The mode (light | dark) is not here: it is half of every theme file.
+ */
+
+/* ---- palette: two shades of each palette, one for a light ground and one for a dark. A theme opts in by naming
+        var(--kit-palette-on-light, …) / var(--kit-palette-on-dark, …) as its accent ---- */
+:root[data-palette="iris"] { --kit-palette-on-light: #5358c5; --kit-palette-on-dark: #8e9cff; }
+:root[data-palette="mint"] { --kit-palette-on-light: #137c78; --kit-palette-on-dark: #54c9b2; }
+:root[data-palette="amber"] { --kit-palette-on-light: #aa6427; --kit-palette-on-dark: #efb96b; }
+:root[data-palette="glacier"] { --kit-palette-on-light: #235b93; --kit-palette-on-dark: #72bedb; }
+:root[data-palette="coral"] { --kit-palette-on-light: #a3466b; --kit-palette-on-dark: #ee8f8d; }
+:root[data-palette="slate"] { --kit-palette-on-light: #3d5a80; --kit-palette-on-dark: #8fa7c4; }
+:root[data-palette="moss"] { --kit-palette-on-light: #4a6f2c; --kit-palette-on-dark: #9cc27a; }
+:root[data-palette="plum"] { --kit-palette-on-light: #6f3e8a; --kit-palette-on-dark: #c79ad6; }
+:root[data-palette="rust"] { --kit-palette-on-light: #9a4a2a; --kit-palette-on-dark: #e59a7a; }
+:root[data-palette="sand"] { --kit-palette-on-light: #7a6433; --kit-palette-on-dark: #cdb98a; }
+
+/* ---- intensity: calm keeps 42% of a colour's chroma, bright keeps it whole ---- */
+:root[data-intensity="calm"] { --kit-intensity: 0.42; --kit-soft-amount: 9.5%; }
+:root[data-intensity="bright"] { --kit-intensity: 1; --kit-soft-amount: 14.5%; }
+
+/* ---- contrast: every hairline drawn as a control border, secondary-grade text instead of muted. One rule for every
+        theme and both modes, because it only swaps roles the theme already named ---- */
+:root[data-contrast="high"],
+:root[data-contrast="high"] [data-theme] {
+  --kit-line: var(--kit-line-strong);
+  --kit-muted: var(--kit-secondary);
+}
+
+/* ---- interface size: type, spacing, controls and columns together ---- */
+:root[data-scale="0.9"] { --kit-ui-scale: 0.9; }
+:root[data-scale="1.15"] { --kit-ui-scale: 1.15; }
+:root[data-scale="1.3"] { --kit-ui-scale: 1.3; }
+
+/* ---- density: spacing and heights, multiplied over the theme's own; type stays ---- */
+:root[data-density="compact"] { --kit-density-factor: 0.875; }
+:root[data-density="airy"] { --kit-density-factor: 1.125; }
+
+/* ---- shape: every radius at once ---- */
+:root[data-shape="flat"] { --kit-shape-radius-small: 0; --kit-shape-radius-control: 0; --kit-shape-radius-surface: 0; --kit-shape-radius-dialog: 0; }
+:root[data-shape="soft"] { --kit-shape-radius-small: 2; --kit-shape-radius-control: 4; --kit-shape-radius-surface: 6; --kit-shape-radius-dialog: 8; }
+:root[data-shape="round"] { --kit-shape-radius-small: 4; --kit-shape-radius-control: 8; --kit-shape-radius-surface: 12; --kit-shape-radius-dialog: 16; }
+
+/* ---- surfaces: ruled by default; elevated adds a soft shadow in the theme's own shadow colour ---- */
+:root[data-depth="elevated"],
+:root[data-depth="elevated"] [data-theme] {
+  --kit-shadow-surface: 0 1px 2px color-mix(in srgb, var(--kit-shadow-color) 6%, transparent),
+    0 4px 14px -8px color-mix(in srgb, var(--kit-shadow-color) 20%, transparent);
+}
+
+/* ---- canvas: code and instruments on dark glass in every theme and mode ---- */
+:root[data-canvas="glass"],
+:root[data-canvas="glass"] [data-theme] {
+  --kit-canvas: #15171c;
+  --kit-canvas-2: #1b1e24;
+  --kit-canvas-line: #262a32;
+  --kit-canvas-ink: #c9cfda;
+  --kit-canvas-muted: #6b7381;
+  --kit-canvas-current: #ffffff08;
+  --kit-canvas-selection: #ffffff1a;
+  --kit-canvas-accent: oklch(from var(--kit-accent) max(l, 0.72) c h);
+  --kit-canvas-change-added: oklch(from var(--kit-change-added) max(l, 0.74) c h);
+  --kit-canvas-change-modified: oklch(from var(--kit-change-modified) max(l, 0.74) c h);
+  --kit-canvas-change-conflict: oklch(from var(--kit-change-conflict) max(l, 0.74) c h);
+  --kit-canvas-guide: #ffffff10;
+  --kit-syntax-string: #9fc58c;
+  --kit-syntax-number: #7fb7e0;
+  --kit-syntax-comment: #6f7785;
+  --kit-syntax-annotation: #d6b26a;
+  --kit-syntax-type: #d8dce4;
+  --kit-syntax-method: #e0b88c;
+  --kit-syntax-field: #c69ad6;
+  --kit-syntax-constant: #c69ad6;
+  --kit-syntax-hint: #8a92a0;
+  --kit-syntax-hint-ground: #ffffff0c;
+}
+:root[data-canvas="paper"],
+:root[data-canvas="paper"] [data-theme] {
+  --kit-canvas: var(--kit-surface);
+  --kit-canvas-2: var(--kit-surface-2);
+  --kit-canvas-line: var(--kit-line);
+  --kit-canvas-ink: var(--kit-ink);
+  --kit-canvas-muted: var(--kit-muted);
+  --kit-canvas-current: color-mix(in srgb, var(--kit-accent) 5%, transparent);
+  --kit-canvas-selection: color-mix(in srgb, var(--kit-accent) 16%, transparent);
+  --kit-canvas-accent: var(--kit-accent);
+  --kit-canvas-change-added: var(--kit-change-added);
+  --kit-canvas-change-modified: var(--kit-change-modified);
+  --kit-canvas-change-conflict: var(--kit-change-conflict);
+}
+
+/* paper in a light mode takes the light syntax set back from a theme whose canvas is glass */
+:root[data-canvas="paper"]:not([data-mode="dark"]) {
+  --kit-canvas-guide: #14182112;
+  --kit-syntax-string: #3f7f2f;
+  --kit-syntax-number: #1f62a8;
+  --kit-syntax-comment: #8a919e;
+  --kit-syntax-annotation: #8a6a16;
+  --kit-syntax-type: #1e232d;
+  --kit-syntax-method: #8f4f14;
+  --kit-syntax-field: #7a3f95;
+  --kit-syntax-constant: #7a3f95;
+  --kit-syntax-hint: #7a8190;
+  --kit-syntax-hint-ground: #1418210a;
+}
+
+/* ---- typeface ---- */
+:root[data-font="inter"] { --kit-font-ui: Inter, system-ui, sans-serif; --kit-font-heading: var(--kit-font-ui); --kit-font-control: var(--kit-font-ui); }
+:root[data-font="onest"] { --kit-font-ui: Onest, Inter, system-ui, sans-serif; --kit-font-heading: var(--kit-font-ui); --kit-font-control: var(--kit-font-ui); }
+:root[data-font="manrope"] { --kit-font-ui: Manrope, Inter, system-ui, sans-serif; --kit-font-heading: var(--kit-font-ui); --kit-font-control: var(--kit-font-ui); }
+:root[data-font="code"] { --kit-font-ui: "JetBrains Mono", ui-monospace, monospace; --kit-font-heading: var(--kit-font-ui); --kit-font-control: var(--kit-font-ui); }
+:root[data-font="hybrid"] {
+  --kit-font-ui: Onest, Inter, system-ui, sans-serif;
+  --kit-font-heading: var(--kit-font-ui);
+  --kit-font-control: "JetBrains Mono", ui-monospace, monospace;
+}
+:root[data-font="plex"] {
+  --kit-font-ui: "IBM Plex Sans", Inter, system-ui, sans-serif;
+  --kit-font-heading: var(--kit-font-ui);
+  --kit-font-control: var(--kit-font-ui);
+  --kit-font-technical: "IBM Plex Mono", ui-monospace, monospace;
+  --kit-font-code: "IBM Plex Mono", ui-monospace, monospace;
+}
+:root[data-font="plex-mono"] {
+  --kit-font-ui: "IBM Plex Mono", ui-monospace, monospace;
+  --kit-font-heading: var(--kit-font-ui);
+  --kit-font-control: var(--kit-font-ui);
+  --kit-font-technical: "IBM Plex Mono", ui-monospace, monospace;
+  --kit-font-code: "IBM Plex Mono", ui-monospace, monospace;
+}
+:root[data-font="fira"] {
+  --kit-font-ui: Inter, system-ui, sans-serif;
+  --kit-font-heading: var(--kit-font-ui);
+  --kit-font-control: "Fira Code", ui-monospace, monospace;
+  --kit-font-technical: "Fira Code", ui-monospace, monospace;
+  --kit-font-code: "Fira Code", ui-monospace, monospace;
+}
+
+/* ---- weight ---- */
+:root[data-weight="normal"] { --kit-weight-body: 400; --kit-weight-control: 500; --kit-weight-heading: 550; --kit-weight-display: 600; --kit-weight-navigation: 500; }
+:root[data-weight="strong"] { --kit-weight-body: 450; --kit-weight-control: 600; --kit-weight-heading: 650; --kit-weight-display: 800; --kit-weight-navigation: 600; }
+
+/* ---- the code view: line height, ligatures, guides (Burin's editor axes) ---- */
+:root[data-leading="tight"] { --kit-code-leading: 1.45; }
+:root[data-leading="loose"] { --kit-code-leading: 1.9; }
+:root[data-ligatures="off"] { --kit-code-features: "calt" 0, "liga" 0; }
+
+/* ---- motion ---- */
+:root[data-motion="off"] { --kit-ease: 0ms linear; }
+@media (prefers-reduced-motion: reduce) {
+  :root { --kit-ease: 0ms linear; }
+}

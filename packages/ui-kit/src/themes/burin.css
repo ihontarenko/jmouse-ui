@@ -1,0 +1,137 @@
+/*
+ * Burin — the code editor (Html/Burin/styles/tokens.css), value for value: Parallax's visual system tightened for an
+ * IDE — compact density (0.875) on Parallax's heights, the type scale 10 · 11 · 12 · 13 · 14 · 16 · 19 · 23 · 28, the
+ * technical face the interface face, and the editor canvas on dark glass in both modes. The canvas axis can still make
+ * the canvas follow the theme ("paper"). Untouched axes give exactly what Burin draws with its own defaults:
+ * Iris · calm · soft · ruled · compact.
+ */
+[data-theme="burin"] {
+  color-scheme: light;
+  --kit-shape-density: 0.875;
+  --kit-shape-text: 13;
+  --kit-shape-radius-small: 2;
+  --kit-shape-radius-control: 4;
+  --kit-shape-radius-surface: 6;
+  --kit-shape-radius-dialog: 8;
+  --kit-shape-control: 32;
+  --kit-shape-control-small: 26;
+  --kit-shape-row: 32;
+  --kit-shape-row-dense: 26;
+  --kit-shape-topbar: 52;
+  --kit-shape-editor-tabs: 36;
+  --kit-shape-status-bar: 26;
+  --kit-shape-rail: 232;
+  --kit-shape-inspector: 304;
+  --kit-shape-panel: 272;
+  --kit-border-width: 1px;
+  --kit-band: 3px;
+  --kit-font-ui: Inter, system-ui, sans-serif;
+  --kit-font-technical: var(--kit-font-ui);
+  --kit-intensity: 0.42;
+
+  --kit-bg: #f2f3f6;
+  --kit-surface: #ffffff;
+  --kit-surface-2: #f7f8fa;
+  --kit-well: #eceef2;
+  --kit-ink: #141821;
+  --kit-secondary: #3f4756;
+  --kit-muted: #646c7b;
+  --kit-line: #dcdfe6;
+  --kit-line-strong: #a9b0bd;
+  --kit-scrim: #0d111980;
+  --kit-shadow-color: #0d1119;
+  --kit-shadow-pop: 0 12px 32px -12px #0d111940, 0 1px 2px #0d11191a;
+  --kit-accent-base: var(--kit-palette-on-light, #5358c5);
+  --kit-accent-strong-towards: #000000;
+  --kit-on-accent: #ffffff;
+  --kit-good-base: #137c78;
+  --kit-warn-base: #94541e;
+  --kit-danger-base: #a3466b;
+
+  /* version control: Burin's marks are the glass canvas's, in the tree as well as in the gutter */
+  --kit-change-added: #5fa86e;
+  --kit-change-modified: #6a9fd8;
+  --kit-change-deleted: #8a8f99;
+  --kit-change-conflict: #d4766c;
+  --kit-change-ignored: #8a7f63;
+  --kit-breakpoint: #d4625d;
+
+  /* the editor canvas: dark glass in both modes */
+  --kit-canvas: #15171c;
+  --kit-canvas-2: #1b1e24;
+  --kit-canvas-line: #262a32;
+  --kit-canvas-ink: #c9cfda;
+  --kit-canvas-muted: #6b7381;
+  --kit-canvas-current: #ffffff08;
+  --kit-canvas-selection: #ffffff1a;
+  --kit-canvas-guide: #ffffff10;
+  --kit-canvas-accent: oklch(from var(--kit-accent) max(l, 0.72) c h);
+  --kit-canvas-change-added: #5fa86e;
+  --kit-canvas-change-modified: #6a9fd8;
+  --kit-canvas-change-deleted: #8a8f99;
+  --kit-canvas-change-conflict: #d4766c;
+  --kit-syntax-string: #9fc58c;
+  --kit-syntax-number: #7fb7e0;
+  --kit-syntax-comment: #6f7785;
+  --kit-syntax-annotation: #d6b26a;
+  --kit-syntax-type: #d8dce4;
+  --kit-syntax-method: #e0b88c;
+  --kit-syntax-field: #c69ad6;
+  --kit-syntax-constant: #c69ad6;
+  --kit-syntax-hint: #8a92a0;
+  --kit-syntax-hint-ground: #ffffff0c;
+}
+
+[data-theme="burin"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #121419;
+  --kit-surface: #191c23;
+  --kit-surface-2: #15181e;
+  --kit-well: #0f1115;
+  --kit-ink: #e6e8ee;
+  --kit-secondary: #b4bac6;
+  --kit-muted: #8e96a5;
+  --kit-line: #2a2f3a;
+  --kit-line-strong: #4b5262;
+  --kit-scrim: #05070bb3;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 16px 40px -12px #00000099, 0 1px 2px #00000066;
+  --kit-accent-base: var(--kit-palette-on-dark, #8e9cff);
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #0f1218;
+  --kit-good-base: #6cdfbc;
+  --kit-warn-base: #efb96b;
+  --kit-danger-base: #ee8f8d;
+  --kit-canvas: #111318;
+  --kit-canvas-2: #16191f;
+  --kit-canvas-line: #23272f;
+}
+
+/*
+ * Burin's own palette, Iris, calm — the colours exactly as Burin computes them (each pulled 58% towards its own grey),
+ * not as the kit's oklch arithmetic approximates them. Any other palette or a bright intensity goes through the kit.
+ */
+[data-theme="burin"]:is(:not([data-palette]), [data-palette="theme"]):not([data-intensity="bright"]) {
+  --kit-accent: #5a5c8a;
+  --kit-accent-soft: #5a5c8a18;
+  --kit-accent-strong: #4b4e7f;
+  --kit-good: #3f7c79;
+  --kit-warn: #8a6141;
+  --kit-danger: #8f5771;
+  --kit-canvas-accent: #8c93c4;
+}
+[data-theme="burin"][data-mode="dark"]:is(:not([data-palette]), [data-palette="theme"]):not([data-intensity="bright"]) {
+  --kit-accent: #8c93c4;
+  --kit-accent-soft: #8c93c418;
+  --kit-accent-strong: #a0a7d6;
+  --kit-good: #83b8ac;
+  --kit-warn: #c6aa88;
+  --kit-danger: #c69a9a;
+}
+
+/* a high contrast moves the canvas's quiet greys as Burin moves them */
+[data-theme="burin"][data-contrast="high"] {
+  --kit-canvas-muted: #8d95a3;
+  --kit-syntax-comment: #8d95a3;
+  --kit-canvas-line: #333843;
+}

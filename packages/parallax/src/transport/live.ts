@@ -89,6 +89,10 @@ export interface PartLoad {
   failure?: "open" | "short" | null;
   /** What its symbol shows now, by indicator name — its component's `display` figures. */
   displays?: Record<string, number>;
+  /** Why it failed: too hot, or the `overvoltage` / `overcurrent` figure its component displays reached 100 %. */
+  cause?: "overheated" | "overvoltage" | "overcurrent" | null;
+  /** The limit it is past now, as the engine judges it: its causes, or `overloaded` — above its power rating. */
+  past?: "overheated" | "overvoltage" | "overcurrent" | "overloaded" | null;
 }
 
 const HEADER_DECODER = new TextDecoder();
@@ -98,7 +102,7 @@ function decodeFrame(buffer: ArrayBuffer): LiveFrame {
   const view = new DataView(buffer);
   const headerLength = view.getInt32(0, true);
   const header = JSON.parse(HEADER_DECODER.decode(new Uint8Array(buffer, 4, headerLength))) as
-    { channels: string[]; levels: Record<string, number>; load: number; played?: number; parts?: Record<string, [number | null, number | null, Record<string, number>, (number | null)?, (number | null)?, ("open" | "short" | null)?, Record<string, number>?]>;
+    { channels: string[]; levels: Record<string, number>; load: number; played?: number; parts?: Record<string, [number | null, number | null, Record<string, number>, (number | null)?, (number | null)?, ("open" | "short" | null)?, Record<string, number>?, ("overheated" | "overvoltage" | "overcurrent" | null)?, ("overheated" | "overvoltage" | "overcurrent" | "overloaded" | null)?]>;
       trace?: string[]; traceUnits?: string[]; peaks?: string[] };
   let offset = (4 + headerLength + 7) & ~7;
   const first = view.getFloat64(offset, true);
@@ -147,9 +151,9 @@ function decodeFrame(buffer: ArrayBuffer): LiveFrame {
     });
   }
   const parts: Record<string, PartLoad> = {};
-  for (const [part, [power, temperature, terminals, maximum, rating, failure, displays]] of Object.entries(header.parts ?? {})) {
+  for (const [part, [power, temperature, terminals, maximum, rating, failure, displays, cause, past]] of Object.entries(header.parts ?? {})) {
     parts[part] = { power, temperature, terminals: terminals ?? {}, maximum: maximum ?? null, rating: rating ?? null, failure: failure ?? null,
-      displays: displays ?? {} };
+      displays: displays ?? {}, cause: cause ?? null, past: past ?? null };
   }
   return { type: "frame", time, interval: step, channels, peaks, levels: header.levels, load: header.load, played: header.played ?? null, parts, trace: traced };
 }

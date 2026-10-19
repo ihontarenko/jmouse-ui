@@ -5,7 +5,7 @@ import { useAsync } from "../support/useAsync";
 import { ParallaxIcon } from "../icons/ParallaxIcon";
 import { Tool } from "../controls/BenchControls";
 import {
-  type CircuitElement, circuitFromDrawing, componentReferenceOf, type DrawingItem, elementTypes, GRID, isCircuit, isNetName, itemKindOf, portsOf, snap, waveforms,
+  type CircuitElement, circuitFromDrawing, componentReferenceOf, type DrawingItem, elementTypes, GRID, isCircuit, isNetName, itemKindOf, portsOf, snap,
 } from "@jmouse/parallax/circuit";
 import type { SheetEditing } from "../circuit/useSheetEditing";
 
@@ -121,10 +121,6 @@ export function PartProperties({ item, editing, onElementChange, onOpenComponent
         <div data-parallax-part="quantity" className="parallax-quantity"><input id="part-value" data-parallax-part="input" className="parallax-input parallax-small parallax-monospace" value={element.value ?? ""}
           onChange={(event) => changeElement({ value: event.target.value })} /><span className="parallax-addon">{elementTypes[element.type].unit.split(",")[0]}</span></div>
       </div> : null}
-      {element && elementTypes[element.type].source ? <div className="parallax-field-inline"><label htmlFor="part-waveform">Waveform</label>
-        <select id="part-waveform" data-parallax-part="input" className="parallax-input parallax-small" value={element.waveform ?? "DC"} onChange={(event) => changeElement({ waveform: event.target.value as CircuitElement["waveform"] })}>
-          {waveforms.map((waveform) => <option key={waveform.value} value={waveform.value}>{waveform.label}</option>)}
-        </select></div> : null}
       {item.type === "GROUND" && item.label ? <NetField item={item} editing={editing} /> : null}
       <p className="parallax-hint">{item.type === "JUNCTION" ? "A junction joins every wire attached here. Drag it to move the branch."
         : item.type === "GROUND" && item.label ? "Every label of one name is one net: name two of them alike and they are joined, with no wire drawn."

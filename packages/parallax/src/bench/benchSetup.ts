@@ -22,12 +22,17 @@ export function initialSetup(circuit: CircuitDefinition): BenchSetup {
 /**
  * What a part's tolerance fields show before they are changed: what its component writes (`tolerance = 1 %`,
  * `temperature_coefficient = 100 ppm/K`) — the engine reads the same —, or the kind's default while it has not arrived.
+ * A model's values arrive in SI — a tolerance as a fraction (`1 %` is 0.01), a coefficient per kelvin (`100 ppm/K` is
+ * 1e-4) — and are shown in percent and in ppm/K.
  */
 export function passiveDefaults(library: PartLibraryView, element: CircuitElement) {
   const fallback = element.type === "RESISTOR" ? { percent: 1, coefficient: 100 } : { percent: 10, coefficient: 200 };
   const model = library.componentModelOf(element.component || elementTypes[element.type].component);
   const written = (name: string) => model?.parameters.find((parameter) => parameter.name === name)?.value;
-  return { percent: written("tolerance") ?? fallback.percent, coefficient: written("temperature_coefficient") ?? fallback.coefficient };
+  const tolerance = written("tolerance");
+  const coefficient = written("temperature_coefficient");
+  return { percent: tolerance !== undefined ? Number((tolerance * 100).toPrecision(6)) : fallback.percent,
+    coefficient: coefficient !== undefined ? Number((coefficient * 1e6).toPrecision(6)) : fallback.coefficient };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
-import { DEFAULT_EMULATOR_APPEARANCE } from "@jmouse/parallax/circuit";
-import type { EmulatorAppearance, ParallaxOwner } from "@jmouse/parallax";
+import { DEFAULT_SIMULATOR_APPEARANCE } from "@jmouse/parallax/circuit";
+import type { SimulatorAppearance, ParallaxOwner } from "@jmouse/parallax";
 
 /** What the host decides for the components it shows: where computations run, what a viewport must keep up, how current looks. */
 export interface ParallaxSettings {
@@ -8,14 +8,14 @@ export interface ParallaxSettings {
   computationOwner: ParallaxOwner | null;
   /** Frames per second a viewport must keep before what adds to the drawing may be raised; 0 turns the guard off. */
   minimumFrameRate: number;
-  /** How the emulator draws current, glow and leads, as the reader chose it. */
-  emulatorAppearance: EmulatorAppearance;
+  /** How the simulator draws current, glow and leads, as the reader chose it. */
+  simulatorAppearance: SimulatorAppearance;
 }
 
 const DEFAULT_SETTINGS: ParallaxSettings = {
   computationOwner: null,
   minimumFrameRate: 0,
-  emulatorAppearance: DEFAULT_EMULATOR_APPEARANCE,
+  simulatorAppearance: DEFAULT_SIMULATOR_APPEARANCE,
 };
 
 const Settings = createContext<ParallaxSettings>(DEFAULT_SETTINGS);

@@ -1,0 +1,76 @@
+/*
+ * jMouse UI-kit — chart colours and the chart family's chrome. The palettes are Innoventa's four (theme.css), each in
+ * both modes, chosen by `data-chart` — on <html> for the page, or on any element so a swatch can preview its own.
+ * The values are written as colours, never derived: a chart reads them with getComputedStyle and paints them into an
+ * SVG that must still be right once it is lifted out of the page.
+ */
+
+:root,
+[data-theme],
+[data-chart="quiet"] {
+  --kit-chart-1: #3d6da4;
+  --kit-chart-2: #98503e;
+  --kit-chart-3: #3e9868;
+  --kit-chart-4: #6c388a;
+  --kit-chart-5: #466d2c;
+  --kit-chart-6: #7b3260;
+  --kit-chart-7: #7d8235;
+  --kit-chart-8: #503e98;
+  --kit-chart-scale-1: #9eb6d1;
+  --kit-chart-scale-2: #779cc5;
+  --kit-chart-scale-3: #4f81ba;
+  --kit-chart-scale-4: #38689f;
+  --kit-chart-scale-5: #234a76;
+  --kit-chart-grid: var(--kit-line);
+}
+[data-mode="dark"],
+[data-mode="dark"] [data-theme],
+[data-mode="dark"] [data-chart="quiet"],
+[data-mode="dark"][data-chart="quiet"] {
+  --kit-chart-1: #4a7cb5;
+  --kit-chart-2: #9f5441;
+  --kit-chart-3: #469b6d;
+  --kit-chart-4: #8c4fb0;
+  --kit-chart-5: #5a863c;
+  --kit-chart-6: #a54a84;
+  --kit-chart-7: #8b9041;
+  --kit-chart-8: #6c5ab5;
+  --kit-chart-scale-1: #39506a;
+  --kit-chart-scale-2: #45668c;
+  --kit-chart-scale-3: #4f7cb0;
+  --kit-chart-scale-4: #6b94c2;
+  --kit-chart-scale-5: #88abd3;
+}
+
+/* Loud and far apart — for a projector or a print-out. */
+[data-chart="vivid"] { --kit-chart-1: #98503e; --kit-chart-2: #8c1ecc; --kit-chart-3: #3e9868; --kit-chart-4: #175297; --kit-chart-5: #ab873f; --kit-chart-6: #7b3260; --kit-chart-7: #66a43d; --kit-chart-8: #503e98; }
+[data-mode="dark"][data-chart="vivid"], [data-mode="dark"] [data-chart="vivid"] { --kit-chart-1: #b0624f; --kit-chart-2: #8c4fb0; --kit-chart-3: #419066; --kit-chart-4: #4a7cb5; --kit-chart-5: #af8a41; --kit-chart-6: #a54a84; --kit-chart-7: #5a863c; --kit-chart-8: #6c5ab5; }
+/* Blues, greens and violets. */
+[data-chart="cool"] { --kit-chart-1: #3d6da4; --kit-chart-2: #358259; --kit-chart-3: #503e98; --kit-chart-4: #9f417d; --kit-chart-5: #466d2c; --kit-chart-6: #6c388a; --kit-chart-7: #36a18b; --kit-chart-8: #7b327b; }
+[data-mode="dark"][data-chart="cool"], [data-mode="dark"] [data-chart="cool"] { --kit-chart-1: #4a7cb5; --kit-chart-2: #419066; --kit-chart-3: #6c5ab5; --kit-chart-4: #be6fa1; --kit-chart-5: #5a863c; --kit-chart-6: #8c4fb0; --kit-chart-7: #349d88; --kit-chart-8: #9b469b; }
+/* Ambers, rusts and olives. */
+[data-chart="warm"] { --kit-chart-1: #ab873f; --kit-chart-2: #98503e; --kit-chart-3: #848a38; --kit-chart-4: #7b3260; --kit-chart-5: #466d2c; --kit-chart-6: #7b327b; --kit-chart-7: #358259; --kit-chart-8: #6c388a; }
+[data-mode="dark"][data-chart="warm"], [data-mode="dark"] [data-chart="warm"] { --kit-chart-1: #b48c3c; --kit-chart-2: #9f5441; --kit-chart-3: #8b9041; --kit-chart-4: #a54a84; --kit-chart-5: #5a863c; --kit-chart-6: #9b469b; --kit-chart-7: #419066; --kit-chart-8: #8c4fb0; }
+
+/* ---- the chart family's chrome ---- */
+.kit-chart { position: relative; width: 100%; }
+.kit-chart-row { cursor: pointer; outline: 0; }
+.kit-chart-row:focus-visible > rect:first-of-type { fill: var(--kit-accent-soft); }
+.kit-chart-tooltip { position: absolute; top: var(--kit-space-2); z-index: 10; padding: var(--kit-space-1) var(--kit-space-2); border: var(--kit-border-width) solid var(--kit-line-strong); background: var(--kit-surface); box-shadow: var(--kit-shadow-pop); font-size: var(--kit-text-xs); pointer-events: none; }
+.kit-chart-tooltip-figure { color: var(--kit-secondary); font-family: var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-chart-panel { border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-chart-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--kit-space-4); padding: var(--kit-space-3) var(--kit-space-4); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-chart-panel-head > div { display: grid; gap: 2px; min-width: 0; }
+.kit-chart-panel-head h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--kit-text-base); font-weight: var(--kit-weight-control); }
+.kit-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--kit-space-4); padding: var(--kit-space-2) var(--kit-space-4); border-bottom: var(--kit-border-width) solid var(--kit-line); color: var(--kit-secondary); font-size: var(--kit-text-xs); }
+.kit-chart-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.kit-chart-legend i { width: 10px; height: 10px; flex: none; }
+.kit-chart-panel-body { padding: var(--kit-space-3) var(--kit-space-4); }
+.kit-chart-panel-foot { padding: var(--kit-space-2) var(--kit-space-4); border-top: var(--kit-border-width) solid var(--kit-line); }
+.kit-chart-table-scroll { overflow-x: auto; }
+.kit-chart-table { width: 100%; border-collapse: collapse; font-size: var(--kit-text-sm); }
+.kit-chart-table th { padding: 6px var(--kit-space-3) 6px 0; border-bottom: var(--kit-border-width) solid var(--kit-line-strong); text-align: left; font: 500 var(--kit-text-2xs) var(--kit-font-technical); letter-spacing: var(--kit-micro-label-tracking); text-transform: uppercase; color: var(--kit-muted); }
+.kit-chart-table td { padding: 6px var(--kit-space-3) 6px 0; border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-chart-table tr:last-child td { border-bottom: 0; }
+.kit-chart-table [data-number] { padding-left: var(--kit-space-3); padding-right: 0; text-align: right; font-family: var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-chart-table td[data-quiet] { color: var(--kit-secondary); }

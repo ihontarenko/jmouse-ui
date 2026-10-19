@@ -1,0 +1,76 @@
+/*
+ * Parallax — porcelain neutrals, a slightly cool grey, one quiet accent (Html/Parallax-UI). The kit's defaults are this
+ * theme's numbers, so it also stands in for a page that names no theme.
+ *
+ * ── A theme is one file ──────────────────────────────────────────────────────────────────────────────────────────
+ * Copy this file, rename the selectors, change the values, import it after `@jmouse/ui-kit/styles.css`, and add one
+ * line to the catalogue handed to <AppearanceProvider themes={…}>. It holds three blocks:
+ *   [data-theme="<name>"]                      the shape (geometry, type) and the LIGHT colours
+ *   [data-theme="<name>"][data-mode="dark"]    the DARK colours
+ * Every colour role must be named in both; a shape number left out keeps the kit's default (styles/tokens.css).
+ * The selector is never `:root[…]`, so a region of a page can wear the theme too — a preview, a fixed dark rail.
+ */
+:root,
+[data-theme="parallax"] {
+  color-scheme: light;
+  /* shape: the kit's defaults, written out so the file can be copied whole */
+  --kit-shape-density: 1;
+  --kit-shape-text: 13;
+  --kit-shape-radius-small: 2;
+  --kit-shape-radius-control: 4;
+  --kit-shape-radius-surface: 6;
+  --kit-shape-radius-dialog: 8;
+  --kit-shape-control: 32;
+  --kit-shape-control-small: 26;
+  --kit-shape-row: 36;
+  --kit-shape-row-dense: 28;
+  --kit-shape-rail: 232;
+  --kit-shape-inspector: 304;
+  --kit-border-width: 1px;
+  --kit-band: 3px;
+  --kit-font-ui: Inter, system-ui, sans-serif;
+  --kit-intensity: 0.42;
+
+  /* light */
+  --kit-bg: #f2f3f6;
+  --kit-surface: #ffffff;
+  --kit-surface-2: #f7f8fa;
+  --kit-well: #eceef2;
+  --kit-ink: #141821;
+  --kit-secondary: #3f4756;
+  --kit-muted: #646c7b;
+  --kit-line: #dcdfe6;
+  --kit-line-strong: #a9b0bd;
+  --kit-scrim: #0d111980;
+  --kit-shadow-color: #0d1119;
+  --kit-shadow-pop: 0 12px 32px -12px #0d111940, 0 1px 2px #0d11191a;
+  --kit-accent-base: var(--kit-palette-on-light, #5358c5);
+  --kit-accent-strong-towards: #000000;
+  --kit-on-accent: #ffffff;
+  --kit-good-base: #137c78;
+  --kit-warn-base: #94541e;
+  --kit-danger-base: #a3466b;
+}
+
+:root[data-mode="dark"]:not([data-theme]),
+[data-theme="parallax"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #121419;
+  --kit-surface: #191c23;
+  --kit-surface-2: #15181e;
+  --kit-well: #0f1115;
+  --kit-ink: #e6e8ee;
+  --kit-secondary: #b4bac6;
+  --kit-muted: #8e96a5;
+  --kit-line: #2a2f3a;
+  --kit-line-strong: #4b5262;
+  --kit-scrim: #05070bb3;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 16px 40px -12px #00000099, 0 1px 2px #00000066;
+  --kit-accent-base: var(--kit-palette-on-dark, #8e9cff);
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #0f1218;
+  --kit-good-base: #6cdfbc;
+  --kit-warn-base: #efb96b;
+  --kit-danger-base: #ee8f8d;
+}

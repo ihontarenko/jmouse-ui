@@ -1,0 +1,40 @@
+/*
+ * `@jmouse/ui-kit/styles.css` — import this once, before the product's own stylesheets and before any theme of its own.
+ *
+ * ⚠️ Everything here sits in the `jmouse-ui-kit` layer, so every unlayered product rule wins over it without
+ * `!important` — a product's own theme file included. A product that layers its own CSS declares
+ * `@layer jmouse-ui-kit, <its layers>;` first, so the kit stays underneath.
+ *
+ * The sub-layers are the contract: tokens < themes < axes < base < components. A theme beats the defaults, an axis the
+ * reader chose beats the theme, and a component's rule beats the element base.
+ */
+@layer jmouse-ui-kit.tokens, jmouse-ui-kit.themes, jmouse-ui-kit.axes, jmouse-ui-kit.base, jmouse-ui-kit.components;
+
+@import "./fonts.css";
+@import "./tokens.css" layer(jmouse-ui-kit.tokens);
+@import "../themes/parallax.css" layer(jmouse-ui-kit.themes);
+@import "../themes/paper.css" layer(jmouse-ui-kit.themes);
+@import "../themes/burin.css" layer(jmouse-ui-kit.themes);
+@import "../themes/raccoon.css" layer(jmouse-ui-kit.themes);
+@import "../themes/kitsu.css" layer(jmouse-ui-kit.themes);
+@import "../themes/innoventa.css" layer(jmouse-ui-kit.themes);
+@import "./axes.css" layer(jmouse-ui-kit.axes);
+@import "./base.css" layer(jmouse-ui-kit.base);
+@import "./controls.css" layer(jmouse-ui-kit.components);
+@import "./navigation.css" layer(jmouse-ui-kit.components);
+@import "./containers.css" layer(jmouse-ui-kit.components);
+@import "./data.css" layer(jmouse-ui-kit.components);
+@import "./feedback.css" layer(jmouse-ui-kit.components);
+@import "./shell.css" layer(jmouse-ui-kit.components);
+@import "./ide.css" layer(jmouse-ui-kit.components);
+@import "./code-view.css" layer(jmouse-ui-kit.components);
+@import "./media.css" layer(jmouse-ui-kit.components);
+@import "./roles.css" layer(jmouse-ui-kit.components);
+@import "./listing.css" layer(jmouse-ui-kit.components);
+@import "./data-table.css" layer(jmouse-ui-kit.components);
+@import "./records.css" layer(jmouse-ui-kit.components);
+@import "./charts.css" layer(jmouse-ui-kit.components);
+@import "./screens.css" layer(jmouse-ui-kit.components);
+@import "./appearance.css" layer(jmouse-ui-kit.components);
+
+@import "./files.css" layer(jmouse-ui-kit.components);

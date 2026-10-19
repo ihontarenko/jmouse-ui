@@ -1,0 +1,12 @@
+{
+  "name": "design-burin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Burin's editor screen (Html/Burin/editor.html) rebuilt from @jmouse/ui-kit components alone — the proof that the kit carries a whole product screen. Not a workspace; it resolves its dependencies through the monorepo root's node_modules and reads the kit's source.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  }
+}

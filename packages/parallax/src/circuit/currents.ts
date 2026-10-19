@@ -131,18 +131,54 @@ export function loadText(library: PartLibraryView, item: SchematicDocument["item
   return `${given < 0 ? (isSource(library, item) ? "gives " : "returns ") : ""}${formatQuantity(power, "W")}${rated}${load.temperature !== null ? ` · ${Math.round(load.temperature)} °C` : ""}`;
 }
 
-/** How a part stands against its limits: burnt, over its temperature limit, over its power rating, or within them. */
+/**
+ * How a part stands against its limits: burnt, past a limit, or within them — as the engine judges it (`past`); the
+ * sheet only shows the verdict, it never draws its own.
+ */
 export function loadState(load: PartLoad | undefined): "burnt" | "overheated" | "overloaded" | "within" {
   if (load?.failure) {
     return "burnt";
   }
-  if (load && load.temperature !== null && load.maximum != null && load.temperature > load.maximum) {
-    return "overheated";
-  }
-  if (load && load.power !== null && load.rating != null && load.power > load.rating) {
-    return "overloaded";
+  if (load?.past === "overheated" || load?.past === "overloaded") {
+    return load.past;
   }
   return "within";
+}
+
+/**
+ * The mark a part past its limits carries on the sheet, and the words it stands for: what broke it, or what it is past.
+ * A failed part is marked by the cause the engine gave — the flame for heat, the bolt for a voltage, the surge for a
+ * current —; a part still working but past a limit (an ideal bench never fails one) by the limit it is past.
+ */
+export interface LimitMark {
+  glyph: "flame" | "bolt" | "surge" | "thermometer";
+  severity: "failed" | "past";
+  words: string;
+}
+
+export function limitMarkOf(load: PartLoad | undefined): LimitMark | null {
+  if (!load) {
+    return null;
+  }
+  if (load.failure) {
+    const how = `burnt ${load.failure}`;
+    return load.cause === "overvoltage" ? { glyph: "bolt", severity: "failed", words: `${how}: broke down past its rated voltage` }
+      : load.cause === "overcurrent" ? { glyph: "surge", severity: "failed", words: `${how}: past its rated current` }
+        : { glyph: "flame", severity: "failed", words: `${how}: overheated` };
+  }
+  const displays = load.displays ?? {};
+  switch (load.past) {
+    case "overvoltage":
+      return { glyph: "bolt", severity: "past", words: `at ${Math.round(displays.overvoltage ?? 100)} % of its rated voltage` };
+    case "overcurrent":
+      return { glyph: "surge", severity: "past", words: `at ${Math.round(displays.overcurrent ?? 100)} % of its rated current` };
+    case "overheated":
+      return { glyph: "thermometer", severity: "past", words: "past its temperature limit" };
+    case "overloaded":
+      return { glyph: "thermometer", severity: "past", words: "past its power rating" };
+    default:
+      return null;
+  }
 }
 
 /**

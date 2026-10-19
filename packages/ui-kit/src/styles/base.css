@@ -1,0 +1,84 @@
+/*
+ * jMouse UI-kit — the element base: what a page built on the kit looks like before any component is placed. It is a
+ * product's page, so it does style the document — the ground, the type, the focus ring — but it resets only what a
+ * component would otherwise have to undo, and it sits in the lowest layer so any host rule wins.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--kit-bg);
+  color: var(--kit-ink);
+  font: var(--kit-weight-body) var(--kit-body-size) / 1.5 var(--kit-font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--kit-font-heading);
+  font-weight: var(--kit-weight-heading);
+  line-height: 1.25;
+  letter-spacing: var(--kit-heading-tracking);
+}
+
+p, dl, dd, figure, blockquote, pre { margin: 0; }
+ul[role], ol[role] { margin: 0; padding: 0; list-style: none; }
+
+a { color: var(--kit-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button { font: inherit; color: inherit; }
+
+hr { border: 0; border-top: var(--kit-border-width) solid var(--kit-line); margin: 0; }
+
+img, svg, video, canvas { display: block; max-width: 100%; }
+svg { flex: none; }
+
+[hidden] { display: none !important; }
+
+:focus-visible { outline: 2px solid var(--kit-focus-ring); outline-offset: var(--kit-focus-offset); }
+
+::selection { background: color-mix(in srgb, var(--kit-accent) 26%, transparent); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--kit-line-strong) transparent; }
+
+code, kbd, samp, pre { font-family: var(--kit-font-technical); }
+
+/* Text helpers every component and page reaches for */
+.kit-technical { font-family: var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-muted { color: var(--kit-muted); }
+.kit-secondary { color: var(--kit-secondary); }
+.kit-micro-label {
+  font: var(--kit-micro-label-weight) var(--kit-micro-label-size) / 1.2 var(--kit-micro-label-font);
+  letter-spacing: var(--kit-micro-label-tracking);
+  text-transform: uppercase;
+  color: var(--kit-micro-label-ink);
+}
+.kit-visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+.kit-skip-link {
+  position: absolute; left: var(--kit-space-2); top: var(--kit-space-2); z-index: 100;
+  padding: var(--kit-space-2) var(--kit-space-3);
+  background: var(--kit-surface); border: var(--kit-border-width) solid var(--kit-accent); border-radius: var(--kit-radius-control);
+  transform: translateY(-200%);
+}
+.kit-skip-link:focus { transform: none; }
+
+@keyframes kit-spin { to { transform: rotate(360deg); } }
+@keyframes kit-pulse { 50% { opacity: 0.3; } }
+@keyframes kit-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* A region that wears a theme other than the page's paints its own ground and ink — a dark rail, a theme preview. */
+[data-theme]:not(:root) { background-color: var(--kit-bg); color: var(--kit-ink); }

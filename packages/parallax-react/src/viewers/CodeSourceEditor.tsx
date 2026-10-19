@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { jmfSyntax, jmsSyntax } from "@jmouse/codemirror";
+import { annotationType, jmfSyntax, jmsSyntax } from "@jmouse/codemirror";
 import { editorChrome } from "@jmouse/codemirror/editor";
 import { SYNTAX_HIGHLIGHT_STYLE } from "@jmouse/codemirror/highlight";
 import { StreamLanguage, syntaxHighlighting } from "@codemirror/language";
@@ -12,7 +12,8 @@ import { ParallaxIcon } from "../icons/ParallaxIcon";
 const JMX_KEYWORDS = new RegExp(`\\b(?:${[
   "curve", "surface", "hypersurface", "field", "dynamics", "iteration", "mapping", "value", "iterated_function_system",
   "lindenmayer_system", "matrix", "points", "construction", "polytope", "region",
-  "program", "component", "circuit", "symbol", "family", "functions", "category", "collection", "course", "instrument",
+  "program", "component", "circuit", "symbol", "family", "functions", "extends", "use", "display", "leads", "image",
+  "lesson", "stripes", "signal", "category", "collection", "course", "instrument",
   "graph", "clock", "panes", "lines", "rows", "columns", "grid", "plane", "space", "values", "over", "until", "at", "color",
   "hidden", "speed", "loop", "to", "layout", "wire", "via", "junction", "ground", "common", "current", "voltage", "power", "against", "level",
   "as", "type", "uses", "units", "meta", "parameters", "inputs", "outputs", "formulas", "state", "equations", "behaviour",
@@ -24,9 +25,19 @@ const JMX_KEYWORDS = new RegExp(`\\b(?:${[
   "else", "elseif", "for", "return",
 ].join("|")})\\b`);
 
-const jmxSyntax = StreamLanguage.define<{ longText: boolean }>({
-  startState: () => ({ longText: false }),
+/** Where a type may be read: after the name a `let` declares, then after its colon. */
+type Annotation = "none" | "declaring" | "declared" | "type" | "typeLine";
+
+const DECLARING = /^(?:let|local|const)\b/;
+const NAME = /^[A-Za-z_]\w*/;
+
+const jmxSyntax = StreamLanguage.define<{ longText: boolean; annotation: Annotation }>({
+  startState: () => ({ longText: false, annotation: "none" }),
+  tokenTable: { annotationType },
   token(stream, state) {
+    if (stream.sol()) {
+      state.annotation = "none";
+    }
     if (state.longText) {
       if (stream.skipTo('"""')) {
         stream.match('"""');
@@ -42,6 +53,34 @@ const jmxSyntax = StreamLanguage.define<{ longText: boolean }>({
     }
     if (stream.match(/#[^\n]*/)) return "comment";
     if (stream.match(/"(?:[^"\\]|\\.)*"?/) || stream.match(/'(?:[^'\\]|\\.)*'?/)) return "string";
+    if (stream.eatSpace()) return null;
+    // let I_through : current = …: the keyword, the name it declares, its colon, and the type — which stands apart.
+    const annotation = state.annotation;
+    state.annotation = "none";
+    if (annotation === "type" && stream.match(NAME)) return "annotationType";
+    // type power_density = power / area: the name and every type the line is built of.
+    if (annotation === "typeLine") {
+      state.annotation = "typeLine";
+      if (stream.match(NAME)) return "annotationType";
+    }
+    if (stream.match(/^type(?=\s+[A-Za-z_]\w*\s*=)/)) {
+      state.annotation = "typeLine";
+      return "keyword";
+    }
+    if (annotation === "declared" && stream.match(":")) {
+      state.annotation = "type";
+      return "punctuation";
+    }
+    if (stream.match(DECLARING)) {
+      state.annotation = "declaring";
+      return "keyword";
+    }
+    if (annotation === "declaring" && stream.match(NAME)) {
+      state.annotation = "declared";
+      return "variableName.definition";
+    }
+    // A pin's members: anode.current, in.voltage.
+    if (stream.match(/^\.(?:current|voltage)\b/)) return "propertyName";
     if (stream.match(JMX_KEYWORDS)) return "keyword";
     if (stream.match(/\b(?:true|false|X|Z)\b/)) return "atom";
     if (stream.match(/\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/i)) return "number";

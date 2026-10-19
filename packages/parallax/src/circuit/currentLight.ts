@@ -18,6 +18,8 @@ export interface PlacedLight {
   core: SVGPathElement;
   returnGlow: SVGPathElement;
   returnCore: SVGPathElement;
+  /** Drawn as electrons: their layers, each with the distance its scatter repeats after; absent for lights and waves. */
+  electrons?: { path: SVGPathElement; length: number }[];
 }
 
 /** The narrowest and the widest a wire's light is drawn, sheet units: a trickle and the run's largest current. */
@@ -36,6 +38,13 @@ const ALTERNATING_SPEED = 22;
 export function placeLight(light: PlacedLight, distance: number, share: number, period = LIGHT_PERIOD, intensity = 1) {
   const brightness = drawTube(light, share, intensity);
   hideRow(light.returnGlow, light.returnCore);
+  if (light.electrons) {
+    hideRow(light.glow, light.core);
+    // The tube only hints at the wire: the specks are what is read.
+    light.tube.style.opacity = String(ELECTRON_TUBE * brightness);
+    placeElectrons(light.electrons, distance, share, brightness);
+    return;
+  }
   placeRow(light.glow, light.core, distance, brightness, period);
 }
 
@@ -46,12 +55,20 @@ export function placeLight(light: PlacedLight, distance: number, share: number, 
  */
 export function placeAlternatingLight(light: PlacedLight, seconds: number, share: number, period = LIGHT_PERIOD, intensity = 1) {
   const brightness = drawTube(light, share, intensity);
+  if (light.electrons) {
+    // Electrons do not travel on such a wire: they shake where they are, back and forth, as an alternating current moves them.
+    hideRow(light.glow, light.core);
+    hideRow(light.returnGlow, light.returnCore);
+    light.tube.style.opacity = String(ELECTRON_TUBE * brightness);
+    placeElectrons(light.electrons, Math.sin(seconds * ELECTRON_SHAKE) * period / 4, share, brightness);
+    return;
+  }
   const distance = seconds * ALTERNATING_SPEED;
   placeRow(light.glow, light.core, distance, brightness, period);
   placeRow(light.returnGlow, light.returnCore, -distance + period / 2, brightness, period);
 }
 
-/** The tube for a share of the largest current, and the row's brightness: what both placements share. */
+/** The tube for a share of the largest current, and the row's brightness: what every placement shares. */
 function drawTube(light: PlacedLight, share: number, intensity: number): number {
   const visible = share > 0.002;
   const brightness = visible ? Math.min(1, (0.18 + 0.82 * share) * intensity) : 0;
@@ -61,6 +78,28 @@ function drawTube(light: PlacedLight, share: number, intensity: number): number 
   light.glow.style.strokeWidth = String(width * 0.85);
   light.returnGlow.style.strokeWidth = String(width * 0.85);
   return brightness;
+}
+
+/** How bright the tube under electrons is: faint, so the specks stand out of it. */
+const ELECTRON_TUBE = 0.14;
+
+/** How fast electrons shake on a wire that alternates too fast to show, radians a second of wall time. */
+const ELECTRON_SHAKE = 9;
+
+/**
+ * A wire's electrons `distance` along it: every layer moves together — they are one charge —, and the layers light one
+ * after another as the current grows, each fading in over its quarter of the scale, so twice the current is about twice
+ * the specks. The first layer shows any current at all.
+ */
+function placeElectrons(layers: { path: SVGPathElement; length: number }[], distance: number, share: number, brightness: number) {
+  const moving = !reducedMotion();
+  layers.forEach((layer, index) => {
+    const lit = index === 0 ? (share > 0.002 ? 1 : 0) : Math.max(0, Math.min(1, share * layers.length - index + 0.5));
+    layer.path.style.opacity = String(brightness * lit);
+    if (moving) {
+      layer.path.style.strokeDashoffset = String(-distance % layer.length);
+    }
+  });
 }
 
 /** One row of lights — a glow and the core in its middle — `distance` along the wire. */

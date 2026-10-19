@@ -1,0 +1,9 @@
+/* jMouse UI-kit — the appearance settings: every axis as one labelled strip, the palette and the typeface across both
+   columns, a live specimen at the foot. */
+.kit-appearance { display: grid; gap: var(--kit-space-3) var(--kit-space-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kit-appearance-axis { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: var(--kit-space-1); }
+.kit-appearance-axis > legend { padding: 0; margin-bottom: var(--kit-space-1); }
+.kit-appearance-axis[data-wide] { grid-column: 1 / -1; }
+.kit-appearance-axis > .kit-segmented { justify-self: start; }
+.kit-appearance-specimen { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: var(--kit-space-2); padding-top: var(--kit-space-3); border-top: var(--kit-border-width) solid var(--kit-line); }
+@media (max-width: 600px) { .kit-appearance { grid-template-columns: minmax(0, 1fr); } }

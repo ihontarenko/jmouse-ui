@@ -1,10 +1,10 @@
 import type { PartLoad } from "../transport/live";
-import { GROUND, type CircuitElement } from "./circuit";
+import { GROUND } from "./circuit";
 
 /**
  * A circuit through time, as the sheet plays it: every node's voltage (`out`, unit "V") and every part's current
  * (`R1` — into a two-terminal part's first terminal — or `U1.output` — into a model's pin —, unit "A"), named as the
- * circuit names them. A computed transient (the Graph) and a live run (the emulator) both come in these columns from the
+ * circuit names them. A computed transient (the Graph) and a live run (the simulator) both come in these columns from the
  * engine, so one reading of them serves both — the sheet is told what the circuit does at the moment a clock is at,
  * never at the moment some frame happened to end.
  */
@@ -107,15 +107,18 @@ export function levelsOf(readings: Record<string, number>, units: Record<string,
 }
 
 /**
- * Every part's terminal currents at the moment, in the shape the sheet reads them: a column in amperes named `R1` is the
- * current into a two-terminal part's "+" (out of its "−"), `U1.pin` into a model's pin. Given the elements, a part's
- * power at the moment too: a two-terminal part's current times the voltage across it, a model's sum over its pins of the
- * current into a pin times that pin's voltage. The currents are the engine's; only those products are taken here.
+ * Every part's terminal currents and power at the moment, in the shape the sheet reads them: a column in amperes named
+ * `R1` is the current into a two-terminal part's "+" (out of its "−"), `U1.pin` into a model's pin; a column in watts
+ * named `R1.power` is its power. All of them are the engine's: nothing is worked out here.
  */
-export function loadsOf(readings: Record<string, number>, units: Record<string, string>,
-  elements: readonly CircuitElement[] = []): Record<string, PartLoad> {
-  const voltage = (node: string | null) => (node === null || node === GROUND || units[node] !== "V" ? 0 : readings[node] ?? 0);
+export function loadsOf(readings: Record<string, number>, units: Record<string, string>): Record<string, PartLoad> {
   const loads: Record<string, PartLoad> = {};
+  for (const [column, value] of Object.entries(readings)) {
+    if (units[column] === "W" && column.endsWith(".power") && Number.isFinite(value)) {
+      const part = column.slice(0, -".power".length);
+      (loads[part] ?? (loads[part] = { power: null, terminals: {}, temperature: null })).power = value;
+    }
+  }
   for (const [column, current] of Object.entries(readings)) {
     if (units[column] !== "A" || !Number.isFinite(current)) {
       continue;
@@ -130,17 +133,6 @@ export function loadsOf(readings: Record<string, number>, units: Record<string, 
     }
     load.terminals["+"] = current;
     load.terminals["−"] = -current;
-    const element = elements.find((candidate) => candidate.id === part);
-    if (element) {
-      load.power = current * (voltage(element.positive) - voltage(element.negative));
-    }
-  }
-  for (const element of elements) {
-    const load = loads[element.id];
-    if (!load || !element.pins || load.power !== null) {
-      continue;
-    }
-    load.power = Object.entries(load.terminals).reduce((power, [pin, current]) => power + current * voltage(element.pins?.[pin] ?? null), 0);
   }
   return loads;
 }

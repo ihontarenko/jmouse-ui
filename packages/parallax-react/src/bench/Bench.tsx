@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { draftOf, type ObjectDetail, ApiProblem } from "@jmouse/parallax";
 import { useAsync } from "../support/useAsync";
 import { ParallaxLink } from "../providers/ParallaxNavigation";
-import { EmulatorInstrument } from "../circuit/EmulatorInstrument";
+import { SimulatorInstrument } from "../circuit/SimulatorInstrument";
 import {
   type BenchProbe, type CircuitDefinition, type CircuitElement, circuitFromDrawing, drawCircuit, drawingOfCircuit, elementTypes, isCircuit, layoutOfDrawing, type LiveTelemetry, parametersOf, rewiredElements, type SchematicDocument, serializeDrawing, type SheetProbe, SIMULATION_SPEEDS, wiringOf, withShownValues,
 } from "@jmouse/parallax/circuit";
@@ -15,10 +15,12 @@ import { useSheetEditing, type SheetEditing } from "../circuit/useSheetEditing";
 import { SHEET_TOOLS } from "../circuit/sheetTools";
 import { EDITOR_HOTKEYS } from "../editor/editorKeys";
 import { SheetToolbar } from "../circuit/SheetToolbar";
+import { SheetViewMenu, useSheetLabels, type SheetOverlay } from "../circuit/SheetViewMenu";
+import { BenchEnvironment } from "./BenchEnvironment";
 import { PartPalette, useAvailableComponentModels } from "../circuit/PartPalette";
 import { usePartLibrary } from "../providers/usePartLibrary";
 import { useLiveCircuit, useLiveReading } from "../circuit/useLiveCircuit";
-import { channelName, holdsWholeRecord, measure, PlaybackClock, Recording, windowOf, type ChannelId, type SampleMemory } from "@jmouse/parallax/oscilloscope";
+import { channelName, holdsWholeRecord, isIdentityExpression, measure, PlaybackClock, Recording, windowOf, type ChannelId, type SampleMemory } from "@jmouse/parallax/oscilloscope";
 import { formatQuantity, ladderStep, parseQuantity } from "@jmouse/parallax/quantities";
 import { OscilloscopePanel, OscilloscopeScreen, useOscilloscope, type Recorder } from "../scope/Oscilloscope";
 import { cursorsStretchAvailable, nodeConnections, probesOf, replayStretch, type ReplayStretchKind } from "@jmouse/parallax/scope";
@@ -37,18 +39,18 @@ import { CircuitPanel } from "./CircuitPanel";
 import { BenchGrid, PaneSplit, StageSplit } from "../controls/BenchGrid";
 
 /**
- * The bench's views of one circuit: its sheet; the EMULATOR, the circuit running live in time with the instruments on
+ * The bench's views of one circuit: its sheet; the SIMULATOR, the circuit running live in time with the instruments on
  * it; and ANALYSIS, what is computed around the circuit — its frequency response, its operating point, a sweep, a
- * transient worked out at once. Live and computed were one switch on the emulator once, and it read as one thing.
+ * transient worked out at once. Live and computed were one switch on the simulator once, and it read as one thing.
  */
-export type BenchView = "schematic" | "emulator" | "analysis";
+export type BenchView = "schematic" | "simulator" | "analysis";
 
 /** What the bench puts in the bar its host draws around it. */
 export interface BenchBarParts {
   view: BenchView;
   /** Switches between the bench's views without leaving it. */
   onView: (view: BenchView) => void;
-  /** The bench's context: on the emulator the analysis, the run controls, the speed and the run's state; on the schematic its revision and size. */
+  /** The bench's context: on the simulator the analysis, the run controls, the speed and the run's state; on the schematic its revision and size. */
   context: ReactNode;
   /** The bench's own actions, first among the bar's: whether the circuit is unsaved, and Save — only when it may be changed. */
   actions: ReactNode;
@@ -77,6 +79,8 @@ export interface BenchProperties {
   bar: (parts: BenchBarParts) => ReactNode;
   /** Whether the reader may change a component, and where a new one is kept — without it, components open read only. */
   components?: ComponentHost;
+  /** Opens the host's own settings for how a sheet draws current, glow and leads — offered at the foot of the View menu. */
+  onSheetAppearance?: () => void;
 }
 
 const LIVE = "TRANSIENT_RESPONSE";
@@ -92,12 +96,12 @@ function download(name: string, text: string) {
 }
 
 /**
- * One circuit on the workbench (Html/Parallax-UI/workbench.html, tabs Schematic and Emulator). The emulator: the
+ * One circuit on the workbench (Html/Parallax-UI/workbench.html, tabs Schematic and Simulator). The simulator: the
  * circuit's values and sources on the left; its drawing above the instrument in the middle; the instrument's own
  * controls on the right. The transient runs live on the server; the other analyses are computed and drawn in the
  * instrument's place. The schematic: its parts and nets, the sheet, and the chosen part.
  */
-export function Bench({ reference, detail, editable, representation, onRepresentation, initialView = "emulator", onSaved, onSaveFailed, bar, components }: BenchProperties) {
+export function Bench({ reference, detail, editable, representation, onRepresentation, initialView = "simulator", onSaved, onSaveFailed, bar, components, onSheetAppearance }: BenchProperties) {
   const transport = useParallaxTransport();
   const library = useParallaxPartLibrary();
   const summary = detail.summary;
@@ -115,6 +119,8 @@ export function Bench({ reference, detail, editable, representation, onRepresent
   /** The component open on the bench, to read, change, import or export. */
   const [componentSubject, setComponentSubject] = useState<ComponentSubject | null>(null);
   const [circuitView, setCircuitView] = useState<"drawing" | "readings">("drawing");
+  // Which texts each part carries on the sheet, and how much of its readings: the reader's habit, kept in this browser.
+  const [sheetLabels, setSheetLabels] = useSheetLabels();
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const problem = setup ? setupProblem(setup) : null;
 
@@ -123,12 +129,12 @@ export function Bench({ reference, detail, editable, representation, onRepresent
   // none yet is offered every analysis the engine can run on it.
   const declared = detail.representations.filter((declaration) => detail.applicableRepresentations.includes(declaration.kind));
   const analyses = declared.length ? declared.map((declaration) => declaration.kind) : detail.applicableRepresentations;
-  // The emulator is the live run, always; Analysis computes what the address names, else the first the circuit declares
+  // The simulator is the live run, always; Analysis computes what the address names, else the first the circuit declares
   // other than the transient — which it also offers, worked out at once rather than run.
   const computedChoice = representation && analyses.includes(representation) ? representation
     : analyses.find((kind) => kind !== LIVE) ?? (analyses.includes(LIVE) ? LIVE : null);
   const analysis = view === "analysis" ? computedChoice : (analyses.includes(LIVE) ? LIVE : computedChoice);
-  const live = view === "emulator" && analysis === LIVE;
+  const live = view === "simulator" && analysis === LIVE;
   const running = applied ?? saved;
 
   // A change of the bench is applied after a pause in typing, never on every keystroke; a bench set back to how it
@@ -154,7 +160,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
   const [liveInterval, setLiveInterval] = useState(SAMPLE_INTERVAL_AT_START);
   const circuit = useLiveCircuit(summary.id, running, values, liveInterval, view !== "analysis", kept);
   const nodes = circuit.nodes.length ? circuit.nodes : nodesOfCircuit(running);
-  const scope = useOscilloscope(nodes, running?.probes);
+  const scope = useOscilloscope(nodes, running?.probes, running?.timePerDivision);
 
   // The time base decides how finely a live circuit is sampled, as on a bench oscilloscope: a thousand samples a
   // screen, asked for a moment after the wheel stops, and the circuit goes on rather than starting again.
@@ -168,6 +174,14 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `circuit.sample` is stable
   }, [timeBase]);
+
+  // How the run is acquired is the oscilloscope's choice: every sample read — the run slowed as a fine time base needs —
+  // or real time first.
+  const gapless = scope.settings.acquisition !== "realtime";
+  useEffect(() => {
+    circuit.acquire(gapless);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `circuit.acquire` is stable
+  }, [gapless]);
 
   // The whole record: the memory keeps the run from its start, folding when full, and the samples grow sparser as the
   // record grows — a thousand a screen still, the screen now being the record. Asked again only when the record has
@@ -466,12 +480,16 @@ export function Bench({ reference, detail, editable, representation, onRepresent
       return;
     }
     const probes: BenchProbe[] = [
+      // A current clamp is saved as one — `CH2 current R1` —: written as a voltage on ground, it came back as a probe on 0.
       ...scope.settings.channels.filter((channel) => channel.enabled).map((channel): BenchProbe => ({
-        id: channel.id, measure: "voltage", target: channel.node === "ground" ? "0" : channel.node,
-        reference: channel.reference === "ground" ? null : channel.reference, scale: channel.voltsPerDivision, mode: null })),
+        id: channel.id, scale: channel.voltsPerDivision, mode: null, expression: isIdentityExpression(channel.expression) ? null : channel.expression!.trim(),
+        ...(channel.quantity === "current"
+          ? { measure: "current", target: channel.part ?? "", reference: null }
+          : { measure: "voltage", target: channel.node === "ground" ? "0" : channel.node, reference: channel.reference === "ground" ? null : channel.reference }) })),
     ];
     const definition: CircuitDefinition = {
-      ...saved, probes, time: { minimum: 0, maximum: Number(details.duration) },
+      // The time base is saved as the channels' scales are: the circuit opens on the screen it was saved with.
+      ...saved, probes, timePerDivision: scope.settings.secondsPerDivision, time: { minimum: 0, maximum: Number(details.duration) },
       ...(sheetChanged ? { elements: circuitFromDrawing(library, editing.document), layout: layoutOfDrawing(serializeDrawing(editing.document)) } : {}),
     };
     const title = details.title.trim();
@@ -508,10 +526,10 @@ export function Bench({ reference, detail, editable, representation, onRepresent
 
   const sheet = live
     ? (circuitView === "drawing"
-      ? <LiveSchematic telemetry={circuit.telemetry} flow={circuit.flow} recent={circuit.recent} elements={sheetElements} drawing={sheetDrawing} onProbeSelect={attachProbe} onProbeMove={moveProbe} editing={editable ? editing : undefined} probes={sheetProbes} meters={sheetMeters} probedNets={probedNets} dials={dials} probeHint=""
+      ? <LiveSchematic telemetry={circuit.telemetry} ambient={setup?.temperature ?? 25} flow={circuit.flow} recent={circuit.recent} elements={sheetElements} drawing={sheetDrawing} onProbeSelect={attachProbe} onProbeMove={moveProbe} editing={editable ? editing : undefined} probes={sheetProbes} meters={sheetMeters} probedNets={probedNets} dials={dials} sheetLabels={sheetLabels} probeHint=""
         caption={`${summary.title} · r${detail.definitionRevision}`} />
       : <div data-parallax-part="sheet" className="parallax-sheet parallax-readings-sheet"><LiveReadings telemetry={circuit.telemetry} /></div>)
-    : <Schematic elements={shownElements} drawing={drawing} caption={`${summary.title} · r${detail.definitionRevision}`} />;
+    : <Schematic elements={shownElements} drawing={drawing} sheetLabels={sheetLabels} caption={`${summary.title} · r${detail.definitionRevision}`} />;
 
   // The frame under the sheet: the oscilloscope's screen, the meters, or both side by side.
   const screen = <OscilloscopeScreen memory={shownMemory} scope={scope} live={!shown} clock={shown ? undefined : circuit.playback} onSingleShot={circuit.pause}
@@ -523,37 +541,43 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     onRemove={editable ? removePart : undefined}
     leading={instrumentView === "meters" ? instrumentSwitch : undefined} />;
 
-  const emulatorStage = (
+  // The sheet's toolbar holds what is DONE to the sheet — the tools, the edits, the history; how it LOOKS is one View
+  // menu at its end. What the pointer will do next is the status line's, under the stage, where it does not push the
+  // tools onto a second row.
+  const drawingShown = live && circuitView === "drawing";
+  const overlays: SheetOverlay[] = drawingShown ? [
+    { label: "Probed nets", description: "every wire of a probed node banded in its probe's colour", on: probedNets, onChange: setProbedNets },
+    { label: "Phase dials", on: phaseDials, onChange: setPhaseDials,
+      description: dialFrequency
+        ? `U and I by every part at ${formatQuantity(dialFrequency, "Hz")} — ${drivenAt ? `${drivenAt.part}'s frequency` : "measured on the first channel"}, turning in slow motion`
+        : "U and I by every part — no frequency yet: no part declares one and the screen holds too few periods to measure it" },
+  ] : [];
+  const stageHint = drawingShown ? (probing
+    ? <span className="parallax-hint parallax-probing" role="status"><strong>{probingName}</strong> tip on <strong>{probing.tip}</strong> — now click where its clip goes,
+      or <Tool tone="quiet" onClick={() => setProbing(null)}>clip on ground</Tool></span>
+    : editable && !editing.document.items.length && !editing.placement ? <span className="parallax-hint" role="status">An empty sheet: choose a part on the left, then click where it goes.</span>
+    : editable && (editing.tool !== "select" || editing.placement) ? <span className="parallax-hint" role="status">{editing.message}</span>
+    : <span className="parallax-hint">Click a node: <strong>{channelName(scope.settings.channels.find((channel) => channel.id === scope.settings.active)!)}</strong>'s tip, then its clip</span>)
+    : <span className="parallax-hint">{live ? "Every node's voltage and every part's power, current and temperature" : analysis ? representationLabel(analysis) : "No analysis"}</span>;
+
+  const simulatorStage = (
     <>
       <div data-parallax-part="stage-toolbar" className="parallax-stage-toolbar">
-        <span className="parallax-title">Circuit</span>
-        {live ? <Segments label="What the circuit pane shows" value={circuitView} onChange={setCircuitView}
-          options={[{ value: "drawing", label: "Drawing", title: "The schematic: voltage as colour, current as motion, power as glow" },
-            { value: "readings", label: "Readings", title: "Every node's voltage and every part's power, current and temperature" }]} /> : null}
-        {live && circuitView === "drawing" ? <Tool aria-pressed={probedNets} onClick={() => setProbedNets((shown) => !shown)}
-          label="Band every wire of each probed node in its probe's colour">Probed nets</Tool> : null}
-        {live && circuitView === "drawing" ? <Tool aria-pressed={phaseDials} onClick={() => setPhaseDials((shown) => !shown)}
-          label={`A dial by every part: its voltage (U) and its current (I) at the circuit's frequency${dialFrequency ? ` — ${formatQuantity(dialFrequency, "Hz")}, ${drivenAt ? `${drivenAt.part}'s frequency` : "measured on the first channel"}` : " — none yet: no part declares one and the screen holds too few periods to measure it"}; they turn in slow motion`}>Phases</Tool> : null}
-        {live && circuitView === "drawing" && editable ? <SheetToolbar editing={editing} /> : null}
-        {live && circuitView === "drawing" ? (probing
-          ? <span className="parallax-hint parallax-probing" role="status"><strong>{probingName}</strong> tip on <strong>{probing.tip}</strong> — now click where its clip goes,
-            or <Tool tone="quiet" onClick={() => setProbing(null)}>clip on ground</Tool></span>
-          : editable && !editing.document.items.length && !editing.placement ? <span className="parallax-hint" role="status">An empty sheet: choose a part on the left, then click where it goes.</span>
-          : editable && (editing.tool !== "select" || editing.placement) ? <span className="parallax-hint" role="status">{editing.message}</span>
-          : <span className="parallax-hint">click a node: <strong>{channelName(scope.settings.channels.find((channel) => channel.id === scope.settings.active)!)}</strong>'s tip, then its clip</span>)
-          : <span className="parallax-hint">{analysis ? representationLabel(analysis) : "no analysis"}</span>}
+        {drawingShown && editable ? <SheetToolbar editing={editing} /> : <span className="parallax-title">{live && circuitView === "readings" ? "Readings" : "Circuit"}</span>}
+        <SheetViewMenu shows={live ? circuitView : "drawing"} onShows={live ? setCircuitView : undefined} labels={sheetLabels} onLabels={setSheetLabels}
+          overlays={overlays} appearance={onSheetAppearance ? { label: "Current, glow and leads…", open: onSheetAppearance } : undefined} />
       </div>
       {running ? (
-        <StageSplit storageKey="emulator" topName="Circuit sheet" label={live ? "Resize the oscilloscope" : "Resize the analysis"} name={live ? "Oscilloscope and meters" : "Analysis"}
+        <StageSplit storageKey="simulator" topName="Circuit sheet" label={live ? "Resize the oscilloscope" : "Resize the analysis"} name={live ? "Oscilloscope and meters" : "Analysis"}
           top={sheet}
           bottom={live ? (
             <div className="parallax-bench-instruments" data-parallax-part="bench-instruments" data-state={instrumentView}>
-              {instrumentView === "both" ? <PaneSplit storageKey="emulator.meters" label="Resize the meters" left={screen} right={meterStrip} />
+              {instrumentView === "both" ? <PaneSplit storageKey="simulator.meters" label="Resize the meters" left={screen} right={meterStrip} />
                 : instrumentView === "screen" ? screen : meterStrip}
             </div>
           ) : (
             <section data-parallax-part="stage-instrument" className="parallax-stage-instrument" aria-label={analysis ? representationLabel(analysis) : "Analysis"}>
-              {analysis ? <EmulatorInstrument representation={analysis} computation={spiceShown ? spice : computation} title={spiceShown ? `${summary.title} · ngspice` : summary.title} facts
+              {analysis ? <SimulatorInstrument representation={analysis} computation={spiceShown ? spice : computation} title={spiceShown ? `${summary.title} · ngspice` : summary.title} facts
                 focus={scope.settings.channels.filter((channel) => channel.enabled).map((channel) => channel.node)}
                 context={{ circuit: `${summary.slug}@${detail.definitionRevision}`, settings: JSON.stringify({ values }) }} />
                 : <p className="parallax-side-note">This circuit admits no analysis yet.</p>}
@@ -561,8 +585,8 @@ export function Bench({ reference, detail, editable, representation, onRepresent
           )} />
       ) : <div data-parallax-part="stage-body" className="parallax-stage-body"><p className="parallax-side-note">This circuit has no netlist to draw.</p></div>}
       <div data-parallax-part="stage-foot" className="parallax-stage-foot">
-        {failure ? <span className="parallax-diagnostic parallax-danger" role="alert"><ParallaxIcon name="error" />{failure}</span> : <span>{shownElements.length} parts · {nodes.length} nodes</span>}
-        <span className="parallax-push">{live ? `${scope.settings.channels.filter((channel) => channel.enabled).length} channels · ${formatQuantity(liveInterval, "s")} a sample` : "computed on the server"}</span>
+        {failure ? <span className="parallax-diagnostic parallax-danger" role="alert"><ParallaxIcon name="error" />{failure}</span> : stageHint}
+        <span className="parallax-push">{shownElements.length} parts · {nodes.length} nodes · {live ? `${scope.settings.channels.filter((channel) => channel.enabled).length} channels · ${formatQuantity(liveInterval, "s")} a sample` : "computed on the server"}</span>
       </div>
     </>
   );
@@ -574,8 +598,8 @@ export function Bench({ reference, detail, editable, representation, onRepresent
       onElementChange={(changes) => changePart(editing.selectedItem!.id, changes)} />
   ) : null;
 
-  const emulator = (
-    <BenchGrid storageKey="emulator"
+  const simulator = (
+    <BenchGrid storageKey="simulator"
       sideLabel="Values and simulation"
       side={setup ? (sideView === "parts" && editable ? <>{sideSwitch}<PartPalette models={componentModels} editing={editing} actions={<>
         <Tool onClick={() => setComponentSubject({ kind: "text", source: NEW_COMPONENT_SOURCE, title: "New component" })}><ParallaxIcon name="plus" />New component</Tool>
@@ -596,7 +620,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
           setup={setup} onSetup={(change) => setSetup((current) => current && change(current))} problem={problem}
           onResetSetup={() => { setApplied(null); setSetup(saved ? initialSetup(saved) : null); editing.reset(); }} live={live} saved={saved ?? setup.circuit} /></>
       ) : <div className="parallax-side-note"><span>This circuit has no netlist to set up.</span></div>}
-      stage={emulatorStage}
+      stage={simulatorStage}
       inspectorLabel={inspectorView === "oscilloscope" ? "Oscilloscope controls" : inspectorView === "instruments" ? "Instruments" : "Properties"}
       inspector={live || editable ? (
         <>
@@ -656,27 +680,27 @@ export function Bench({ reference, detail, editable, representation, onRepresent
   const cursorModes = ["off", "time", "volts"] as const;
   const cursorMode = !scope.settings.cursors.enabled ? "off" : scope.settings.cursors.axis ?? "time";
   const hotkeys: Hotkey[] = [
-    { keys: "Space", label: replay ? "Play or pause the replay" : circuit.running ? "Pause" : "Run", group: "Run", enabled: live && view === "emulator" && Boolean(running),
+    { keys: "Space", label: replay ? "Play or pause the replay" : circuit.running ? "Pause" : "Run", group: "Run", enabled: live && view === "simulator" && Boolean(running),
       run: () => (replay ? replay.play(!replay.playing) : circuit.running ? circuit.pause() : (setViewing(null), circuit.run())) },
     { keys: "L", label: replay ? "Leave the replay, back to live" : "Replay the memory — or A–B with the Δt cursors on", group: "Run",
-      enabled: live && view === "emulator" && (Boolean(replay) || circuit.memory.length > 1),
+      enabled: live && view === "simulator" && (Boolean(replay) || circuit.memory.length > 1),
       run: () => (replay ? circuit.replay(null) : startReplay(cursorsStretchAvailable(scope.settings) ? "cursors" : "memory")) },
-    { keys: ".", label: "Step, while paused", group: "Run", enabled: live && view === "emulator" && !circuit.running && !circuit.busy, run: circuit.step },
-    { keys: "Home", label: "Restart from zero", group: "Run", enabled: live && view === "emulator", run: () => { circuit.reset(); scope.setBack(0); } },
+    { keys: ".", label: "Step, while paused", group: "Run", enabled: live && view === "simulator" && !circuit.running && !circuit.busy, run: circuit.step },
+    { keys: "Home", label: "Restart from zero", group: "Run", enabled: live && view === "simulator", run: () => { circuit.reset(); scope.setBack(0); } },
     { keys: "[", label: "Slower", group: "Run", enabled: live, run: () => paceBy(-1) },
     { keys: "]", label: "Faster", group: "Run", enabled: live, run: () => paceBy(1) },
-    { keys: "-", label: "More time per division", group: "Oscilloscope", enabled: view === "emulator",
+    { keys: "-", label: "More time per division", group: "Oscilloscope", enabled: view === "simulator",
       run: () => scope.update({ secondsPerDivision: Math.min(1, ladderStep(scope.settings.secondsPerDivision, 1)), horizontal: "divisions" }) },
-    { keys: "=", label: "Less time per division", group: "Oscilloscope", enabled: view === "emulator",
+    { keys: "=", label: "Less time per division", group: "Oscilloscope", enabled: view === "simulator",
       run: () => scope.update({ secondsPerDivision: Math.max(1e-9, ladderStep(scope.settings.secondsPerDivision, -1)), horizontal: "divisions" }) },
-    { keys: "O", label: "Whole record (overview) or ten divisions", group: "Oscilloscope", enabled: view === "emulator",
+    { keys: "O", label: "Whole record (overview) or ten divisions", group: "Oscilloscope", enabled: view === "simulator",
       run: () => { scope.setBack(0); scope.update({ horizontal: holdsWholeRecord(scope.settings) ? "divisions" : "record" }); } },
-    { keys: "F", label: "Fit every trace", group: "Oscilloscope", enabled: view === "emulator", run: () => scope.fit(circuit.memory) },
-    { keys: "Y", label: "YT or XY", group: "Oscilloscope", enabled: view === "emulator",
+    { keys: "F", label: "Fit every trace", group: "Oscilloscope", enabled: view === "simulator", run: () => scope.fit(circuit.memory) },
+    { keys: "Y", label: "YT or XY", group: "Oscilloscope", enabled: view === "simulator",
       run: () => scope.update({ display: scope.settings.display === "xy" ? "time" : "xy" }) },
-    { keys: "P", label: "Phosphor on or off", group: "Oscilloscope", enabled: view === "emulator", run: () => scope.update({ phosphor: !scope.settings.phosphor }) },
-    { keys: "T", label: "Trails on or off", group: "Oscilloscope", enabled: view === "emulator", run: () => scope.update({ trails: !scope.settings.trails }) },
-    { keys: "C", label: "Cursors: off, Δt, ΔV", group: "Oscilloscope", enabled: view === "emulator", run: () => {
+    { keys: "P", label: "Phosphor on or off", group: "Oscilloscope", enabled: view === "simulator", run: () => scope.update({ phosphor: !scope.settings.phosphor }) },
+    { keys: "T", label: "Trails on or off", group: "Oscilloscope", enabled: view === "simulator", run: () => scope.update({ trails: !scope.settings.trails }) },
+    { keys: "C", label: "Cursors: off, Δt, ΔV", group: "Oscilloscope", enabled: view === "simulator", run: () => {
       const next = cursorModes[(cursorModes.indexOf(cursorMode) + 1) % cursorModes.length];
       scope.update({ cursors: next === "off" ? { ...scope.settings.cursors, enabled: false } : { ...scope.settings.cursors, enabled: true, axis: next } });
     } },
@@ -684,7 +708,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     { keys: "↑ / ↓", label: "Move the active channel (screen focused)", group: "Oscilloscope" },
     { keys: "Double click", label: "Fit every trace", group: "Oscilloscope" },
     { keys: "1", label: "Schematic", group: "Bench", run: () => setView("schematic") },
-    { keys: "2", label: "Emulator", group: "Bench", run: () => setView("emulator") },
+    { keys: "2", label: "Simulator", group: "Bench", run: () => setView("simulator") },
     { keys: "3", label: "Analysis", group: "Bench", run: () => setView("analysis") },
     { keys: "E", label: "Expand the oscilloscope or the plot over the whole stage, or give the sheet back", group: "Bench" },
     { keys: "Ctrl+S", label: "Save the circuit", group: "Bench", enabled: Boolean(editable && detail.source), run: () => void saveCircuit() },
@@ -700,7 +724,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
       {view === "analysis" && analyses.length > 0 && analysis ? (
         <Segments label="Analysis" value={analysis} onChange={onRepresentation}
           options={analyses.map((kind) => ({ value: kind, label: representationLabel(kind),
-            title: kind === LIVE ? "The transient worked out at once over the analysis window — the live run is the Emulator" : representationLabel(kind) }))} />
+            title: kind === LIVE ? "The transient worked out at once over the analysis window — the live run is the Simulator" : representationLabel(kind) }))} />
       ) : null}
       {view === "analysis" && analysis === LIVE ? (
         <Segments label="Engine" value={engine} onChange={setEngine}
@@ -716,18 +740,27 @@ export function Bench({ reference, detail, editable, representation, onRepresent
           </Tool>
           <Tool disabled={circuit.running || circuit.busy} onClick={circuit.step}><ParallaxIcon name="step" /><span>Step</span></Tool>
           <Tool icon label="Restart from zero" onClick={() => { circuit.reset(); scope.setBack(0); }}><ParallaxIcon name="reset" /></Tool>
+          {/* Replay is a way of playing the run, so it stands with Run and Step, not on the screen's strip. */}
+          <Tool icon aria-pressed={Boolean(replay)} disabled={!replay && circuit.memory.length < 2}
+            onClick={() => (replay ? circuit.replay(null) : startReplay(cursorsStretchAvailable(scope.settings) ? "cursors" : "memory"))}
+            label={replay ? "Leave the replay, back to live (L)" : cursorsStretchAvailable(scope.settings)
+              ? "Replay the stretch between the cursors A and B, round and round — the run pauses (L)"
+              : "Replay what the memory holds, round and round — the screen, the sheet and the meters play it again; the run pauses (L)"}>
+            <ParallaxIcon name="loop" />
+          </Tool>
         </div>
       ) : null}
       {live ? <ChoiceStepper label="Simulation speed" value={String(circuit.speed)} onChange={(value) => circuit.pace(Number(value))} choices={SIMULATION_SPEEDS} /> : null}
+      <span data-parallax-part="run-status" className="parallax-run-status">
+        <span data-parallax-part="run-state" data-state={state.toLowerCase()} className={stateTone} role="status">{state}</span>
+        {live ? <LiveTime telemetry={circuit.telemetry} /> : null}
+      </span>
       {live && circuit.running ? <LiveTempo telemetry={circuit.telemetry} playback={circuit.playback} requested={circuit.speed} /> : null}
       {setup ? <Segments label="How parts take overheating" value={setup.realistic ? "realistic" : "ideal"}
         onChange={(mode) => setSetup((current) => current && ({ ...current, realistic: mode === "realistic" }))}
         options={[{ value: "ideal", label: "Ideal", title: "A part past its temperature limit is only marked" },
           { value: "realistic", label: "Realistic", title: "A part past its temperature limit fails as its component says: open or short" }]} /> : null}
-      <span data-parallax-part="run-status" className="parallax-run-status">
-        <span data-parallax-part="run-state" data-state={state.toLowerCase()} className={stateTone} role="status">{state}</span>
-        {live ? <LiveTime telemetry={circuit.telemetry} /> : null}
-      </span>
+      {setup ? <BenchEnvironment setup={setup} onSetup={(change) => setSetup((current) => current && change(current))} /> : null}
     </>
   ) : (
     <span data-parallax-part="run-status" className="parallax-run-status"><span className="parallax-badge">Revision r{detail.definitionRevision}</span><span>{shownElements.length} parts · {nodesOfCircuit(running).length + 1} nets · {running?.layout ? "routed from the layout block" : "placed automatically"}</span></span>
@@ -740,7 +773,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
     </>
   ) : null;
   const runText = (text: string) => {
-    setView("emulator");
+    setView("simulator");
     void circuit.runText(text);
   };
 
@@ -758,7 +791,7 @@ export function Bench({ reference, detail, editable, representation, onRepresent
           editing.retarget(componentReference.split("@")[0], componentReference);
           setComponentSubject({ kind: "saved", reference: componentReference });
         }} /> : null}
-      {view === "schematic" ? schematic : emulator}
+      {view === "schematic" ? schematic : simulator}
     </div>
   );
 }
@@ -786,28 +819,27 @@ function LiveTempo({ telemetry, playback, requested }: { telemetry: LiveTelemetr
   const verdict = !behind ? null : serverBound && held !== null
     ? `held at ${shareOfRealTime(held)} — the fastest the server keeps up with on this circuit`
     : `${slowdownOf(requested, speed)} slower than asked, not from the server — frames reach the screen late`;
+  const serverShare = load !== null ? Math.round(Math.min(1, load) * 100) : null;
+  // One readout of a fixed width: the speed reached, the buffer under it as a hairline, the server's share. Each figure
+  // is explained in its title; spelled out with labels and a "slow" badge, it took 400 px that appeared only while a
+  // circuit ran, and pushed the bar's end over the bench mode and Save.
+  const explanation = [
+    `Plays ${speed !== null ? shareOfRealTime(speed) : "…"} of ${shareOfRealTime(requested)} asked${samples ? ` — ${samples}` : ""}.`,
+    verdict ? `Behind: ${verdict}.` : null,
+    `Server: ${serverShare ?? "…"} % of each 40 ms frame spent on this circuit; near 100 % it cannot play faster.`,
+    `Buffer: ${Math.round(buffered)} ms computed ahead and not yet played — empty, the screen waits for the server.`,
+  ].filter(Boolean).join("\n");
   return (
-    <span className="parallax-tempo" role="group" aria-label="Run tempo">
-      <span className={`parallax-tempo-figure${behind ? " parallax-limited" : ""}`}
-        title={`Circuit time per second of your time, as measured. Asked for ${shareOfRealTime(requested)}${samples ? ` — ${samples}` : ""}.`}>
-        <small>plays</small>
+    <span className="parallax-tempo" role="group" aria-label={explanation} title={explanation} data-behind={behind || undefined}>
+      <span className={`parallax-tempo-figure${behind ? " parallax-limited" : ""}`}>
+        {behind ? <ParallaxIcon name="warning" /> : null}
         <strong className="parallax-steady parallax-width-5">{speed !== null ? shareOfRealTime(speed) : "…"}</strong>
-        <small>{behind ? `of ${shareOfRealTime(requested)}` : "on pace"}</small>
-      </span>
-      <span className={`parallax-tempo-figure${serverBound ? " parallax-limited" : ""}`}
-        title="The share of each 40 ms frame the server spends computing and sending this circuit. Near 100 % it cannot play faster.">
-        <small>server</small>
-        <strong><span className="parallax-steady parallax-width-3">{load !== null ? Math.round(Math.min(1, load) * 100) : "…"}</span> %</strong>
-      </span>
-      <span className="parallax-tempo-figure parallax-buffer-readout"
-        title="Buffer: what the server computed ahead that the screen has not played yet. The screen plays a little behind it, so it moves smoothly whatever the network does; empty, the screen waits for the server.">
-        <small>buffer</small>
         <span data-parallax-part="meter" className={`parallax-meter parallax-buffer-meter${fill < 0.25 ? " parallax-low" : ""}`} role="meter" aria-label="Buffer" aria-valuemin={0}
           aria-valuemax={2 * PlaybackClock.LEAD_MILLISECONDS} aria-valuenow={Math.round(buffered)}><span style={{ width: `${fill * 100}%` }} /></span>
-        <strong><span className="parallax-steady parallax-width-4">{Math.round(buffered)}</span> ms</strong>
       </span>
-      {/* Why it is behind, in words — a badge whose words are its title: written out, it wrapped the whole bar. */}
-      {verdict ? <span className="parallax-tempo-verdict" role="status" aria-label={verdict} title={verdict}>slow</span> : null}
+      <span className={`parallax-tempo-figure parallax-tempo-server${serverBound ? " parallax-limited" : ""}`}>
+        <small>server</small><strong><span className="parallax-steady parallax-width-3">{serverShare ?? "…"}</span>%</strong>
+      </span>
     </span>
   );
 }
@@ -834,7 +866,7 @@ function LiveSchematic({ telemetry, ...properties }: Omit<ComponentProps<typeof 
  */
 function declaredFrequency(elements: readonly CircuitDefinition["elements"][number][], values: Record<string, number>): { part: string; frequency: number } | null {
   for (const element of elements) {
-    const written = element.overrides?.frequency ?? element.frequency ?? null;
+    const written = element.overrides?.frequency ?? null;
     if (!written) {
       continue;
     }
@@ -877,13 +909,13 @@ function SchematicView({ summaryTitle, revision, description, elements, drawing,
   selected: string | null;
   onSelect: (id: string | null) => void;
   /**
-   * The sheet being worked on — the same one the Emulator edits —, when the reader may edit the circuit: Edit turns the
+   * The sheet being worked on — the same one the Simulator edits —, when the reader may edit the circuit: Edit turns the
    * drawing here into that editor, with its toolbar and its part inspector. Absent, the view only shows.
    */
   editing?: SheetEditing;
   editedElements: readonly CircuitElement[];
   editedDrawing?: string;
-  /** The inspector of the part chosen on the sheet being worked on, as the Emulator shows it. */
+  /** The inspector of the part chosen on the sheet being worked on, as the Simulator shows it. */
   partProperties: ReactNode;
 }) {
   const [mode, setMode] = useState<"view" | "edit">("view");
@@ -943,7 +975,7 @@ function SchematicView({ summaryTitle, revision, description, elements, drawing,
             <span className="parallax-title">Circuit</span>
             {editing ? <Segments label="View or edit the sheet" value={mode} onChange={setMode}
               options={[{ value: "view", label: "View", title: "Look at the circuit and inspect its parts" },
-                { value: "edit", label: "Edit", title: "Work on the sheet — the same editor as the Emulator's" }]} /> : null}
+                { value: "edit", label: "Edit", title: "Work on the sheet — the same editor as the Simulator's" }]} /> : null}
             {editingNow ? <SheetToolbar editing={editingNow} /> : <span className="parallax-hint">click a part to inspect it</span>}
           </div>
           <div data-parallax-part="stage-body" className="parallax-stage-body">
@@ -986,7 +1018,6 @@ function SchematicView({ summaryTitle, revision, description, elements, drawing,
               <dt>Component</dt><dd>{componentSlug ? <ParallaxLink to={{ kind: "object", slug: componentSlug }}>{component}</ParallaxLink> : "—"}</dd>
               {part.type !== "MODEL" ? <><dt>Value</dt><dd>{part.value ?? "—"} {elementTypes[part.type].unit.split(",")[0]}</dd></> : null}
               <dt>Symbol</dt><dd>{part.symbol ?? "default"}</dd>
-              {part.waveform ? <><dt>Waveform</dt><dd>{part.waveform.toLowerCase()}</dd></> : null}
               {Object.keys(part.overrides ?? {}).length ? <><dt>Overrides</dt><dd>{Object.entries(part.overrides ?? {}).map(([name, value]) => `${name} = ${value}`).join(", ")}</dd></> : null}
             </dl>
           </div>

@@ -29,13 +29,19 @@ export interface Spectrum {
  * through the memory up to {@link MOST_POINTS} samples — as a bench oscilloscope's FFT reads its whole acquisition, not
  * the ten divisions —, so a 100 ms screen of a 50 Hz signal is not five coarse bins that the peak hops between. Null
  * with fewer than 16 samples.
+ *
+ * @param samples how many of the latest samples to transform, so read after read the bins are the same — the unbroken
+ *                record of a live stream is 900 samples one moment and 8192 the next, and a spectrum read from whatever
+ *                it held moved its bins every time; null when the record holds fewer. Left out, the whole record.
  */
-export function spectrumOf(memory: TraceSource, channel: string, view: Window): Spectrum | null {
-  const { first, last } = analysisRecord(memory, view);
-  const count = last - first;
-  if (count < 16) {
+export function spectrumOf(memory: TraceSource, channel: string, view: Window, samples?: number): Spectrum | null {
+  const record = analysisRecord(memory, view);
+  const count = samples ?? record.last - record.first;
+  if (count < 16 || record.last - record.first < count) {
     return null;
   }
+  const last = record.last;
+  const first = last - count;
   const size = Math.min(MOST_POINTS, 2 ** Math.ceil(Math.log2(count)));
   const start = memory.time(first);
   const span = memory.time(last - 1) - start;
@@ -88,6 +94,12 @@ export function spectrumOf(memory: TraceSource, channel: string, view: Window): 
  * most {@link MOST_POINTS}. A live stream arrives in blocks of 4096 samples with a gap as long between them, and the
  * screen plays a little behind it: read up to the screen's end alone, the record was 900 samples and the resolution 227 Hz.
  */
+/** How many samples the record a spectrum would be read from holds now: see {@link analysisRecord}. */
+export function analysisLength(memory: TraceSource, view: Window): number {
+  const record = analysisRecord(memory, view);
+  return record.last - record.first;
+}
+
 export function analysisRecord(memory: TraceSource, view: Window): { first: number; last: number } {
   const last = Math.min(memory.length, memory.indexAt(view.start + view.span));
   const first = unbrokenFrom(memory, last);

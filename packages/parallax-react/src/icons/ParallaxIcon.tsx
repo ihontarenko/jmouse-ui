@@ -22,6 +22,8 @@ const paths = {
   error: "M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zM9 9l6 6M15 9l-6 6",
   external: "M14 4h6v6M20 4l-9 9M18 13v6H5V6h6",
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z",
+  list: "M4 7h2M9 7h11M4 12h2M9 12h11M4 17h2M9 17h11",
+  thermometer: "M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0zM12 9v7",
   fit: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
   history: "M4 12a8 8 0 1 0 2.3-5.6M4 4v5h5M12 8v4l3 2",
   minus: "M5 12h14",
@@ -48,6 +50,15 @@ const paths = {
   wire: "M4 18h5l6-12h5M4 18a1 1 0 1 0 0 .01M20 6a1 1 0 1 0 0 .01",
   "zoom-in": "M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-4-4M11 8v6M8 11h6",
   "zoom-out": "M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-4-4M8 11h6",
+  // The oscilloscope's display: a trace against time, a figure against another, phasors, a spectrum — and its screen's
+  // afterglow, its trails, and its hold.
+  "display-time": "M3 12c1.5-6 3-6 4.5 0s3 6 4.5 0 3-6 4.5 0 3 6 4.5 0",
+  "display-xy": "M12 3v18M3 12h18M6.5 17.5C3 13 9 5 17.5 6.5 21 11 15 19 6.5 17.5z",
+  "display-phasors": "M4 12h16M12 12l6-6M14.5 6H18v3.5M12 12l-4 7",
+  "display-spectrum": "M4 20h16M6 20V7M10 20v-6M14 20v-9M18 20v-3",
+  phosphor: "M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4",
+  trails: "M3 7c3-3 6-3 9 0s6 3 9 0M3 12c3-3 6-3 9 0s6 3 9 0M3 17c3-3 6-3 9 0s6 3 9 0",
+  hold: "M6 9a3 3 0 1 0 0 6c3 0 9-6 12-6a3 3 0 1 1 0 6c-3 0-9-6-12-6z",
 } as const;
 
 /** Drawing tools, on their original 20-unit grid. */

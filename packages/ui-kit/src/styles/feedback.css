@@ -1,0 +1,89 @@
+/* jMouse UI-kit — feedback: notice, toast, empty and problem states, skeleton, spinner, tooltip. Status is never colour
+   alone: every tone also carries an icon and a word. */
+
+/* ===================== notice ===================== */
+.kit-notice {
+  --kit-tone: var(--kit-accent);
+  --kit-tone-soft: var(--kit-well);
+  position: relative; overflow: hidden;
+  display: flex; align-items: flex-start; gap: var(--kit-space-2);
+  padding: var(--kit-space-2) var(--kit-space-3) var(--kit-space-2) calc(var(--kit-space-3) + 2px);
+  border-radius: var(--kit-radius-control); background: var(--kit-tone-soft); color: var(--kit-ink); font-size: var(--kit-text-sm);
+}
+.kit-notice::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--kit-band); background: var(--kit-tone); }
+.kit-notice > .kit-icon { margin-top: 2px; color: var(--kit-tone); }
+.kit-notice-text { display: grid; gap: 2px; min-width: 0; }
+.kit-notice-text > strong { font-weight: 600; }
+.kit-notice-text > p { color: var(--kit-secondary); }
+.kit-notice > .kit-panel-actions { align-self: center; }
+.kit-notice[data-tone="good"] { --kit-tone: var(--kit-good); --kit-tone-soft: var(--kit-good-soft); }
+.kit-notice[data-tone="warn"] { --kit-tone: var(--kit-warn); --kit-tone-soft: var(--kit-warn-soft); }
+.kit-notice[data-tone="danger"] { --kit-tone: var(--kit-danger); --kit-tone-soft: var(--kit-danger-soft); }
+
+/* ===================== toast ===================== */
+.kit-toasts {
+  position: fixed; right: var(--kit-space-4); bottom: var(--kit-space-4); z-index: 60;
+  display: grid; gap: var(--kit-space-2); width: min(380px, calc(100vw - 32px)); margin: 0; padding: 0; list-style: none;
+}
+.kit-toast {
+  --kit-tone: var(--kit-accent);
+  position: relative; overflow: hidden;
+  display: flex; align-items: flex-start; gap: var(--kit-space-2);
+  padding: var(--kit-space-2) var(--kit-space-2) var(--kit-space-2) calc(var(--kit-space-3) + var(--kit-band));
+  background: var(--kit-surface); border: var(--kit-border-width) solid var(--kit-line); border-radius: var(--kit-radius-control); box-shadow: var(--kit-shadow-pop);
+  font-size: var(--kit-text-sm);
+  animation: kit-toast-in 160ms ease-out;
+}
+.kit-toast::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--kit-band); background: var(--kit-tone); }
+.kit-toast > .kit-icon { margin-top: 2px; color: var(--kit-tone); }
+.kit-toast-text { flex: 1; display: grid; gap: 2px; min-width: 0; padding-top: 1px; }
+.kit-toast-text > p { color: var(--kit-secondary); font-size: var(--kit-text-xs); }
+.kit-toast-actions { display: flex; align-items: center; gap: 2px; }
+.kit-toast[data-tone="good"] { --kit-tone: var(--kit-good); }
+.kit-toast[data-tone="warn"] { --kit-tone: var(--kit-warn); }
+.kit-toast[data-tone="danger"] { --kit-tone: var(--kit-danger); }
+@keyframes kit-toast-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .kit-toast { animation: none; } }
+
+/* ===================== empty and problem states ===================== */
+.kit-empty {
+  display: grid; justify-items: center; gap: var(--kit-space-2); padding: var(--kit-space-6) var(--kit-space-4);
+  border: 1px dashed var(--kit-line-strong); border-radius: var(--kit-radius-surface);
+  text-align: center; color: var(--kit-muted); font-size: var(--kit-text-sm);
+}
+.kit-empty > .kit-icon { width: 28px; height: 28px; color: var(--kit-line-strong); }
+.kit-empty > strong { color: var(--kit-ink); font-weight: var(--kit-weight-heading); font-size: var(--kit-text-md); }
+.kit-empty > p { max-width: 52ch; }
+.kit-empty > .kit-panel-actions { margin: var(--kit-space-2) 0 0; }
+.kit-empty[data-flush] { border: 0; }
+.kit-empty[data-tone="danger"] { border-color: color-mix(in srgb, var(--kit-danger) 45%, var(--kit-line)); border-style: solid; }
+.kit-empty[data-tone="danger"] > .kit-icon { color: var(--kit-danger); }
+.kit-empty-detail { max-width: 100%; margin-top: var(--kit-space-1); padding: var(--kit-space-1) var(--kit-space-2); border-radius: var(--kit-radius-small); background: var(--kit-well); color: var(--kit-secondary); font: var(--kit-text-xs) var(--kit-font-technical); overflow-wrap: anywhere; }
+
+/* ===================== skeleton and spinner ===================== */
+.kit-skeleton { position: relative; overflow: hidden; display: block; min-height: 12px; border-radius: var(--kit-radius-small); background: var(--kit-well); }
+.kit-skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--kit-surface) 60%, transparent), transparent); animation: kit-shimmer 1.4s infinite; }
+@media (prefers-reduced-motion: reduce) { .kit-skeleton::after { animation: none; } }
+.kit-spinner { display: inline-block; flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--kit-line-strong); border-top-color: var(--kit-accent); animation: kit-spin 700ms linear infinite; }
+.kit-spinner[data-size="large"] { width: 22px; height: 22px; }
+.kit-waiting { display: inline-flex; align-items: center; gap: var(--kit-space-2); color: var(--kit-muted); font-size: var(--kit-text-sm); }
+
+/* ===================== tooltip (a popover that names a control; never the only place a fact lives) ===================== */
+.kit-tooltip {
+  position: fixed; inset: auto; margin: 0; z-index: 80; max-width: 280px; padding: 4px 8px;
+  border: 0; border-radius: var(--kit-radius-small); background: var(--kit-ink); color: var(--kit-bg);
+  font: var(--kit-text-xs) / 1.35 var(--kit-font-ui); pointer-events: none;
+}
+.kit-tooltip:not(:popover-open) { display: none; }
+.kit-tooltip kbd { margin-left: var(--kit-space-1); background: transparent; color: inherit; border-color: color-mix(in srgb, var(--kit-bg) 40%, transparent); }
+
+/* ===================== error page: a whole place that cannot be shown ===================== */
+.kit-error-page { display: grid; place-content: center; justify-items: start; gap: var(--kit-space-3); min-height: min(100%, 70dvh); max-width: 560px; margin: 0 auto; padding: var(--kit-space-7) var(--kit-space-5); }
+.kit-error-page-code { display: flex; align-items: center; gap: var(--kit-space-2); color: var(--kit-muted); font: 500 var(--kit-text-sm) / 1 var(--kit-font-technical); letter-spacing: var(--kit-micro-label-tracking); text-transform: uppercase; }
+.kit-error-page-code > .kit-icon { color: var(--kit-tone, var(--kit-muted)); }
+.kit-error-page[data-tone="danger"] { --kit-tone: var(--kit-danger); }
+.kit-error-page[data-tone="warn"] { --kit-tone: var(--kit-warn); }
+.kit-error-page h1 { font-size: var(--kit-text-2xl); font-weight: var(--kit-weight-display); }
+.kit-error-page > p { color: var(--kit-secondary); font-size: var(--kit-text-md); }
+.kit-error-page > .kit-panel-actions { margin: var(--kit-space-2) 0 0; gap: var(--kit-space-2); }
+.kit-error-page-detail { width: 100%; }

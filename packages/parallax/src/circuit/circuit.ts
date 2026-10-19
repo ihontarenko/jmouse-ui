@@ -15,6 +15,8 @@ export type CircuitDefinition = {
   conditions?: BenchConditions | null;
   /** What a bench measures it with — its `probes` block: the oscilloscope's channels (CH1…CH4). A meter is a part. */
   probes?: BenchProbe[];
+  /** The time base the oscilloscope opens on, seconds a division — the `probes` block's `time 5 ms/div`; null: the bench chooses. */
+  timePerDivision?: number | null;
 };
 
 /** A line of the `probes` block (`ObjectDefinition.BenchProbe`): `CH1 out 2 V/div`, `M2 current PS1.negative rms`. */
@@ -28,6 +30,8 @@ export interface BenchProbe {
   scale: number | null;
   /** A meter's display. */
   mode: "dc" | "ac" | "rms" | null;
+  /** What an oscilloscope channel's screen shows instead of its reading, X being the reading: `X * pi / 2`. */
+  expression?: string | null;
 }
 
 /**
@@ -63,7 +67,6 @@ export interface SchematicLayout {
 
 export type CircuitElementType = "RESISTOR" | "CAPACITOR" | "INDUCTOR" | "VOLTAGE_SOURCE" | "CURRENT_SOURCE" | "DIODE" | "MODEL";
 /** A primitive source is constant or switched on at the start; a sine or a square is a generator component. */
-export type SourceWaveform = "DC" | "STEP";
 
 export interface CircuitElement {
   id: string;
@@ -75,8 +78,6 @@ export interface CircuitElement {
   component?: string | null;
   pins?: Record<string, string>;
   overrides?: Record<string, string>;
-  waveform?: SourceWaveform;
-  frequency?: string | null;
   /** Which of its component's symbols the part is drawn with, when not the default: `symbol r2` on its line. */
   symbol?: string | null;
 }
@@ -97,11 +98,6 @@ export const elementTypes: Record<CircuitElementType, { label: string; component
   MODEL: { label: "Component model", component: "", unit: "", prefix: "U", source: false },
 };
 
-export const waveforms: { value: SourceWaveform; label: string }[] = [
-  { value: "STEP", label: "Step at t = 0" },
-  { value: "DC", label: "Constant" },
-];
-
 export function isCircuit(definition: { kind: string }): definition is CircuitDefinition {
   return definition.kind === "CIRCUIT";
 }
@@ -112,7 +108,7 @@ export function starterCircuit(): CircuitDefinition {
     kind: "CIRCUIT",
     time: { minimum: 0, maximum: 0.01 },
     elements: [
-      { id: "V1", type: "VOLTAGE_SOURCE", positive: "in", negative: GROUND, value: "U", waveform: "STEP" },
+      { id: "V1", type: "VOLTAGE_SOURCE", positive: "in", negative: GROUND, value: "U" },
       { id: "R1", type: "RESISTOR", positive: "in", negative: "out", value: "R" },
       { id: "C1", type: "CAPACITOR", positive: "out", negative: GROUND, value: "C * 1e-9" },
     ],

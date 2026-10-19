@@ -165,3 +165,13 @@ export const scriptFacade = Tag.define(tags.typeName)
  * event called `end`; a grammar that refused to colour one would make a correct file look broken.
  */
 export const scriptEvent = Tag.define(tags.className)
+
+/**
+ * A declared type — the `int` of `let count : int`, the `current` of `let I_through : current`, the result type of
+ * `function share(…) : double`.
+ *
+ * <p>⚠️ **Its own tag because the standard set sends `tags.typeName` to the keyword colour**, and a type that looks
+ * like `let` is a type nobody reads. It is what the value IS — the subject of the declaration, in the sense `.jmp`'s
+ * subject is what a line grants —, so it borrows that hue: one no script, formula or component otherwise uses.
+ */
+export const annotationType = Tag.define(tags.typeName)

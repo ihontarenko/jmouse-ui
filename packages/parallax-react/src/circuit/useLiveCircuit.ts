@@ -47,6 +47,8 @@ export interface LiveCircuit {
   pace: (speed: number) => void;
   /** Samples this far apart from now on — what the oscilloscope's time base needs —; the circuit goes on. */
   sample: (interval: number) => void;
+  /** Every sample read, the run as slow as that takes, or real time first; the circuit goes on. */
+  acquire: (gapless: boolean) => void;
   resize: (capacity: number) => void;
   recording: { received: number; target: number } | null;
   record: (count: number) => void;
@@ -130,7 +132,7 @@ export function useLiveCircuit(objectId: string, circuit: CircuitDefinition | nu
   }, [session]);
 
   return { running, busy, problem, telemetry: session.telemetry, nodes, controls, memory: session.memory, playback: session.playback,
-    flow: session.flow, recent: session.recent, speed, sample: session.sample, run: session.run, pause: session.pause, step: session.step,
+    flow: session.flow, recent: session.recent, speed, sample: session.sample, acquire: session.acquire, run: session.run, pause: session.pause, step: session.step,
     reset: session.reset, set: session.set, probe: session.probe, runText: session.runText, pace, resize: session.resize,
     recording: recordingShown, record: session.record, stopRecording: session.stopRecording, replay: session.replay };
 }

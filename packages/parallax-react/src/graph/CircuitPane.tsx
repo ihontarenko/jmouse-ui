@@ -49,7 +49,7 @@ export function CircuitPane({ pane, clock, values }: { pane: GraphPaneDocument; 
   const moment = useMemo(() => (series && time !== null ? readingsAt(series, time) : null), [series, time]);
   const units = useMemo(() => (series ? unitsOf(series) : {}), [series]);
   const levels = useMemo(() => (moment ? levelsOf(moment, units) : undefined), [moment, units]);
-  const loads = useMemo(() => (moment && circuit ? loadsOf(moment, units, circuit.elements) : undefined), [moment, units, circuit]);
+  const loads = useMemo(() => (moment && circuit ? loadsOf(moment, units) : undefined), [moment, units, circuit]);
   // The light on every wire stands where the charge that has passed puts it: ∫ I dt of the engine's own currents, read
   // at the clock's value between frames, so it moves as far as the clock moved — and back when the current reverses.
   const played = useMemo(() => (series ? new SeriesFlow(series, LIGHT_TRAVEL_PER_RUN) : null), [series]);

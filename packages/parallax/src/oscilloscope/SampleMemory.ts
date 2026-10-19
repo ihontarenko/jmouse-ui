@@ -1,3 +1,5 @@
+import type { ReadingTransform } from "./readingExpression";
+
 /**
  * An oscilloscope's acquisition memory: a ring of the last `capacity` samples, one column of times and one per
  * channel. Appending never allocates and never grows — the oldest sample is overwritten — so a circuit that has
@@ -11,6 +13,7 @@ export class SampleMemory {
   private lows = new Map<string, Float64Array>();
   private highs = new Map<string, Float64Array>();
   private means = new Map<string, Float64Array>();
+  private transforms: ReadonlyMap<string, ReadingTransform> = new Map();
   /**
    * Which acquisition each sample belongs to: an unbroken record, sampled without a sample missing. A batch appended is
    * one; it goes on the one before it when it starts a step after its last sample. A live run at a speed the server
@@ -287,27 +290,55 @@ export class SampleMemory {
     return this.times[this.slot(index)];
   }
 
+  /**
+   * What each channel's reading is written over with — `X * pi / 2` —, applied as it is read: the samples kept are the
+   * probe's, so changing or clearing an expression redraws the whole memory without losing anything. A channel without
+   * one reads as it was sampled.
+   */
+  setTransforms(transforms: ReadonlyMap<string, ReadingTransform>) {
+    this.transforms = transforms;
+    this.version++;
+  }
+
   reading(channel: string, index: number): number {
+    const value = this.sampled(channel, index);
+    const transform = this.transforms.get(channel);
+    return transform ? transform(value) : value;
+  }
+
+  private sampled(channel: string, index: number): number {
     const column = this.columns.get(channel);
     return column ? column[this.slot(index)] : Number.NaN;
   }
 
-  /** The lowest reading over the i-th sample's interval: its peak when measured, else the reading itself. */
+  /** A peak as sampled: measured, or the reading itself. */
+  private sampledPeak(peaks: Map<string, Float64Array>, channel: string, index: number): number {
+    const value = peaks.get(channel)?.[this.slot(index)];
+    return value !== undefined && Number.isFinite(value) ? value : this.sampled(channel, index);
+  }
+
+  /**
+   * The lowest reading over the i-th sample's interval: its peak when measured, else the reading itself. Under an
+   * expression the lower of the two peaks transformed — a falling expression turns the high peak into the low one.
+   */
   low(channel: string, index: number): number {
-    const value = this.lows.get(channel)?.[this.slot(index)];
-    return value !== undefined && Number.isFinite(value) ? value : this.reading(channel, index);
+    const transform = this.transforms.get(channel);
+    const low = this.sampledPeak(this.lows, channel, index);
+    return transform ? Math.min(transform(low), transform(this.sampledPeak(this.highs, channel, index))) : low;
   }
 
   /** The mean reading over the i-th sample's interval: averaged when measured, else the reading itself. */
   mean(channel: string, index: number): number {
-    const value = this.means.get(channel)?.[this.slot(index)];
-    return value !== undefined && Number.isFinite(value) ? value : this.reading(channel, index);
+    const transform = this.transforms.get(channel);
+    const mean = this.sampledPeak(this.means, channel, index);
+    return transform ? transform(mean) : mean;
   }
 
   /** The highest reading over the i-th sample's interval: its peak when measured, else the reading itself. */
   high(channel: string, index: number): number {
-    const value = this.highs.get(channel)?.[this.slot(index)];
-    return value !== undefined && Number.isFinite(value) ? value : this.reading(channel, index);
+    const transform = this.transforms.get(channel);
+    const high = this.sampledPeak(this.highs, channel, index);
+    return transform ? Math.max(transform(high), transform(this.sampledPeak(this.lows, channel, index))) : high;
   }
 
   firstTime(): number {

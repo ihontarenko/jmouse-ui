@@ -1,7 +1,7 @@
 import { channelDrawn, type SampleMemory, type ScopeSettings, type Window } from "../oscilloscope";
 import { mathName, mathSource } from "./mathChannel";
 import { phasorsOf, type Phasor, type PhasorDiagram } from "./phasors";
-import { spectrumAxisOf, spectrumOf, type Spectrum, type SpectrumAxis } from "./spectrum";
+import { analysisLength, spectrumAxisOf, spectrumOf, type Spectrum, type SpectrumAxis } from "./spectrum";
 
 /*
  * What the FFT and phasor displays read, held steady the way an instrument holds them. Worked out at every animation
@@ -10,6 +10,11 @@ import { spectrumAxisOf, spectrumOf, type Spectrum, type SpectrumAxis } from "./
  * analysis is read a few times a second, each read averaged into the last ones (powers for a spectrum, complex values
  * for a phasor), and a read that finds nothing keeps the last good picture a moment before giving it up. A change of
  * what is analysed — a channel, the math, the time base, a new run — starts afresh at once.
+ *
+ * A spectrum is read over the same number of samples every time, so its bins stay where they were and the average
+ * holds: a live record is a few hundred samples one moment and thousands the next, and a spectrum read over whatever it
+ * held changed its resolution at every read — the average started again each time and the picture jumped. A read that
+ * finds a shorter record is skipped; one twice as long moves to the finer grid.
  */
 
 /** How often a running signal is analysed again. */
@@ -47,6 +52,8 @@ export class ScreenAnalysis {
   private foundAt = Number.NEGATIVE_INFINITY;
   private spectra: ChannelSpectra = NO_SPECTRA;
   private diagram: PhasorDiagram | null = null;
+  /** How many samples each spectrum of this subject is read over; null until the first read. */
+  private spectrumSamples: number | null = null;
 
   /** Whether the signal moved since the last read: the screen must keep drawing until it has been read. */
   get pending(): boolean {
@@ -68,7 +75,15 @@ export class ScreenAnalysis {
   /** The spectra of the enabled channels and the math channel, as steady as the signal allows. */
   spectraOf(memory: SampleMemory, settings: ScopeSettings, view: Window, now: number): ChannelSpectra {
     if (this.due(memory, settings, view, now)) {
-      const next = readSpectra(memory, settings, view);
+      const available = analysisLength(memory, view);
+      if (this.spectrumSamples === null || available >= 2 * this.spectrumSamples) {
+        this.spectrumSamples = available;
+      } else if (available < this.spectrumSamples) {
+        // A shorter record than this subject is read over: the last picture stands, and is not given up for it.
+        this.foundAt = now;
+        return this.spectra;
+      }
+      const next = readSpectra(memory, settings, view, this.spectrumSamples);
       if (next.axis) {
         this.spectra = this.spectra.axis ? averageSpectra(this.spectra, next) : next;
         this.foundAt = now;
@@ -102,6 +117,7 @@ export class ScreenAnalysis {
       this.subject = subject;
       this.spectra = NO_SPECTRA;
       this.diagram = null;
+      this.spectrumSamples = null;
       this.foundAt = Number.NEGATIVE_INFINITY;
     } else if (data === this.computedData || now - this.computedAt < READ_INTERVAL_MILLISECONDS) {
       return false;
@@ -120,12 +136,12 @@ function subjectOf(memory: SampleMemory, settings: ScopeSettings): string {
   return [memory.generation, settings.display, settings.secondsPerDivision, settings.horizontal ?? "", channels.join(","), math].join("/");
 }
 
-function readSpectra(memory: SampleMemory, settings: ScopeSettings, view: Window): ChannelSpectra {
+function readSpectra(memory: SampleMemory, settings: ScopeSettings, view: Window, samples: number): ChannelSpectra {
   const spectra: ChannelSpectrum[] = settings.channels.filter(channelDrawn)
-    .map((channel) => ({ channel: { id: channel.id as string, color: channel.color }, spectrum: spectrumOf(memory, channel.id, view) }));
+    .map((channel) => ({ channel: { id: channel.id as string, color: channel.color }, spectrum: spectrumOf(memory, channel.id, view, samples) }));
   const math = settings.math?.enabled ? settings.math : null;
   if (math) {
-    spectra.push({ channel: { id: "M", color: math.color }, spectrum: spectrumOf(mathSource(memory, math), "M", view) });
+    spectra.push({ channel: { id: "M", color: math.color }, spectrum: spectrumOf(mathSource(memory, math), "M", view, samples) });
   }
   return { spectra, axis: spectrumAxisOf(spectra.map((entry) => entry.spectrum)) };
 }

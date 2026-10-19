@@ -1,25 +1,21 @@
-import { useParallaxTransport, useParallaxPartLibrary } from "../providers/ParallaxTransportProvider";
+import { useParallaxTransport } from "../providers/ParallaxTransportProvider";
 import type { CSSProperties } from "react";
 import type { LiveControl } from "@jmouse/parallax";
 import type { ParameterDefinition } from "@jmouse/parallax";
 import { useAsync } from "../support/useAsync";
 import { ParameterSlider } from "../viewers/ParameterSlider";
-import { type CircuitDefinition, type CircuitElement, type SourceWaveform } from "@jmouse/parallax/circuit";
-import { Segments, Tool } from "../controls/BenchControls";
+import { type CircuitDefinition, type CircuitElement } from "@jmouse/parallax/circuit";
+import { Tool } from "../controls/BenchControls";
 import { ParallaxIcon } from "../icons/ParallaxIcon";
 import { QuantityField } from "../controls/QuantityField";
 import { PanelSection } from "../controls/PanelSection";
-import { passiveDefaults, type BenchSetup, type Corner } from "@jmouse/parallax/bench";
+import type { BenchSetup } from "@jmouse/parallax/bench";
 
-const WAVEFORMS: { value: SourceWaveform; label: string; title: string }[] = [
-  { value: "STEP", label: "Step", title: "A step at t = 0" },
-  { value: "DC", label: "DC", title: "Constant" },
-];
 
 /**
- * The circuit's side of the bench (the template's emulator side column), in the order a reader reaches for it: the
+ * The circuit's side of the bench (the template's simulator side column), in the order a reader reaches for it: the
  * values it was written with, the parts worked while it runs, the sources that drive it, the simulation window and —
- * folded — the environment and the models inside it.
+ * folded — the models inside it. The environment (temperature, tolerances) is the bench bar's (`BenchEnvironment`).
  */
 export function CircuitPanel({ parameters, values, onValue, onResetValues, controls, onControl, setup, onSetup, problem, onResetSetup, live, saved }: {
   parameters: readonly ParameterDefinition[];
@@ -37,10 +33,8 @@ export function CircuitPanel({ parameters, values, onValue, onResetValues, contr
   /** The circuit as saved: a part's values are "changed" only where the bench differs from it. */
   saved: CircuitDefinition;
 }) {
-  const library = useParallaxPartLibrary();
   const elements = setup.circuit.elements;
   const sources = elements.filter((element) => element.type === "VOLTAGE_SOURCE" || element.type === "CURRENT_SOURCE");
-  const passives = elements.filter((element) => element.type === "RESISTOR" || element.type === "CAPACITOR");
   const models = elements.filter((element) => element.type === "MODEL");
   const changeElement = (id: string, changes: Partial<CircuitElement>) => onSetup((current) => ({
     ...current, circuit: { ...current.circuit, elements: current.circuit.elements.map((element) => element.id === id ? { ...element, ...changes } : element) },
@@ -65,12 +59,7 @@ export function CircuitPanel({ parameters, values, onValue, onResetValues, contr
         const unit = source.type === "VOLTAGE_SOURCE" ? "V" : "A";
         return (
           <PanelSection key={source.id} storageKey={`bench.part.${source.id}`}
-            title={`${source.id} · ${source.type === "VOLTAGE_SOURCE" ? "voltage source" : "current source"}`} summary={source.waveform ?? "DC"}>
-            <div className="parallax-control-row">
-              <span>Waveform</span>
-              <Segments label={`${source.id} waveform`} value={source.waveform ?? "DC"} options={WAVEFORMS}
-                onChange={(waveform) => changeElement(source.id, { waveform })} />
-            </div>
+            title={`${source.id} · ${source.type === "VOLTAGE_SOURCE" ? "voltage source" : "current source"}`}>
             <SourceValue source={source} unit={unit} parameters={parameters} values={values}
               onChange={(value) => changeElement(source.id, { value })} />
             <div className="parallax-control-row">
@@ -89,37 +78,6 @@ export function CircuitPanel({ parameters, values, onValue, onResetValues, contr
           <p>How long an analysis runs.</p>
         </PanelSection>
       )}
-
-      {/* Every part feels the temperature — a model through its own drifts —; the tolerances are the passives'. */}
-      <PanelSection storageKey="bench.environment" title="Environment and tolerances"
-          summary={`${setup.temperature} °C · ${setup.corner === 0 ? "nominal" : setup.corner > 0 ? "upper corner" : "lower corner"}`}>
-            <QuantityField compact label="Temperature" unit="°C" value={setup.temperature} minimum={-40} maximum={125}
-              onChange={(temperature) => onSetup((current) => ({ ...current, temperature }))} />
-            <div className="parallax-control-row">
-              <span>Corner</span>
-              <Segments label="Tolerance corner" value={String(setup.corner)} wide
-                onChange={(corner) => onSetup((current) => ({ ...current, corner: Number(corner) as Corner }))}
-                options={[{ value: "-1", label: "−", title: "Lower corner" }, { value: "0", label: "Nominal" }, { value: "1", label: "+", title: "Upper corner" }]} />
-            </div>
-            {passives.length ? <table className="parallax-table parallax-dense">
-              <thead><tr><th scope="col">Part</th><th scope="col" className="parallax-numeric">±%</th><th scope="col" className="parallax-numeric">ppm/°C</th></tr></thead>
-              <tbody>
-                {passives.map((element) => {
-                  const setting = setup.tolerances[element.id] ?? passiveDefaults(library, element);
-                  const change = (changes: Partial<typeof setting>) => onSetup((current) => ({ ...current, tolerances: { ...current.tolerances, [element.id]: { ...setting, ...changes } } }));
-                  return (
-                    <tr key={element.id}>
-                      <td className="parallax-monospace">{element.id}</td>
-                      <td className="parallax-numeric"><input data-parallax-part="input" className="parallax-input parallax-small parallax-monospace" aria-label={`${element.id} tolerance, percent`} type="number" min="0" max="30" step="0.1" value={setting.percent}
-                        onChange={(event) => change({ percent: Number(event.target.value) })} /></td>
-                      <td className="parallax-numeric"><input data-parallax-part="input" className="parallax-input parallax-small parallax-monospace" aria-label={`${element.id} coefficient, ppm per degree`} type="number" min="-2000" max="2000" step="1" value={setting.coefficient}
-                        onChange={(event) => change({ coefficient: Number(event.target.value) })} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table> : null}
-        </PanelSection>
 
       {models.map((element) => <ModelOverrides key={element.id} element={element}
         written={saved.elements.find((candidate) => candidate.id === element.id)?.overrides ?? {}}

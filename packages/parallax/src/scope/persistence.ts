@@ -19,6 +19,9 @@ const KEPT = 28;
  * leaves every step, and a screen held for minutes stays light. */
 const HELD_EVERY_MILLISECONDS = 400;
 const HELD_MOST = 80;
+/** A phosphor trail's halo: how bright, as a share of its trail, and how much wider. */
+const TRAIL_GLOW_BRIGHTNESS = 0.35;
+const TRAIL_GLOW_WIDENING = 4;
 /** How bright a held trace is, as a share of the live one. */
 const HELD_BRIGHTNESS = 0.7;
 
@@ -80,14 +83,18 @@ export class Persistence {
 
   /**
    * The trails, oldest first and the live sweep left out: the n-th youngest at {@code intensity} × (1 − n / (count + 1))²
-   * of the live trace's brightness, and narrowing to 40 % of its width.
+   * of the live trace's brightness, and narrowing to 40 % of its width. On a phosphor screen each trail glows as the live
+   * trace does — a wide faint halo under it, fading with it —, so the trails are the same beam, only older.
    */
-  trailLayer(count: number, intensity: number): SegmentBatch[] {
+  trailLayer(count: number, intensity: number, phosphor = false): SegmentBatch[] {
     const past = this.trailing.slice(0, -1).slice(-Math.max(1, count));
-    return past.map((batch, index) => {
+    return past.flatMap((batch, index) => {
       const age = past.length - index;
       const share = 1 - age / (count + 1);
-      return { ...faded(batch, intensity * share * share), width: (batch.width ?? 1.5) * (0.4 + 0.6 * share) };
+      const brightness = intensity * share * share;
+      const width = (batch.width ?? 1.5) * (0.4 + 0.6 * share);
+      const trail = { ...faded(batch, brightness), width };
+      return phosphor ? [{ ...faded(batch, brightness * TRAIL_GLOW_BRIGHTNESS), width: width * TRAIL_GLOW_WIDENING }, trail] : [trail];
     });
   }
 

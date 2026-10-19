@@ -7,7 +7,7 @@ import { SymbolDrawing } from "./SymbolDrawing";
 /**
  * One part on a sheet, in its own coordinates — the caller rotates and mirrors it. A part is drawn from its symbol
  * document; one whose component draws itself from its pins (`symbol box`), or whose data has not arrived, is a box
- * with its pins on their sides. Shared by the schematic editor and the emulator's drawn schematic.
+ * with its pins on their sides. Shared by the schematic editor and the simulator's drawn schematic.
  */
 export function PartSymbol({ item, className }: { item: DrawingItem; className: string }) {
   const library = useParallaxPartLibrary();
@@ -47,8 +47,10 @@ export function PartSymbol({ item, className }: { item: DrawingItem; className: 
  * A part's name and value, upright at the anchors its symbol document places them; the value only when it has one.
  * A sheet that laid its labels out together (`placeLabels`) passes where each one landed.
  */
-export function PartLabels({ item, nameClassName, valueClassName, placement, onTextDown, onTextReset }: {
+export function PartLabels({ item, nameClassName, valueClassName, placement, onTextDown, onTextReset, showName = true, showValue = true }: {
   item: DrawingItem; nameClassName: string; valueClassName: string; placement?: LabelPlacement;
+  /** Whether the part's name and its value are written: a sheet's reader may leave either out. */
+  showName?: boolean; showValue?: boolean;
   /** A text taken with the pointer, to be put somewhere else: which, and where it stands now. */
   onTextDown?: (event: PointerEvent<SVGElement>, text: "name" | "value", at: Point) => void;
   /** A text put somewhere by hand, given back to where the sheet places it. */
@@ -73,7 +75,7 @@ export function PartLabels({ item, nameClassName, valueClassName, placement, onT
       onDoubleClick={onTextReset && item.labels?.[subject] ? () => onTextReset(subject) : undefined}>{text}</text>;
   };
   return <>
-    {name ? label("name", name, nameClassName, item.type === "GROUND" ? item.net ?? "0 V" : item.id) : null}
-    {value ? label("value", value, valueClassName, item.element!.value!) : null}
+    {name && showName ? label("name", name, nameClassName, item.type === "GROUND" ? item.net ?? "0 V" : item.id) : null}
+    {value && showValue ? label("value", value, valueClassName, item.element!.value!) : null}
   </>;
 }

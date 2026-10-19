@@ -380,8 +380,17 @@ export function createDrawingItem(library: PartLibraryView, items: readonly Draw
   }
   const element: CircuitElement = type === "MODEL"
     ? { id, type, positive: null, negative: null, value: "", component: component ?? "", pins: pins ?? {}, overrides: {} }
-    : { id, type, positive: `n_${id}_p`, negative: `n_${id}_n`, value: type === "CAPACITOR" ? "1e-7" : type === "DIODE" ? "1e-12" : type === "VOLTAGE_SOURCE" ? "5" : type === "CURRENT_SOURCE" ? "0.001" : "1000", waveform: elementTypes[type].source ? "DC" : undefined };
+    : { id, type, positive: `n_${id}_p`, negative: `n_${id}_n`, value: writtenValue(library, type) };
   return { id, type, x: snap(x), y: snap(y), rotation: 0, element };
+}
+
+/**
+ * What a new primitive starts at: its component's value — the first parameter, as the engine reads it (`resistance =
+ * 1 kOhm`, `inductance = 1 mH`) —, in SI. While the document has not arrived it is empty, and the engine asks for one.
+ */
+function writtenValue(library: PartLibraryView, type: CircuitElementType): string {
+  const value = library.componentModelOf(elementTypes[type].component)?.parameters[0]?.value;
+  return value === undefined ? "" : String(value);
 }
 
 /** A node name the sheet made up for a pin wired to nothing yet (`n_VM1_plus`) or for a fresh net (`n3`), not one the circuit chose. */
@@ -490,7 +499,7 @@ const sheetTerminal = (written: string, primitive: (id: string) => boolean) => {
 };
 
 /**
- * A circuit's `layout` block as the sheet the canvas and the emulator draw — serialized, as `drawCircuit` takes it —,
+ * A circuit's `layout` block as the sheet the canvas and the simulator draw — serialized, as `drawCircuit` takes it —,
  * or undefined when the circuit has none and a sheet lays it out itself.
  */
 export function drawingOfCircuit(definition: CircuitDefinition): string | undefined {

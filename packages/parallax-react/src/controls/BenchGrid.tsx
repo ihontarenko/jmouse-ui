@@ -4,7 +4,7 @@ import { ParallaxIcon, type ParallaxIconName } from "../icons/ParallaxIcon";
 import { useHotkeys } from "./Hotkeys";
 
 /*
- * The Parallax-UI workbench (Html/Parallax-UI/workbench.html): one layout for the emulator, the circuit editor, the
+ * The Parallax-UI workbench (Html/Parallax-UI/workbench.html): one layout for the simulator, the circuit editor, the
  * symbol shelf and the symbol editor — a bench bar with the bench's tabs, then three resizable columns.
  */
 
@@ -226,10 +226,11 @@ export function ExpandTool() {
   }
   const expanded = stage.fold === "sheet";
   return (
-    <button type="button" data-parallax-part="button" className="parallax-button parallax-small" aria-pressed={expanded}
-      title={expanded ? "Give the sheet its place back (E)" : "Take the whole stage: the sheet folds away and keeps running (E)"}
+    <button type="button" data-parallax-part="button" className="parallax-button parallax-small parallax-icon-only" aria-pressed={expanded}
+      aria-label={expanded ? "Restore: give the sheet its place back (E)" : "Expand: take the whole stage — the sheet folds away and keeps running (E)"}
+      title={expanded ? "Restore: give the sheet its place back (E)" : "Expand: take the whole stage — the sheet folds away and keeps running (E)"}
       onClick={() => stage.foldTo(expanded ? "none" : "sheet")}>
-      <ParallaxIcon name="fit" />{expanded ? "Restore" : "Expand"}
+      <ParallaxIcon name="fit" />
     </button>
   );
 }

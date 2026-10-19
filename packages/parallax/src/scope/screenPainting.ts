@@ -3,10 +3,9 @@ import { formatQuantity } from "../quantities";
 import { css, FloatBuilder, parseColor, type Rgb, type SegmentBatch, type Size, type VisualTheme } from "../visual";
 import { appendTrace } from "./traceEnvelope";
 import { mathSource, mathUnit, mathUnitsOf } from "./mathChannel";
-import type { PhasorDiagram } from "./phasors";
-import { ladderAtLeast } from "../quantities";
 import { DEFAULT_SPECTRUM_RANGE, spectrumPeak, type SpectrumAxis } from "./spectrum";
 import type { AnalysisReadout } from "./screenAnalysis";
+import { decibelUnit, phasorScales } from "./screenReadout";
 
 /* What the oscilloscope's screen paints: its traces as segments for the drawing library, its own marks on the overlay. */
 
@@ -158,15 +157,10 @@ function spectrumX(axis: SpectrumAxis): (frequency: number) => number {
   return (frequency) => ((Math.log10(Math.max(frequency, axis.lowest)) - low) / range) * HORIZONTAL_DIVISIONS;
 }
 
-/** The unit a spectrum's levels are in: dBV for volts, dBA for amperes, dB of anything else. */
-function decibelUnit(unit: string): string {
-  return unit === "V" ? "dBV" : unit === "A" ? "dBA" : `dB(${unit})`;
-}
-
 /**
- * A spectrum's marks: the frequencies along the bottom on its 1–2–5 steps, the levels on the left, and each channel's
- * strongest component marked and written — the frequency and level a spectrum analyser's marker reads — in a column of
- * its own at the top right, never over another.
+ * A spectrum's marks: the frequencies along the bottom on its 1–2–5 steps, the levels on the right — the left top corner
+ * is the readout's —, and each trace's strongest component marked on its curve. The figures of those peaks are the
+ * readout's table (`spectrumPlate`), not painted here.
  */
 function paintSpectrumMarks(context: CanvasRenderingContext2D, size: Size, theme: VisualTheme, settings: ScopeSettings, readout: AnalysisReadout, colors: Rgb[]) {
   const { width, height } = size;
@@ -204,23 +198,22 @@ function paintSpectrumMarks(context: CanvasRenderingContext2D, size: Size, theme
       context.globalAlpha = 1;
       const label = formatQuantity(frequency, "Hz");
       const half = context.measureText(label).width / 2 + 6;
-      const at = Math.min(width - half, Math.max(half + 44, x));
+      // Clear of the levels at the right edge.
+      const at = Math.max(half, Math.min(width - half - 52, x));
       if (at - half > lastLabel) {
         context.fillText(label, at, height - 3);
         lastLabel = at + half;
       }
     }
   }
-  context.textAlign = "left";
   context.textBaseline = "middle";
+  context.textAlign = "right";
   const levelUnit = decibelUnit(unitOf(spectra[0]?.channel.id ?? "CH1"));
   for (let division = 0; division < VERTICAL_DIVISIONS; division += 2) {
     const level = range.top - division * range.decibelsPerDivision;
-    context.fillText(`${level} ${levelUnit}`, 4, Math.max(8, (division / VERTICAL_DIVISIONS) * height));
+    context.fillText(`${level} ${levelUnit}`, width - 4, Math.max(8, (division / VERTICAL_DIVISIONS) * height));
   }
-  // Each peak marked on its curve; their figures in a table at the top right, on a plate of the screen's colour, so a
-  // curve passing under them does not cross the words.
-  const rows: { text: string; color: string }[] = [];
+  // Each peak marked on its curve; its figures are the readout's.
   for (const { channel, spectrum } of spectra) {
     if (!spectrum) {
       continue;
@@ -237,62 +230,16 @@ function paintSpectrumMarks(context: CanvasRenderingContext2D, size: Size, theme
       context.lineTo(x + 5, y - 11);
       context.fill();
     }
-    const outside = y < 0 ? " ↑ above" : y > height ? " ↓ below" : "";
-    rows.push({ text: `${channel.id}  ${formatQuantity(peak.frequency, "Hz")}  ${peak.level.toFixed(1)} ${decibelUnit(unitOf(channel.id))}${outside}`, color });
   }
-  const resolution = spectra.find((entry) => entry.spectrum)?.spectrum?.resolution ?? axis.lowest;
-  const footnote = `Hann · resolution ${formatQuantity(resolution, "Hz")} · ${range.decibelsPerDivision} dB/div`;
-  const lineHeight = 15;
-  const padding = 6;
-  const plateWidth = Math.max(context.measureText("Peaks").width, context.measureText(footnote).width, ...rows.map((row) => context.measureText(row.text).width)) + 2 * padding;
-  const plateHeight = (rows.length + 2) * lineHeight + 2 * padding;
-  const plateLeft = width - plateWidth - 4;
-  const [red, green, blue] = theme.background;
-  context.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.92)`;
-  context.fillRect(plateLeft, 4, plateWidth, plateHeight);
-  context.strokeStyle = theme.label;
-  context.globalAlpha = 0.3;
-  context.strokeRect(plateLeft + 0.5, 4.5, plateWidth - 1, plateHeight - 1);
-  context.globalAlpha = 1;
-  context.textAlign = "left";
-  context.textBaseline = "top";
-  let top = 4 + padding;
-  context.fillStyle = theme.label;
-  context.fillText("Peaks", plateLeft + padding, top);
-  top += lineHeight;
-  for (const row of rows) {
-    context.fillStyle = row.color;
-    context.fillText(row.text, plateLeft + padding, top);
-    top += lineHeight;
-  }
-  context.fillStyle = theme.label;
-  context.globalAlpha = 0.75;
-  context.fillText(footnote, plateLeft + padding, top);
-  context.globalAlpha = 1;
-}
-
-
-/**
- * What a division of the phasor diagram holds, unit by unit — volts and amperes cannot share a ruler —: the longest arrow
- * of each unit three and a half divisions, on the 1–2–5 ladder.
- */
-function phasorScales(diagram: PhasorDiagram): Record<string, number> {
-  const scales: Record<string, number> = {};
-  for (const phasor of diagram.phasors) {
-    scales[phasor.unit] = Math.max(scales[phasor.unit] ?? 1e-12, phasor.amplitude);
-  }
-  return Object.fromEntries(Object.entries(scales).map(([unit, longest]) => [unit, ladderAtLeast(longest / 3.5)]));
 }
 
 /**
- * The phasor diagram, drawn whole on the overlay — arrows, their names and their figures — so that it knows how much
- * room its words take. Every figure stands in a table in the top left corner, on a plate of the screen's own colour,
- * aligned in columns: the frequency, and per arrow its name, amplitude and angle. The diagram stands on the graticule's
- * centre, its arrows never longer than the room the table leaves. At an arrow's tip only its name, put where it covers
- * neither another name nor the table: written whole at every tip, the figures of a low screen ran over each other and
- * over the heading.
+ * The phasor diagram, drawn on the overlay — its arrows and their names. Every figure is the readout's table in the top
+ * left corner (`phasorPlate`), whose size the host hands in as `reserved`: the diagram stands on the graticule's centre,
+ * its arrows never longer than the room the table leaves, and a name at a tip is put where it covers neither another
+ * name nor the table.
  */
-function paintPhasorMarks(context: CanvasRenderingContext2D, size: Size, theme: VisualTheme, readout: AnalysisReadout, colors: Rgb[]) {
+function paintPhasorMarks(context: CanvasRenderingContext2D, size: Size, theme: VisualTheme, readout: AnalysisReadout, colors: Rgb[], reserved: Size) {
   const { width, height } = size;
   context.font = theme.labelFont;
   const diagram = readout.diagram;
@@ -305,22 +252,7 @@ function paintPhasorMarks(context: CanvasRenderingContext2D, size: Size, theme: 
   }
   const scales = phasorScales(diagram);
   const lineHeight = 15;
-  const padding = 6;
-  // The table: a heading, then one row per arrow in three columns.
-  const heading = `${formatQuantity(diagram.frequency, "Hz")} · ${diagram.periods} period${diagram.periods === 1 ? "" : "s"}`;
-  const rows = diagram.phasors.map((phasor) => {
-    const degrees = (phasor.angle * 180) / Math.PI;
-    return { phasor, name: phasor.id, amplitude: formatQuantity(phasor.amplitude, phasor.unit), angle: `∠ ${degrees >= 0 ? "+" : "−"}${Math.abs(degrees).toFixed(1)}°` };
-  });
-  const scaleLine = `${Object.entries(scales).map(([unit, scale]) => `${formatQuantity(scale, unit)}/div`).join(" · ")} · against ${diagram.phasors[0]?.id ?? ""}`;
-  const columnWidth = (pick: (row: (typeof rows)[number]) => string) => Math.max(...rows.map((row) => context.measureText(pick(row)).width));
-  const nameWidth = columnWidth((row) => row.name);
-  const amplitudeWidth = columnWidth((row) => row.amplitude);
-  const angleWidth = columnWidth((row) => row.angle);
-  const gap = 10;
-  const tableWidth = Math.max(context.measureText(heading).width, context.measureText(scaleLine).width, nameWidth + amplitudeWidth + angleWidth + 2 * gap) + 2 * padding;
-  const tableHeight = (rows.length + 2) * lineHeight + 2 * padding;
-  const table = { left: 4, top: 4, right: 4 + tableWidth, bottom: 4 + tableHeight };
+  const table = { left: 0, top: 0, right: reserved.width > 0 ? 8 + reserved.width : 0, bottom: reserved.height > 0 ? 8 + reserved.height : 0 };
 
   // The graticule's centre; a division is its square one, shrunk if three and a half of them would reach the table.
   const centreX = width / 2;
@@ -338,7 +270,7 @@ function paintPhasorMarks(context: CanvasRenderingContext2D, size: Size, theme: 
   context.strokeStyle = theme.label;
   context.globalAlpha = 0.35;
   context.beginPath();
-  context.moveTo(table.right + 8, Math.round(centreY) + 0.5);
+  context.moveTo(centreY > table.bottom ? 0 : table.right + 8, Math.round(centreY) + 0.5);
   context.lineTo(width, Math.round(centreY) + 0.5);
   context.moveTo(Math.round(centreX) + 0.5, 0);
   context.lineTo(Math.round(centreX) + 0.5, height);
@@ -346,7 +278,7 @@ function paintPhasorMarks(context: CanvasRenderingContext2D, size: Size, theme: 
   context.globalAlpha = 1;
 
   // The arrows, the longest of each unit three and a half divisions.
-  const tips = rows.map(({ phasor }) => {
+  const tips = diagram.phasors.map((phasor) => {
     const length = (phasor.amplitude / scales[phasor.unit]) * division;
     const x = centreX + length * Math.cos(phasor.angle);
     const y = centreY - length * Math.sin(phasor.angle);
@@ -399,34 +331,6 @@ function paintPhasorMarks(context: CanvasRenderingContext2D, size: Size, theme: 
       context.fillText(tip.phasor.id, placed.left, placed.top + 1);
     }
   }
-
-  // The table last, over anything that reached under it.
-  const [red, green, blue] = theme.background;
-  context.fillStyle = `rgba(${red}, ${green}, ${blue}, 0.92)`;
-  context.fillRect(table.left, table.top, tableWidth, tableHeight);
-  context.strokeStyle = theme.label;
-  context.globalAlpha = 0.3;
-  context.strokeRect(table.left + 0.5, table.top + 0.5, tableWidth - 1, tableHeight - 1);
-  context.globalAlpha = 1;
-  const left = table.left + padding;
-  let top = table.top + padding;
-  context.fillStyle = theme.label;
-  context.fillText(heading, left, top);
-  top += lineHeight;
-  for (const row of rows) {
-    context.fillStyle = css(colors[row.phasor.color]);
-    context.textAlign = "left";
-    context.fillText(row.name, left, top);
-    context.textAlign = "right";
-    context.fillText(row.amplitude, left + nameWidth + gap + amplitudeWidth, top);
-    context.fillText(row.angle, left + nameWidth + 2 * gap + amplitudeWidth + angleWidth, top);
-    top += lineHeight;
-  }
-  context.textAlign = "left";
-  context.fillStyle = theme.label;
-  context.globalAlpha = 0.75;
-  context.fillText(scaleLine, left, top);
-  context.globalAlpha = 1;
 }
 
 /** The glow a phosphor screen gives a trace: the same path, wide and faint, drawn under it. */
@@ -443,7 +347,9 @@ const PHOSPHOR_GLOW_WIDTH = 6;
 
 /** The instrument's own marks over the traces: each channel's zero, the trigger's level and moment, cursors, times. */
 export function paintScreenMarks(context: CanvasRenderingContext2D, size: Size, theme: VisualTheme, settings: ScopeSettings, view: Window, colors: Rgb[], waiting: string | null, recordStart: number, head: number,
-  readingAt?: (channel: ScopeSettings["channels"][number]["id"], time: number) => number, readout?: AnalysisReadout) {
+  readout?: AnalysisReadout,
+  /** The room the host's readout table takes in the top left corner, which a phasor diagram keeps clear. */
+  reserved: Size = { width: 0, height: 0 }) {
   const { width, height } = size;
   const middle = height / 2;
   const divisionHeight = height / VERTICAL_DIVISIONS;
@@ -464,7 +370,7 @@ export function paintScreenMarks(context: CanvasRenderingContext2D, size: Size, 
     return;
   }
   if (settings.display === "phasors" && readout) {
-    paintPhasorMarks(context, size, theme, readout, colors);
+    paintPhasorMarks(context, size, theme, readout, colors, reserved);
     return;
   }
   for (const channel of settings.channels) {
@@ -551,7 +457,7 @@ export function paintScreenMarks(context: CanvasRenderingContext2D, size: Size, 
   }
   context.setLineDash([]);
   if (settings.cursors.enabled) {
-    paintCursors(context, size, theme, settings, view, colors, readingAt);
+    paintCursors(context, size, theme, settings);
   }
   context.fillStyle = theme.label;
   context.textBaseline = "bottom";
@@ -587,21 +493,17 @@ function paintAxes(context: CanvasRenderingContext2D, width: number, height: num
 }
 
 /**
- * The cursors, A and B, as a bench oscilloscope draws them: a line each, a tag naming it, and what it marks — on the
- * time axis, the moment and every channel's reading there; on the volts axis, the active channel's level. The lines
- * are grabbed and dragged ({@link cursorAt}); what lies between them is read below the screen.
+ * The cursors' lines, A and B, dashed in the accent. What each marks — on the time axis the moment and every channel's
+ * reading there, on the volts axis the active channel's level — is its tag, a readout table of its own beside the line
+ * (`cursorPlates`, drawn by the host like the screen's corner table). The lines are grabbed and dragged ({@link cursorAt}).
  */
-function paintCursors(context: CanvasRenderingContext2D, size: Size, theme: VisualTheme, settings: ScopeSettings, view: Window, colors: Rgb[],
-  readingAt?: (channel: ScopeSettings["channels"][number]["id"], time: number) => number) {
+function paintCursors(context: CanvasRenderingContext2D, size: Size, theme: VisualTheme, settings: ScopeSettings) {
   const { width, height } = size;
-  const accent = css(theme.accent);
   const volts = settings.cursors.axis === "volts";
-  const active = settings.channels.find((channel) => channel.id === settings.active && channel.enabled);
   context.lineWidth = 1;
-  context.font = theme.labelFont;
-  for (const [name, fraction] of [["A", settings.cursors.first], ["B", settings.cursors.second]] as const) {
-    context.strokeStyle = accent;
-    context.setLineDash([5, 3]);
+  context.strokeStyle = css(theme.accent);
+  context.setLineDash([5, 3]);
+  for (const fraction of [settings.cursors.first, settings.cursors.second]) {
     context.beginPath();
     if (volts) {
       const y = Math.round(fraction * height) + 0.5;
@@ -613,48 +515,8 @@ function paintCursors(context: CanvasRenderingContext2D, size: Size, theme: Visu
       context.lineTo(x, height);
     }
     context.stroke();
-    context.setLineDash([]);
-    const lines: { text: string; color: string }[] = [];
-    if (volts) {
-      if (active) {
-        lines.push({ text: `${name}  ${formatQuantity(cursorVolts(fraction, active), channelUnit(active))}`, color: css(colors[active.color]) });
-      }
-    } else {
-      const time = view.start + fraction * view.span;
-      lines.push({ text: `${name}  ${formatQuantity(time - (view.triggered ?? view.start), "s")}`, color: accent });
-      for (const channel of settings.channels.filter((candidate) => candidate.enabled)) {
-        const reading = readingAt?.(channel.id, time);
-        if (reading !== undefined && Number.isFinite(reading)) {
-          lines.push({ text: `${channel.id}  ${formatQuantity(reading, channelUnit(channel))}`, color: css(colors[channel.color]) });
-        }
-      }
-    }
-    // The tag: a dark plate with its lines, beside the cursor and kept inside the screen.
-    const lineHeight = 14;
-    const plateWidth = Math.max(...lines.map((line) => context.measureText(line.text).width)) + 12;
-    const plateHeight = lines.length * lineHeight + 6;
-    const anchorX = volts ? 8 : Math.round(fraction * width);
-    const anchorY = volts ? Math.round(fraction * height) : 8;
-    const left = volts ? anchorX : Math.min(width - plateWidth - 2, Math.max(2, anchorX + (name === "A" ? -plateWidth - 4 : 4)));
-    const top = volts ? Math.min(height - plateHeight - 2, Math.max(2, anchorY + (name === "A" ? -plateHeight - 4 : 4))) : anchorY;
-    context.fillStyle = theme.background ? css(theme.background) : "rgba(0, 0, 0, 0.7)";
-    context.globalAlpha = 0.85;
-    context.fillRect(left, top, plateWidth, plateHeight);
-    context.globalAlpha = 1;
-    context.strokeStyle = accent;
-    context.strokeRect(left + 0.5, top + 0.5, plateWidth - 1, plateHeight - 1);
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    lines.forEach((line, index) => {
-      context.fillStyle = line.color;
-      context.fillText(line.text, left + 6, top + 4 + index * lineHeight);
-    });
   }
-}
-
-/** The active channel's level at a share down the screen: its volts per division and position read back. */
-export function cursorVolts(fraction: number, channel: ScopeSettings["channels"][number]): number {
-  return ((0.5 - fraction) * VERTICAL_DIVISIONS - channel.position) * channel.voltsPerDivision;
+  context.setLineDash([]);
 }
 
 /** Which cursor a pointer at this share across (or down) the screen grabs, within `reach` of the screen: none if neither. */

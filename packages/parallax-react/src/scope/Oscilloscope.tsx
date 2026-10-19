@@ -2,45 +2,44 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import { ParallaxIcon } from "../icons/ParallaxIcon";
 import { Segments, Stepper, Tool } from "../controls/BenchControls";
 import { ExpandTool } from "../controls/BenchGrid";
+import { ToolMenu, ToolMenuCheck, ToolMenuSection } from "../controls/ToolMenu";
 import { QuantityField } from "../controls/QuantityField";
 import {
-  channelName, channelSource, channelUnit, holdsWholeRecord, measure, windowOf,
-  type ChannelId, type Measurement, type PlaybackClock, type Recording, type SampleMemory, type ScopeChannel, type ScopeSettings, type TriggerEdge, type TriggerMode,
+  channelName, channelSource, channelUnit, compileReadingExpression, holdsWholeRecord, isIdentityExpression, measure, POSITION_LIMIT, windowOf, zoomedChannel,
+  type ReadingTransform,
+  type ChannelId, type Measurement, type PlaybackClock, type Recording, type SampleMemory, type ScopeChannel, type ScopeSettings, type TriggerEdge, type TriggerMode, type Window,
 } from "@jmouse/parallax/oscilloscope";
 import { formatQuantity, ladderAtLeast } from "@jmouse/parallax/quantities";
 import {
   cursorsStretchAvailable, cursorVolts, DEFAULT_SPECTRUM_RANGE, fittedSpectrumRange, initialSettings, outOfShape, periodicTimeBase,
-  SPECTRUM_DECIBELS_PER_DIVISION, spectrumOf, withinNodes, type ReplayStretchKind,
+  SPECTRUM_DECIBELS_PER_DIVISION, spectrumOf, withinNodes, type ReadoutPlate, type ReadoutRow, type ReplayStretchKind,
 } from "@jmouse/parallax/scope";
 import type { BenchProbe } from "@jmouse/parallax/circuit";
 import { ReplayBar } from "./ReplayBar";
-import { MathReading, MathSection, MathTools } from "./MathSection";
+import { MathSection, MathTools, useMathReading } from "./MathSection";
 import { ScopeScreen } from "./ScopeScreen";
-import { ScopeSpace } from "./ScopeSpace";
 import { TraceColor } from "./TraceColor";
 
 /**
  * The whole record's length and what a division of it is, read twice a second: the memory grows without React being
  * told, and a legend is a reading, not an animation.
  */
-function WholeRecordSpan({ memory }: { memory: SampleMemory }) {
+function useRecordSpan(memory: SampleMemory, whole: boolean): number {
   const [span, setSpan] = useState(0);
   useEffect(() => {
+    if (!whole) {
+      return;
+    }
     const read = () => setSpan(memory.length > 1 ? memory.lastTime() - memory.firstTime() : 0);
     read();
     const timer = window.setInterval(read, 500);
     return () => window.clearInterval(timer);
-  }, [memory]);
-  return <>whole record · {formatQuantity(span, "s")} · {formatQuantity(span / 10, "s")}/div</>;
+  }, [memory, whole]);
+  return span;
 }
 
 /** A screen without a playback clock has no replay to follow. */
 const noReplay = () => () => {};
-
-/** A channel's colour as a mark beside its name: the colour its probe on the sheet and its trace share. */
-function Swatch({ color }: { color: number }) {
-  return <i className={`parallax-swatch parallax-probe-swatch parallax-probe-${color}`} aria-hidden="true" />;
-}
 
 /**
  * A channel's heading: its colour is the bar before its name (`TraceColor`, as every trace has it), and its name is
@@ -69,25 +68,31 @@ export interface OscilloscopeState {
   fit: (memory: SampleMemory) => void;
   /** The circuit's `probes` block set the scales: a fresh run is not fitted over them. */
   writtenScales: boolean;
+  /** Whether the circuit names the time base it opens on (`time 1 ms/div`): a fresh run then keeps it. */
+  writtenTimeBase: boolean;
 }
 
 /** The instrument's settings: channels, time base, trigger, what the wheel scales, and how far the view looks back. */
-export function useOscilloscope(nodes: readonly string[], written: readonly BenchProbe[] = []): OscilloscopeState {
+export function useOscilloscope(nodes: readonly string[], written: readonly BenchProbe[] = [], timePerDivision?: number | null): OscilloscopeState {
   const nodesKey = nodes.join("|");
-  const [settings, setSettings] = useState<ScopeSettings>(() => ({ ...initialSettings(nodes, written), trails: readTrails() }));
+  const [settings, setSettings] = useState<ScopeSettings>(() => ({ ...initialSettings(nodes, written, timePerDivision), trails: readTrails(), acquisition: readAcquisition() }));
   const [back, setBack] = useState(0);
   // A circuit's nodes arrive with its first answer, and change when it is rewired: a channel on a node the circuit no
   // longer has is taken off it; a scope left with nothing to probe starts again from what the circuit writes.
   useEffect(() => {
     setSettings((current) => {
       const kept = withinNodes(current, nodes);
-      return kept.channels.some((channel) => channel.enabled && nodes.includes(channel.node)) ? kept : { ...initialSettings(nodes, written), trails: current.trails };
+      return kept.channels.some((channel) => channel.enabled && nodes.includes(channel.node)) ? kept
+        : { ...initialSettings(nodes, written, timePerDivision), trails: current.trails, acquisition: current.acquisition };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodesKey]);
   const update = useCallback((changes: Partial<ScopeSettings>) => {
     if (changes.trails !== undefined) {
       keepTrails(changes.trails);
+    }
+    if (changes.acquisition !== undefined) {
+      keepAcquisition(changes.acquisition);
     }
     setSettings((current) => ({ ...current, ...changes }));
   }, []);
@@ -147,7 +152,91 @@ export function useOscilloscope(nodes: readonly string[], written: readonly Benc
       }) };
   }), []);
   const writtenScales = written.some((probe) => /^CH[1-4]$/.test(probe.id) && probe.scale !== null);
-  return { settings, back, update, channel, setBack, fit, writtenScales };
+  // A circuit that names its time base keeps it: a fresh run does not take one from the trigger's period instead.
+  const writtenTimeBase = Boolean(timePerDivision && timePerDivision > 0);
+  return { settings, back, update, channel, setBack, fit, writtenScales, writtenTimeBase };
+}
+
+/**
+ * Each channel's expression (`X * pi / 2`) compiled and handed to the memory, which applies it as it is read: the trace,
+ * the trigger, the measurements and M all see the channel as written. An expression that does not compile leaves the
+ * reading as it is — the panel says why.
+ */
+function useReadingExpressions(memory: SampleMemory, channels: readonly ScopeChannel[]) {
+  const key = JSON.stringify(channels.map((channel) => [channel.id, channel.enabled, channel.expression ?? ""]));
+  useEffect(() => {
+    const transforms = new Map<string, ReadingTransform>();
+    for (const channel of channels) {
+      if (!channel.enabled || isIdentityExpression(channel.expression)) {
+        continue;
+      }
+      const compiled = compileReadingExpression(channel.expression!);
+      if (compiled.ok) {
+        transforms.set(channel.id, compiled.transform);
+      }
+    }
+    memory.setTransforms(transforms);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memory, key]);
+}
+
+const PLOTS: { value: NonNullable<ScopeSettings["display"]>; label: string; title: string }[] = [
+  { value: "time", label: "YT", title: "YT — each channel against time" },
+  { value: "xy", label: "XY", title: "XY — the first channel on, across, against the second, up: two signals as one figure — the time base sets how much of them it holds" },
+  { value: "phasors", label: "Phasors", title: "Phasors — every channel at the first one's fundamental as an arrow from the centre: its length the amplitude, its angle how far it leads — the math channel too, so U_R, U_C and U_in close a triangle" },
+  { value: "fft", label: "FFT", title: "FFT — each channel's spectrum over the window shown: amplitude in dBV against frequency, Hann window — harmonics stand as peaks; a longer time base, a finer resolution" },
+];
+
+/**
+ * How the screen draws, behind one Display button at the end of the strip: what it plots, how a trace persists, how a
+ * live run is acquired, and the math channel — chosen now and then, so they do not take a second row from the screen.
+ */
+function ScreenDisplayMenu({ settings, live, onChange }: { settings: ScopeSettings; live: boolean; onChange: (changes: Partial<ScopeSettings>) => void }) {
+  const plot = PLOTS.find((choice) => choice.value === (settings.display ?? "time")) ?? PLOTS[0];
+  const spectrumRange = settings.spectrum ?? DEFAULT_SPECTRUM_RANGE;
+  const persistence = [settings.phosphor && "phosphor", settings.trails && "trails", settings.hold && "hold"].filter(Boolean).join(", ");
+  const math = settings.math?.enabled ? "math on" : "";
+  const summary = [plot.label, persistence, math].filter(Boolean).join(" · ");
+  return (
+    <ToolMenu label={plot.label} icon={plot.value === "fft" ? "display-spectrum" : plot.value === "xy" ? "display-xy" : plot.value === "phasors" ? "display-phasors" : "display-time"}
+      part="scope-display" title={`Display: ${summary}`}>
+      <ToolMenuSection title="The screen plots">
+        <Segments wide label="What the screen plots" value={plot.value} onChange={(display) => onChange({ display })} options={PLOTS} />
+      </ToolMenuSection>
+      {plot.value === "fft" ? (
+        <ToolMenuSection title="Spectrum levels">
+          <div className="parallax-tool-menu-controls">
+            <Stepper label="Top of the spectrum screen" value={spectrumRange.top} unit="dB" step={10} minimum={-200} maximum={200}
+              format={(value) => `top ${value} dB`} onChange={(top) => onChange({ spectrum: { ...spectrumRange, top } })} />
+          </div>
+          <Segments wide label="Decibels per division" value={String(spectrumRange.decibelsPerDivision)}
+            onChange={(value) => onChange({ spectrum: { ...spectrumRange, decibelsPerDivision: Number(value) } })}
+            options={SPECTRUM_DECIBELS_PER_DIVISION.map((decibels) => ({ value: String(decibels), label: `${decibels} dB`, title: `${decibels} dB a division: ${decibels * 8} dB on the screen` }))} />
+        </ToolMenuSection>
+      ) : null}
+      <ToolMenuSection title="Persistence">
+        <ToolMenuCheck label="Phosphor" description="each trace glows and fades a moment after it is drawn (P)"
+          checked={settings.phosphor} onChange={(phosphor) => onChange({ phosphor })} />
+        <ToolMenuCheck label="Trails" description="the last sweeps stay under the live trace, each older one fainter (T)"
+          checked={Boolean(settings.trails)} onChange={(trails) => onChange({ trails })} />
+        <ToolMenuCheck label="Hold" description="every trace stays until a scale or a zero changes — step a knob to draw a family of curves"
+          checked={Boolean(settings.hold)} onChange={(hold) => onChange({ hold })} />
+      </ToolMenuSection>
+      {live ? (
+        <ToolMenuSection title="Acquisition">
+          <Segments wide label="How the run is acquired" value={settings.acquisition ?? "gapless"} onChange={(acquisition) => onChange({ acquisition })}
+            options={[{ value: "gapless", label: "Every sample", title: "Every sample read: an unbroken record at any time base; the run slows as far as a fine time base needs" },
+              { value: "realtime", label: "Real time", title: "Real time first: at a fine time base the screen keeps one block of samples a frame, with gaps between" }]} />
+        </ToolMenuSection>
+      ) : null}
+      <ToolMenuSection title="Math channel">
+        <div className="parallax-tool-menu-controls">
+          <MathTools settings={settings} onChange={(math) => onChange({ math })} />
+        </div>
+        <small className="parallax-tool-menu-note">Two channels combined sample by sample, drawn as a trace of its own.</small>
+      </ToolMenuSection>
+    </ToolMenu>
+  );
 }
 
 /** Auto refits at most this often, so a trace that wanders is followed, not chased. */
@@ -167,6 +256,25 @@ function readTrails(): boolean {
   }
 }
 
+/** How a live run is acquired is this browser's habit too: every sample, unless the reader chose real time. */
+const ACQUISITION_KEY = "parallax.scope.acquisition";
+
+function readAcquisition(): ScopeSettings["acquisition"] {
+  try {
+    return localStorage.getItem(ACQUISITION_KEY) === "realtime" ? "realtime" : "gapless";
+  } catch {
+    return "gapless";
+  }
+}
+
+function keepAcquisition(acquisition: NonNullable<ScopeSettings["acquisition"]>) {
+  try {
+    localStorage.setItem(ACQUISITION_KEY, acquisition);
+  } catch {
+    // A private window keeps no habit.
+  }
+}
+
 function keepTrails(trails: boolean) {
   try {
     localStorage.setItem(TRAILS_KEY, trails ? "on" : "off");
@@ -180,7 +288,8 @@ function keepTrails(trails: boolean) {
  * (a new run, new probes) is fitted to the screen once its first samples are in, as an instrument's auto set does;
  * with Auto on, it is fitted again whenever a trace runs off the screen or shrinks to a sliver of it.
  */
-function useMeasurements(memory: SampleMemory, scope: OscilloscopeState, auto: boolean) {
+function useMeasurements(memory: SampleMemory, scope: OscilloscopeState, auto: boolean,
+  shown?: { current: { view: Window; source: SampleMemory } | null }) {
   const [measured, setMeasured] = useState<Partial<Record<ChannelId, Measurement | null>>>({});
   const fittedGeneration = useRef(-1);
   const timedGeneration = useRef(-1);
@@ -197,16 +306,18 @@ function useMeasurements(memory: SampleMemory, scope: OscilloscopeState, auto: b
         scope.fit(memory);
       }
       // A fresh run's time base waits for two whole periods of its source, which the first fit is often too early for.
-      if (timedGeneration.current !== memory.generation) {
+      if (timedGeneration.current !== memory.generation && !scope.writtenTimeBase) {
         const timeBase = periodicTimeBase(memory, scope.settings.trigger.source);
         if (timeBase !== null) {
           timedGeneration.current = memory.generation;
           scope.update({ secondsPerDivision: timeBase });
         }
       }
-      const view = windowOf(memory, scope.settings, scope.back);
+      // What the screen shows, held picture included; before its first frame, where it will look.
+      const frame = shown?.current ?? { view: windowOf(memory, scope.settings, scope.back), source: memory };
+      const view = frame.view;
       const readings = scope.settings.channels.filter((channel) => channel.enabled)
-        .map((channel) => [channel, measure(memory, channel.id, view)] as const);
+        .map((channel) => [channel, measure(frame.source, channel.id, view)] as const);
       setMeasured(Object.fromEntries(readings.map(([channel, reading]) => [channel.id, reading])));
       if (auto && performance.now() - fittedAt.current > AUTO_EVERY_MILLISECONDS && readings.some(([channel, reading]) => reading && outOfShape(channel, reading))) {
         fittedAt.current = performance.now();
@@ -262,7 +373,9 @@ export function OscilloscopeScreen({ memory, scope, waiting, idle, onSingleShot,
     }
     return !current;
   });
-  const measured = useMeasurements(memory, scope, auto);
+  const shown = useRef<{ view: Window; source: SampleMemory } | null>(null);
+  const measured = useMeasurements(memory, scope, auto, shown);
+  useReadingExpressions(memory, settings.channels);
   const triggered = useCallback(() => {
     if (settings.trigger.mode === "single") {
       onSingleShot?.();
@@ -273,43 +386,58 @@ export function OscilloscopeScreen({ memory, scope, waiting, idle, onSingleShot,
   const activeChannel = enabled.find((channel) => channel.id === settings.active);
   const triggerSource = settings.channels.find((channel) => channel.id === settings.trigger.source);
   const triggerUnit = triggerSource ? channelUnit(triggerSource) : "V";
-  const spectrumRange = settings.spectrum ?? DEFAULT_SPECTRUM_RANGE;
+  const recordSpan = useRecordSpan(memory, whole);
+  const mathRow = useMathReading(memory, settings, back);
+  // The readout against time: one row a trace — its name, what it probes, its scale, then its readings in columns of their
+  // own, so a figure that moves keeps its place —, and one line for the time base, the trigger, the cursors, the memory.
+  const legend: ReadoutPlate = {
+    rows: [
+      ...enabled.map((channel): ReadoutRow => {
+        const reading = measured[channel.id];
+        const unit = channelUnit(channel);
+        return {
+          key: channel.id, color: channel.color, channel: channel.id,
+          cells: [
+            { text: channelName(channel), tone: "name" },
+            { text: `${channelSource(channel)}${isIdentityExpression(channel.expression) ? "" : ` · ${channel.expression!.trim()}`}`, tone: "note" },
+            { text: `${formatQuantity(channel.voltsPerDivision, unit)}/div${channel.coupling === "AC" ? " AC" : ""}`, tone: "setting", numeric: true },
+            { text: reading ? `${formatQuantity(reading.maximum - reading.minimum, unit)} pp` : "—", tone: "reading", numeric: true,
+              title: reading ? `${formatQuantity(reading.rms, unit)} rms · ${formatQuantity(reading.minimum, unit)} … ${formatQuantity(reading.maximum, unit)}` : undefined },
+            { text: reading ? `${formatQuantity(reading.mean, unit)} avg` : "", tone: "reading", numeric: true },
+            { text: reading?.frequency ? formatQuantity(reading.frequency, "Hz") : "", tone: "reading", numeric: true },
+            { text: reading && reading.duty !== null ? `${(reading.duty * 100).toFixed(1)} %` : "", tone: "reading", numeric: true },
+          ],
+        };
+      }),
+      ...(mathRow ? [mathRow] : []),
+    ],
+    notes: [
+      { text: whole ? `whole record · ${formatQuantity(recordSpan, "s")}` : `${formatQuantity(settings.secondsPerDivision, "s")}/div`, tone: "setting" },
+      { text: whole ? "no trigger" : settings.trigger.mode === "free" ? "free running" : `${settings.trigger.mode} · ${settings.trigger.source} ${EDGE_MARKS[settings.trigger.edge]} ${formatQuantity(settings.trigger.level, triggerUnit)}`, tone: "setting" },
+      ...(settings.cursors.enabled && settings.cursors.axis !== "volts"
+        ? [{ text: `Δt ${formatQuantity(cursorTime, "s")} · 1/Δt ${formatQuantity(cursorTime > 0 ? 1 / cursorTime : Number.NaN, "Hz")}`, tone: "reading" as const }] : []),
+      ...(settings.cursors.enabled && settings.cursors.axis === "volts" && activeChannel
+        ? [{ text: `${channelName(activeChannel)} A ${formatQuantity(cursorVolts(settings.cursors.first, activeChannel), channelUnit(activeChannel))} · B ${formatQuantity(cursorVolts(settings.cursors.second, activeChannel), channelUnit(activeChannel))} · Δ ${formatQuantity(Math.abs(cursorVolts(settings.cursors.first, activeChannel) - cursorVolts(settings.cursors.second, activeChannel)), channelUnit(activeChannel))}`, tone: "reading" as const }] : []),
+      { text: `memory ${memory.length.toLocaleString("en")} / ${memory.capacity.toLocaleString("en")}`, tone: "note" },
+    ],
+  };
   const screenLabel = `Oscilloscope: ${enabled.map((channel) => `${channelName(channel)} on ${channel.node}`).join(", ") || "no channel on"}`;
 
   return (
     <section data-parallax-part="scope" className="parallax-scope" aria-label="Oscilloscope">
       <div data-parallax-part="scope-toolbar" className="parallax-scope-toolbar">
         {leading}
-        {/* Three groups, each named: how the screen shows the signal, what the wheel and Fit scale, what is measured. */}
-        <div role="group" aria-label="Display" className="parallax-scope-toolbar-group">
-          <span className="parallax-scope-toolbar-caption" aria-hidden="true">Display</span>
-          <Segments label="What the screen plots" value={settings.display ?? "time"} onChange={(display) => scope.update({ display })}
-            options={[{ value: "time", label: "YT", title: "Each channel against time" },
-              { value: "xy", label: "XY", title: "The first channel on, across, against the second, up: two signals as one figure — the time base sets how much of them it holds" },
-              { value: "xyz", label: "XYZ", title: "The first three channels as one figure in space — across, up and into the screen; drag to turn it, the wheel zooms. From the front it is the XY figure" },
-              { value: "phasors", label: "Phasors", title: "Every channel at the first one's fundamental as an arrow from the centre: its length the amplitude, its angle how far it leads — the math channel too, so U_R, U_C and U_in close a triangle" },
-              { value: "fft", label: "FFT", title: "Each channel's spectrum over the window shown: amplitude in dBV against frequency, Hann window — harmonics stand as peaks; a longer time base, a finer resolution" }]} />
-          <Tool aria-pressed={settings.phosphor} onClick={() => scope.update({ phosphor: !settings.phosphor })}
-            title="Phosphor: each trace glows, and stays a moment after it is drawn, fading — a signal that moves from sweep to sweep reads as a soft band">Phosphor</Tool>
-          <Tool aria-pressed={Boolean(settings.trails)} onClick={() => scope.update({ trails: !settings.trails })}
-            title="Trails, as on an electron-beam screen: the last sweeps stay under the live trace, each older one fainter and thinner — a trace that shakes reads as a soft band instead of flickering. How many and how bright: Appearance → Oscilloscope (T)">Trails</Tool>
-          <Tool aria-pressed={Boolean(settings.hold)} onClick={() => scope.update({ hold: !settings.hold })}
-            title="Hold — infinite persistence: every trace stays until you press it again, or change a scale or a zero. Step a knob to draw a family of curves">Hold</Tool>
+        {/* One row of what a hand goes to all the time: the time base first — the knob a bench scope puts beside its
+            screen —, what Fit scales, the cursors. The active trace is chosen by its name in the screen's readout (or
+            keys 1–4), not by a second row of the same names here. How the screen draws (YT, XY, phasors, FFT; phosphor,
+            trails, hold), how a run is acquired and the math channel are chosen now and then: they are the Display menu
+            at the strip's end. The inspector's Time base keeps the rest: memory, the wheel. */}
+        <div role="group" aria-label="Time base" className="parallax-scope-toolbar-group">
+          <span className="parallax-scope-toolbar-caption" aria-hidden="true">Time</span>
+          <Stepper label="Time per division" value={settings.secondsPerDivision} unit="s" minimum={1e-9} maximum={1}
+            format={(value) => whole ? "whole record" : `${formatQuantity(value, "s")}/div`}
+            onChange={(secondsPerDivision) => scope.update({ secondsPerDivision, horizontal: "divisions" })} />
         </div>
-        <div role="group" aria-label="Math channel" className="parallax-scope-toolbar-group">
-          <span className="parallax-scope-toolbar-caption" aria-hidden="true">Math</span>
-          <MathTools settings={settings} onChange={(math) => scope.update({ math })} />
-        </div>
-        {settings.display === "fft" ? (
-          <div role="group" aria-label="Spectrum levels" className="parallax-scope-toolbar-group">
-            <span className="parallax-scope-toolbar-caption" aria-hidden="true">Levels</span>
-            <Stepper label="Top of the spectrum screen" value={spectrumRange.top} unit="dB" step={10} minimum={-200} maximum={200}
-              format={(value) => `top ${value} dB`} onChange={(top) => scope.update({ spectrum: { ...spectrumRange, top } })} />
-            <Segments label="Decibels per division" value={String(spectrumRange.decibelsPerDivision)}
-              onChange={(value) => scope.update({ spectrum: { ...spectrumRange, decibelsPerDivision: Number(value) } })}
-              options={SPECTRUM_DECIBELS_PER_DIVISION.map((decibels) => ({ value: String(decibels), label: `${decibels} dB`, title: `${decibels} dB a division: ${decibels * 8} dB on the screen` }))} />
-          </div>
-        ) : null}
         <div role="group" aria-label="Scale" className="parallax-scope-toolbar-group">
           <span className="parallax-scope-toolbar-caption" aria-hidden="true">Scale</span>
           <Tool label="Fit every trace to the screen once (double click on the screen)" onClick={() => scope.fit(memory)}><ParallaxIcon name="fit" />Fit</Tool>
@@ -324,51 +452,40 @@ export function OscilloscopeScreen({ memory, scope, waiting, idle, onSingleShot,
               { value: "volts", label: "ΔV", title: "Two level cursors on the active channel, A and B: drag their lines; each reads its level" }]} />
         </div>
         {back > 0 && !replay ? <Tool tone="primary" onClick={() => scope.setBack(0)}>{live ? "Back to live" : "To the end"} · <span className="parallax-monospace">−{formatQuantity(back, "s")}</span></Tool> : null}
+        <ScreenDisplayMenu settings={settings} live={live} onChange={scope.update} />
         <ExpandTool />
-        {replaying && !replay ? (
-          <Tool onClick={() => replaying.start(cursorsStretchAvailable(settings) ? "cursors" : "memory")} disabled={memory.length < 2}
-            title={cursorsStretchAvailable(settings)
-              ? "Replay the stretch between the cursors A and B, round and round — the run pauses (L)"
-              : "Replay what the memory holds, round and round — the screen, the sheet and the meters play it again; the run pauses (L)"}>
-            <ParallaxIcon name="replay" />Replay
-          </Tool>
-        ) : null}
       </div>
-      {settings.display === "xyz" ? (
-        <ScopeSpace memory={memory} settings={settings} back={back} waiting={waiting} idle={idle} clock={clock} label={screenLabel} />
-      ) : (
-        <ScopeScreen memory={memory} settings={settings} back={back} waiting={waiting} idle={idle} clock={clock}
-          onSettings={(changes) => scope.update(whole && changes.secondsPerDivision !== undefined ? { ...changes, horizontal: "divisions" } : changes)} onBack={scope.setBack} onChannel={scope.channel} onFit={() => scope.fit(memory)} onTriggered={triggered}
-          label={screenLabel} />
-      )}
+      <ScopeScreen memory={memory} settings={settings} back={back} waiting={waiting} idle={idle} clock={clock} shown={shown}
+        onSettings={(changes) => scope.update(whole && changes.secondsPerDivision !== undefined ? { ...changes, horizontal: "divisions" } : changes)} onBack={scope.setBack} onChannel={scope.channel} onFit={() => scope.fit(memory)} onTriggered={triggered}
+        label={screenLabel} legend={legend} />
       {replay && replaying ? (
         <ReplayBar replay={replay} stretch={replaying.stretch} cursorsAvailable={cursorsStretchAvailable(settings)}
           onStretch={replaying.start} onEnd={replaying.end} />
       ) : null}
-      <div data-parallax-part="scope-foot" className="parallax-scope-foot" aria-live="off">
-        {enabled.map((channel) => {
-          const reading = measured[channel.id];
-          return (
-            <div key={channel.id}>
-              <strong><Swatch color={channel.color} />{channelName(channel)} · {channelSource(channel)} · {formatQuantity(channel.voltsPerDivision, channelUnit(channel))}/div{channel.coupling === "AC" ? " · AC" : ""}</strong>
-              <span title={reading ? `${formatQuantity(reading.rms, channelUnit(channel))} rms · ${formatQuantity(reading.minimum, channelUnit(channel))} … ${formatQuantity(reading.maximum, channelUnit(channel))}` : undefined}>
-                {reading ? `${formatQuantity(reading.maximum - reading.minimum, channelUnit(channel))} pp · ${formatQuantity(reading.mean, channelUnit(channel))} avg${reading.frequency ? ` · ${formatQuantity(reading.frequency, "Hz")}` : ""}${reading.duty !== null ? ` · ${(reading.duty * 100).toFixed(1)} %` : ""}` : "—"}
-              </span>
-            </div>
-          );
-        })}
-        <MathReading memory={memory} settings={settings} back={back} />
-        <div className="parallax-scope-foot-setting"><strong>Time base</strong><span>{whole ? <WholeRecordSpan memory={memory} /> : <>{formatQuantity(settings.secondsPerDivision, "s")}/div · 10 div</>}</span></div>
-        <div className="parallax-scope-foot-setting"><strong>Trigger</strong><span>{whole ? "none — the whole record" : settings.trigger.mode === "free" ? "free running" : `${settings.trigger.mode} · ${settings.trigger.source} ${EDGE_MARKS[settings.trigger.edge]} ${formatQuantity(settings.trigger.level, triggerUnit)}`}</span></div>
-        {settings.cursors.enabled && settings.cursors.axis !== "volts" ? (
-          <div><strong>Cursors A–B</strong><span>Δt {formatQuantity(cursorTime, "s")} · 1/Δt {formatQuantity(cursorTime > 0 ? 1 / cursorTime : Number.NaN, "Hz")}</span></div>
-        ) : null}
-        {settings.cursors.enabled && settings.cursors.axis === "volts" && activeChannel ? (
-          <div><strong>Cursors A–B · {channelName(activeChannel)}</strong><span>A {formatQuantity(cursorVolts(settings.cursors.first, activeChannel), channelUnit(activeChannel))} · B {formatQuantity(cursorVolts(settings.cursors.second, activeChannel), channelUnit(activeChannel))} · Δ {formatQuantity(Math.abs(cursorVolts(settings.cursors.first, activeChannel) - cursorVolts(settings.cursors.second, activeChannel)), channelUnit(activeChannel))}</span></div>
-        ) : null}
-        <div className="parallax-scope-foot-setting"><strong>Memory</strong><span>{memory.length.toLocaleString("en")} / {memory.capacity.toLocaleString("en")} samples</span></div>
-      </div>
     </section>
+  );
+}
+
+/**
+ * What the channel's screen shows instead of the reading, written by hand — `X * pi / 2`, `abs(X)`, `X - 1` —, X being
+ * the reading. Saved with the circuit in its `probes` block. A line that does not compile says why under it, and the
+ * screen goes on showing the reading.
+ */
+function ChannelExpression({ channel, onChange }: { channel: ScopeChannel; onChange: (expression: string) => void }) {
+  const expression = channel.expression ?? "";
+  const compiled = isIdentityExpression(expression) ? null : compileReadingExpression(expression);
+  const problemId = `${channel.id}-expression-problem`;
+  const failed = compiled !== null && !compiled.ok;
+  return (
+    <div className="parallax-control-row parallax-channel-expression">
+      <label htmlFor={`${channel.id}-expression`}>Shows</label>
+      <input data-parallax-part="input" className="parallax-input parallax-small parallax-monospace" id={`${channel.id}-expression`}
+        value={expression} placeholder="X" spellCheck={false} autoComplete="off" maxLength={80}
+        aria-invalid={failed || undefined} aria-describedby={failed ? problemId : undefined}
+        title="What the screen draws, X being the reading: X * pi / 2, abs(X), 20 * log(X), X - 1. The trigger and the readings follow it; saved in the circuit's probes"
+        onChange={(event) => onChange(event.target.value)} />
+      {compiled && !compiled.ok ? <p id={problemId} className="parallax-error-text parallax-channel-expression-problem">{compiled.message}</p> : null}
+    </div>
   );
 }
 
@@ -500,11 +617,15 @@ export function OscilloscopePanel({ scope, nodes, parts = [], nodeLabels = {}, s
               <div className="parallax-control-row">
                 <span>Scale</span>
                 <Stepper label={`${channel.id} ${channel.quantity === "current" ? "amperes" : "volts"} per division`} value={channel.voltsPerDivision} unit={channelUnit(channel)} minimum={1e-9} maximum={1000}
-                  format={(value) => `${formatQuantity(value, channelUnit(channel))}/div`} onChange={(voltsPerDivision) => scope.channel(channel.id, { voltsPerDivision })} />
+                  format={(value) => `${formatQuantity(value, channelUnit(channel))}/div`} onChange={(voltsPerDivision) => {
+                    // Scaled about the screen's centre: what stands there stays there.
+                    const zoomed = zoomedChannel(channel, voltsPerDivision, 0);
+                    scope.channel(channel.id, { voltsPerDivision: zoomed.voltsPerDivision, position: zoomed.position });
+                  }} />
               </div>
               <div className="parallax-control-row">
                 <span>Position</span>
-                <Stepper label={`${channel.id} position`} value={channel.position} unit="div" step={0.5} minimum={-4} maximum={4}
+                <Stepper label={`${channel.id} position`} value={channel.position} unit="div" step={0.5} minimum={-POSITION_LIMIT} maximum={POSITION_LIMIT}
                   format={(value) => `${value > 0 ? "+" : ""}${value} div`} onChange={(position) => scope.channel(channel.id, { position })} />
               </div>
               <div className="parallax-control-row">
@@ -512,6 +633,7 @@ export function OscilloscopePanel({ scope, nodes, parts = [], nodeLabels = {}, s
                 <Segments label={`${channel.id} coupling`} value={channel.coupling} onChange={(coupling) => scope.channel(channel.id, { coupling })}
                   options={[{ value: "DC", label: "DC" }, { value: "AC", label: "AC" }]} />
               </div>
+              <ChannelExpression channel={channel} onChange={(expression) => scope.channel(channel.id, { expression })} />
             </>
           ) : null}
         </section>

@@ -1,0 +1,48 @@
+/* jMouse UI-kit — media: tiles with artwork, the shelf they sit on, and a player's transport (Kitsu's library). */
+
+/* ===================== tile ===================== */
+.kit-media-tile { display: grid; gap: var(--kit-space-1); min-width: 0; color: var(--kit-ink); text-decoration: none; }
+.kit-media-tile:hover { text-decoration: none; }
+.kit-media-art { position: relative; display: grid; place-items: center; overflow: hidden; aspect-ratio: 2 / 3; border: var(--kit-border-width) solid var(--kit-line); border-radius: var(--kit-radius-surface); background: var(--kit-well); transition: border-color var(--kit-ease); }
+.kit-media-art[data-aspect="still"] { aspect-ratio: 16 / 9; }
+.kit-media-art[data-aspect="square"] { aspect-ratio: 1; }
+.kit-media-art > img { width: 100%; height: 100%; object-fit: cover; }
+.kit-media-tile:hover .kit-media-art, .kit-media-tile:focus-visible .kit-media-art { border-color: var(--kit-accent); }
+.kit-media-tile:focus-visible { outline: 0; }
+.kit-media-tile:focus-visible .kit-media-art { outline: 2px solid var(--kit-focus-ring); outline-offset: var(--kit-focus-offset); }
+.kit-media-tile[aria-current="true"] .kit-media-art { border-color: var(--kit-accent); box-shadow: 0 0 0 2px var(--kit-accent-soft); }
+.kit-media-placeholder { color: var(--kit-muted); font: var(--kit-weight-display) var(--kit-text-2xl) / 1 var(--kit-font-heading); letter-spacing: 0.02em; }
+.kit-media-badges { position: absolute; top: var(--kit-space-1); left: var(--kit-space-1); display: flex; flex-wrap: wrap; gap: 2px; }
+.kit-media-badges > * { background: color-mix(in srgb, var(--kit-surface) 88%, transparent); backdrop-filter: blur(4px); }
+.kit-media-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: color-mix(in srgb, var(--kit-ink) 30%, transparent); }
+.kit-media-progress > span { display: block; height: 100%; background: var(--kit-accent); }
+.kit-media-title { font-size: var(--kit-text-sm); font-weight: var(--kit-weight-control); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kit-media-meta { margin-top: -2px; color: var(--kit-muted); font: var(--kit-text-xs) var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(140px * var(--kit-ui-scale)), 1fr)); gap: var(--kit-space-4) var(--kit-space-3); }
+
+/* ===================== shelf ===================== */
+.kit-shelf { display: grid; gap: var(--kit-space-2); min-width: 0; }
+.kit-shelf-head { display: flex; align-items: center; gap: var(--kit-space-2); }
+.kit-shelf-head > h2 { font-size: var(--kit-text-lg); }
+.kit-shelf-navigation { margin-left: auto; display: inline-flex; gap: 2px; }
+.kit-shelf-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc(150px * var(--kit-ui-scale)); gap: var(--kit-space-3); margin: 0; padding: 0 0 var(--kit-space-2); list-style: none; overflow-x: auto; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
+.kit-shelf-row > li { scroll-snap-align: start; min-width: 0; }
+@media (pointer: coarse) { .kit-shelf-navigation { display: none; } }
+
+/* ===================== transport ===================== */
+.kit-transport { display: grid; gap: var(--kit-space-1); padding: var(--kit-space-2) var(--kit-space-3); background: var(--kit-canvas-2); color: var(--kit-canvas-ink); border-top: var(--kit-border-width) solid var(--kit-canvas-line); }
+.kit-transport .kit-button[data-variant="quiet"] { color: var(--kit-canvas-ink); }
+.kit-transport .kit-button[data-variant="quiet"]:hover { background: var(--kit-canvas-selection); }
+.kit-transport-track { position: relative; height: 16px; cursor: pointer; touch-action: none; outline: 0; }
+.kit-transport-track::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--kit-canvas-ink) 18%, transparent); }
+.kit-transport-buffered, .kit-transport-played { position: absolute; left: 0; top: 7px; height: 3px; border-radius: 2px; }
+.kit-transport-buffered { background: color-mix(in srgb, var(--kit-canvas-ink) 35%, transparent); }
+.kit-transport-played { background: var(--kit-canvas-accent); }
+.kit-transport-head { position: absolute; top: 3px; width: 11px; height: 11px; margin-left: -5px; border-radius: 50%; background: var(--kit-canvas-accent); transform: scale(0.8); transition: transform var(--kit-ease); }
+.kit-transport-track:hover .kit-transport-head, .kit-transport-track:focus-visible .kit-transport-head { transform: scale(1.1); }
+.kit-transport-track:focus-visible::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--kit-canvas-accent) 35%, transparent); }
+.kit-transport-hover { position: absolute; bottom: 18px; transform: translateX(-50%); padding: 2px 6px; border-radius: var(--kit-radius-small); background: var(--kit-canvas); color: var(--kit-canvas-ink); font: var(--kit-text-xs) var(--kit-font-technical); pointer-events: none; white-space: nowrap; }
+.kit-transport-bar { display: flex; align-items: center; gap: var(--kit-space-1); min-width: 0; }
+.kit-transport-volume { width: 88px; }
+.kit-transport-time { margin-left: var(--kit-space-2); color: var(--kit-canvas-muted); font: var(--kit-text-xs) var(--kit-font-technical); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 520px) { .kit-transport-volume { display: none; } }

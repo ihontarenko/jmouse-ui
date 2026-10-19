@@ -16,6 +16,7 @@ import {
   mappingImport,
   mappingType,
   scriptEvent,
+  annotationType,
   scriptFacade,
   policyAction,
   policyCapability,
@@ -153,6 +154,12 @@ export const SYNTAX_HIGHLIGHT_STYLE = HighlightStyle.define([
   // The role colour for the event, because a handler's event is what it is FOR, and a reader scanning
   // a script is scanning that column and no other.
   { tag: [scriptEvent], color: "var(--syntax-role)", fontWeight: "600" },
+
+  // ── Types (jMS, jMX) ─────────────────────────────────────────────────────
+  //
+  // The subject hue, which nothing else in a script or a component uses: `int`, `current`, `double` say what a
+  // value IS, and must not read as the `let` beside them — see {@link annotationType}.
+  { tag: [annotationType], color: "var(--syntax-subject)", fontWeight: "600" },
   //
   // ⚠️ `=` apart from `==`. They are one token type to the lexer and two different acts, and writing
   // the comparison where the assignment was meant is the mistake this language expects — it parses,

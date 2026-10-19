@@ -48,7 +48,7 @@ export interface Category {
   objectCount: number;
 }
 
-/** `ObjectNature` on the backend: mathematics in a plotter, a program in a runner, a circuit in the emulator. */
+/** `ObjectNature` on the backend: mathematics in a plotter, a program in a runner, a circuit in the simulator. */
 export type ObjectNature = "MATHEMATICAL" | "PROGRAM" | "CIRCUIT" | "COMPONENT" | "SYMBOL" | "GRAPH";
 
 export interface ObjectSummary {
@@ -497,15 +497,23 @@ export interface SceneView {
   abilities: Record<string, boolean>;
 }
 
-// --- The emulator's appearance ----------------------------------------------------------------------------------
+// --- The simulator's appearance ----------------------------------------------------------------------------------
 
 export type CurrentColor = "ACCENT" | "AMBER" | "CYAN" | "GREEN" | "PINK" | "WHITE";
 
 export type LeadMode = "HANGING" | "TABLE";
 
-/** How the emulator draws current: its colour, how bright against the default 1, how far apart its lights travel. */
-export interface EmulatorAppearance {
+/**
+ * How current is drawn moving along a wire: lights running through a frosted tube, or electrons — fine specks drifting
+ * in it, more of them for more current.
+ */
+export type CurrentStyle = "LIGHT" | "ELECTRONS";
+
+/** How the simulator draws current: its colour, how bright against the default 1, how far apart its lights travel. */
+export interface SimulatorAppearance {
   currentColor: CurrentColor;
+  /** How the current is drawn moving. Absent in an appearance kept before it existed: lights. */
+  currentStyle: CurrentStyle;
   /** The colour of a current that reverses too fast to be shown moving. */
   alternatingColor: CurrentColor;
   /** The colour of the lights running back against them on such a wire; `SAME` draws both rows in one colour. */

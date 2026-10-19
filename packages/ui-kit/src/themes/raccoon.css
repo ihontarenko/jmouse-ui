@@ -1,0 +1,175 @@
+/*
+ * Raccoon — cold neutral surfaces, graphite type, a steel accent; the document is the central object
+ * (Raccoon/UI/src/styles/tokens.css, Raccoon/Design). "Ink acts, tone marks": the primary action is filled with ink,
+ * the accent marks the selection. Body 14, controls 32 with options 24, radii by role 4 · 6 · 8 · 12.
+ */
+[data-theme="raccoon"] {
+  color-scheme: light;
+  --kit-shape-density: 1;
+  --kit-shape-text: 14;
+  --kit-shape-radius-small: 4;
+  --kit-shape-radius-control: 6;
+  --kit-shape-radius-surface: 8;
+  --kit-shape-radius-dialog: 12;
+  --kit-shape-control: 32;
+  --kit-shape-control-small: 24;
+  --kit-shape-row: 36;
+  --kit-shape-row-dense: 28;
+  --kit-shape-rail: 236;
+  --kit-shape-inspector: 340;
+  --kit-border-width: 1px;
+  --kit-band: 2px;
+  --kit-font-ui: Inter, system-ui, sans-serif;
+  --kit-intensity: 1;
+  --kit-soft-amount: 13%;
+
+  --kit-bg: #eef1f5;
+  --kit-surface: #ffffff;
+  --kit-surface-2: #e3e8ee;
+  --kit-well: #e9edf2;
+  --kit-ink: #0b1520;
+  --kit-secondary: #354452;
+  --kit-muted: #536170;
+  --kit-line: #ccd4dd;
+  --kit-line-strong: #8391a0;
+  --kit-scrim: #0b152480;
+  --kit-shadow-color: #0b1524;
+  --kit-shadow-pop: 0 12px 32px -12px #0b152440, 0 1px 2px #0b15241a;
+  --kit-accent-base: #1d6c97;
+  --kit-accent-strong-towards: #000000;
+  --kit-on-accent: #ffffff;
+  --kit-good-base: #11744a;
+  --kit-warn-base: #965500;
+  --kit-danger-base: #b3202e;
+
+  /* ink acts: the one filled action is graphite, and it turns to the accent's text tone under the pointer */
+  --kit-primary-fill: var(--kit-ink);
+  --kit-primary-fill-hover: var(--kit-accent-strong);
+  --kit-on-primary: #ffffff;
+}
+
+[data-theme="raccoon"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #141b21;
+  --kit-surface: #1a232b;
+  --kit-surface-2: #10171d;
+  --kit-well: #111a21;
+  --kit-ink: #e3eaf0;
+  --kit-secondary: #abb9c4;
+  --kit-muted: #94a4b0;
+  --kit-line: #303e49;
+  --kit-line-strong: #60717e;
+  --kit-scrim: #05090db3;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 16px 40px -12px #00000099, 0 1px 2px #00000066;
+  --kit-accent-base: #91b8cc;
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #111a21;
+  --kit-good-base: #a0d8bc;
+  --kit-warn-base: #edc28a;
+  --kit-danger-base: #f5afb5;
+
+  --kit-primary-fill: var(--kit-ink);
+  --kit-primary-fill-hover: var(--kit-accent-strong);
+  --kit-on-primary: #111a21;
+}
+
+/* ── how Raccoon draws its parts (Raccoon/UI: Rail.tsx, Segmented.tsx, Button, the eyebrow utility) ── */
+[data-theme="raccoon"] {
+  --kit-rail-padding: var(--kit-space-5) var(--kit-space-3) var(--kit-space-3);
+  --kit-navigation-item-height: var(--kit-control);
+  --kit-navigation-item-padding: calc(7px * var(--kit-ui-scale)) calc(10px * var(--kit-ui-scale));
+  --kit-navigation-item-gap: calc(10px * var(--kit-ui-scale));
+  --kit-navigation-item-font-size: var(--kit-text-base);
+  --kit-navigation-item-weight: 400;
+  --kit-navigation-item-icon: currentColor;
+  --kit-navigation-item-active-ink: var(--kit-accent-strong);
+  --kit-navigation-item-active-icon: var(--kit-accent-strong);
+  --kit-navigation-item-active-weight: 600;
+  --kit-navigation-item-active-bar: 2px;
+  --kit-navigation-item-bar-inset: 0px;
+  --kit-navigation-group-gap: var(--kit-space-4);
+  --kit-button-weight: 500;
+  --kit-strip-border: var(--kit-line-strong);
+  --kit-strip-padding: calc(3px * var(--kit-ui-scale));
+  --kit-strip-gap: calc(3px * var(--kit-ui-scale));
+  --kit-option-padding: calc(3px * var(--kit-ui-scale)) var(--kit-space-2);
+  --kit-option-radius: calc(4px * var(--kit-ui-scale));
+  --kit-option-font-size: var(--kit-text-xs);
+  --kit-option-weight: 600;
+  --kit-selected-ground: var(--kit-accent-soft);
+  --kit-selected-border: var(--kit-accent-strong);
+  --kit-selected-weight: 600;
+  --kit-selected-shadow: 0 0 0 transparent;
+  --kit-micro-label-font: var(--kit-font-ui);
+  --kit-micro-label-weight: 550;
+  --kit-micro-label-tracking: 0.09em;
+}
+
+/* ── Raccoon's palettes: the accent triad (accent · its readable text tone · its soft ground) for every scheme,
+      calm and vivid ("bright"), light and dark — exactly Raccoon/UI/src/styles/tokens.css. "theme" is Graphite. ── */
+[data-theme="raccoon"][data-palette="theme"],
+[data-theme="raccoon"]:not([data-palette]) { --kit-accent: #1d6c97; --kit-accent-strong: #135a80; --kit-accent-soft: #d9eaf5; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="theme"],
+[data-theme="raccoon"][data-mode="dark"]:not([data-palette]) { --kit-accent: #91b8cc; --kit-accent-strong: #a9cfe2; --kit-accent-soft: #243b49; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="theme"],
+[data-theme="raccoon"][data-intensity="bright"]:not([data-palette]) { --kit-accent: #1791d3; --kit-accent-strong: #1274a9; --kit-accent-soft: #dff0f9; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="theme"],
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"]:not([data-palette]) { --kit-accent: #1791d3; --kit-accent-strong: #1791d3; --kit-accent-soft: #19394d; }
+[data-theme="raccoon"][data-palette="forest"] { --kit-accent: #4b7a17; --kit-accent-strong: #3b6112; --kit-accent-soft: #e1eecf; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="forest"] { --kit-accent: #c1d28b; --kit-accent-strong: #cadba1; --kit-accent-soft: #2b3323; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="forest"] { --kit-accent: #599b11; --kit-accent-strong: #46790d; --kit-accent-soft: #eaf5de; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="forest"] { --kit-accent: #6ab814; --kit-accent-strong: #6ab814; --kit-accent-soft: #2a4126; }
+[data-theme="raccoon"][data-palette="terminal"] { --kit-accent: #0b8670; --kit-accent-strong: #076a58; --kit-accent-soft: #d3efe7; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="terminal"] { --kit-accent: #7fd5bd; --kit-accent-strong: #9fe3d2; --kit-accent-soft: #1d3831; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="terminal"] { --kit-accent: #0c9d83; --kit-accent-strong: #0a7b67; --kit-accent-soft: #ddf6f1; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="terminal"] { --kit-accent: #0fbd9e; --kit-accent-strong: #0fbd9e; --kit-accent-soft: #184242; }
+[data-theme="raccoon"][data-palette="amber"] { --kit-accent: #b06405; --kit-accent-strong: #8a4c03; --kit-accent-soft: #f9e4c3; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="amber"] { --kit-accent: #e8bf85; --kit-accent-strong: #f0cda0; --kit-accent-soft: #3a3022; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="amber"] { --kit-accent: #eb5c19; --kit-accent-strong: #ba4914; --kit-accent-soft: #ffe9df; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="amber"] { --kit-accent: #ff641b; --kit-accent-strong: #ff641b; --kit-accent-soft: #483028; }
+[data-theme="raccoon"][data-palette="kurenai"] { --kit-accent: #983339; --kit-accent-strong: #983339; --kit-accent-soft: #f1e2e3; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="kurenai"] { --kit-accent: #a75257; --kit-accent-strong: #ba767a; --kit-accent-soft: #33262e; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="kurenai"] { --kit-accent: #d92b36; --kit-accent-strong: #d02934; --kit-accent-soft: #fae1e3; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="kurenai"] { --kit-accent: #d92b36; --kit-accent-strong: #e25e66; --kit-accent-soft: #40252d; }
+[data-theme="raccoon"][data-palette="sakura"] { --kit-accent: #a82e5c; --kit-accent-strong: #a82e5c; --kit-accent-soft: #f3e2e8; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="sakura"] { --kit-accent: #b2456e; --kit-accent-strong: #c36f8f; --kit-accent-soft: #362535; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="sakura"] { --kit-accent: #e62d72; --kit-accent-strong: #cd2865; --kit-accent-soft: #fce2eb; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="sakura"] { --kit-accent: #e62d72; --kit-accent-strong: #ea4f89; --kit-accent-soft: #432539; }
+[data-theme="raccoon"][data-palette="fuji"] { --kit-accent: #6534d3; --kit-accent-strong: #6534d3; --kit-accent-soft: #e9e3f9; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="fuji"] { --kit-accent: #7b50d9; --kit-accent-strong: #9877e2; --kit-accent-soft: #29264d; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="fuji"] { --kit-accent: #8b5cf6; --kit-accent-strong: #7c52db; --kit-accent-soft: #efe8fe; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="fuji"] { --kit-accent: #8b5cf6; --kit-accent-strong: #9970f7; --kit-accent-soft: #312e54; }
+[data-theme="raccoon"][data-palette="mizu"] { --kit-accent: #1a6066; --kit-accent-strong: #1a6066; --kit-accent-soft: #dfe9ea; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="mizu"] { --kit-accent: #38757a; --kit-accent-strong: #619195; --kit-accent-soft: #1a2f37; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="mizu"] { --kit-accent: #0e8b96; --kit-accent-strong: #0c7983; --kit-accent-soft: #ddeff0; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="mizu"] { --kit-accent: #0e8b96; --kit-accent-strong: #2697a1; --kit-accent-soft: #183840; }
+[data-theme="raccoon"][data-palette="matcha"] { --kit-accent: #2e6847; --kit-accent-strong: #2e6847; --kit-accent-soft: #e2eae5; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="matcha"] { --kit-accent: #437759; --kit-accent-strong: #69927b; --kit-accent-soft: #1e3131; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="matcha"] { --kit-accent: #2d9459; --kit-accent-strong: #267c4b; --kit-accent-soft: #e2f0e8; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="matcha"] { --kit-accent: #2d9459; --kit-accent-strong: #3a9a63; --kit-accent-soft: #1e3a34; }
+[data-theme="raccoon"][data-palette="wakaba"] { --kit-accent: #5b7322; --kit-accent-strong: #5b7322; --kit-accent-soft: #e8ebe0; }
+[data-theme="raccoon"][data-mode="dark"][data-palette="wakaba"] { --kit-accent: #5d7424; --kit-accent-strong: #7d9050; --kit-accent-soft: #273329; }
+[data-theme="raccoon"][data-intensity="bright"][data-palette="wakaba"] { --kit-accent: #719716; --kit-accent-strong: #597711; --kit-accent-soft: #edf3df; }
+[data-theme="raccoon"][data-mode="dark"][data-intensity="bright"][data-palette="wakaba"] { --kit-accent: #7da818; --kit-accent-strong: #7da818; --kit-accent-soft: #2e3e27; }
+
+[data-theme="raccoon"] { --kit-navigation-item-radius: 0px; --kit-navigation-item-spacing: 3px; --kit-rail-label-padding: 0 var(--kit-space-3) calc(5px * var(--kit-ui-scale)); }
+
+/* the type scale exactly as Raccoon writes it (px at 100%), not multiplied from the kit's — Raccoon's steps are 11 · 12 · 13 · 14 · 16 · 19 · 23 */
+[data-theme="raccoon"] {
+  --kit-text-2xs: calc(11px * var(--kit-ui-scale));
+  --kit-text-xs: calc(12px * var(--kit-ui-scale));
+  --kit-text-sm: calc(13px * var(--kit-ui-scale));
+  --kit-text-base: calc(14px * var(--kit-ui-scale));
+  --kit-text-md: calc(16px * var(--kit-ui-scale));
+  --kit-text-lg: calc(19px * var(--kit-ui-scale));
+  --kit-text-xl: calc(23px * var(--kit-ui-scale));
+  --kit-text-2xl: calc(23px * var(--kit-ui-scale));
+  --kit-text-3xl: calc(28px * var(--kit-ui-scale));
+  /* the page reads at text-sm; the rail, the buttons and the strips are set where Raccoon sets them */
+  --kit-body-size: var(--kit-text-sm);
+  --kit-navigation-item-font-size: var(--kit-text-sm);
+  --kit-button-font-size: var(--kit-text-sm);
+  --kit-option-font-size: var(--kit-text-xs);
+  --kit-micro-label-size: var(--kit-text-2xs);
+}

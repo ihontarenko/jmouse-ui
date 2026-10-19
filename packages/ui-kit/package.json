@@ -1,0 +1,83 @@
+{
+  "name": "@jmouse/ui-kit",
+  "version": "0.1.0",
+  "description": "jMouse UI-kit — one token vocabulary, themes as plain CSS files, the appearance axes, and every non-domain component the jMouse products draw with: controls, navigation, containers, data, feedback and the application shells. Plain CSS in its own layer, React components, no other runtime dependency.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles/index.css",
+    "./themes/*.css": "./dist/themes/*.css",
+    "./instruments": {
+      "types": "./dist/instruments/index.d.ts",
+      "default": "./dist/instruments/index.js"
+    },
+    "./instruments/*": {
+      "types": "./dist/instruments/*.d.ts",
+      "default": "./dist/instruments/*.js"
+    },
+    "./instruments.css": "./dist/styles/instruments.css",
+    "./code": {
+      "types": "./dist/code/index.d.ts",
+      "default": "./dist/code/index.js"
+    },
+    "./code.css": "./dist/styles/code.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0",
+    "@jmouse/parallax-react": ">=0.1.0",
+    "three": ">=0.180.0",
+    "@jmouse/codemirror": ">=0.1.0",
+    "@codemirror/state": ">=6.7.0",
+    "@codemirror/view": ">=6.43.0",
+    "@codemirror/commands": ">=6.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "~6.0.2",
+    "@jmouse/parallax-react": "*",
+    "@jmouse/codemirror": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependenciesMeta": {
+    "@jmouse/parallax-react": {
+      "optional": true
+    },
+    "three": {
+      "optional": true
+    },
+    "@jmouse/codemirror": {
+      "optional": true
+    },
+    "@codemirror/state": {
+      "optional": true
+    },
+    "@codemirror/view": {
+      "optional": true
+    },
+    "@codemirror/commands": {
+      "optional": true
+    }
+  }
+}

@@ -9,4 +9,4 @@ export * from "./spectrum";
 export * from "./mathChannel";
 export * from "./phasors";
 export * from "./screenAnalysis";
-export * from "./spaceFigure";
+export * from "./screenReadout";

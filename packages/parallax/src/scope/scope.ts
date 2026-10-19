@@ -10,8 +10,10 @@ import type { BenchProbe, CircuitElement } from "../circuit/circuit";
  * Where the probes go first: the signal in (or the PWM, or the first node that is not a supply) and the signal out.
  * A part's inner nodes (`U1.lower`) are measurable but never a first choice.
  */
-export function initialSettings(nodes: readonly string[], written: readonly BenchProbe[] = []): ScopeSettings {
-  const settings = suggestedSettings(nodes);
+export function initialSettings(nodes: readonly string[], written: readonly BenchProbe[] = [], timePerDivision?: number | null): ScopeSettings {
+  const suggested = suggestedSettings(nodes);
+  // The time base the circuit opens on, when it names one: a noise bench at 10 µs a sample, not the default's 200 ns.
+  const settings = timePerDivision && timePerDivision > 0 ? { ...suggested, secondsPerDivision: timePerDivision } : suggested;
   // The circuit's own `probes` block wins for the channels it names: those are on, where it put them.
   const channels = written.filter((probe) => (probe.measure === "voltage" || probe.measure === "current") && /^CH[1-4]$/.test(probe.id));
   if (!channels.length) {
@@ -22,9 +24,11 @@ export function initialSettings(nodes: readonly string[], written: readonly Benc
     channels: settings.channels.map((channel) => {
       const probe = channels.find((candidate) => candidate.id === channel.id);
       return probe?.measure === "current"
-        ? { ...channel, enabled: true, quantity: "current" as const, part: probe.target, node: "ground", reference: "ground", voltsPerDivision: probe.scale ?? 0.01 }
+        ? { ...channel, enabled: true, quantity: "current" as const, part: probe.target, node: "ground", reference: "ground", voltsPerDivision: probe.scale ?? 0.01,
+          expression: probe.expression ?? "" }
         : probe ? { ...channel, enabled: true, quantity: "voltage" as const, node: probe.target === "0" ? "ground" : probe.target,
-        reference: probe.reference && probe.reference !== "0" ? probe.reference : "ground", voltsPerDivision: probe.scale ?? channel.voltsPerDivision }
+        reference: probe.reference && probe.reference !== "0" ? probe.reference : "ground", voltsPerDivision: probe.scale ?? channel.voltsPerDivision,
+        expression: probe.expression ?? "" }
         : { ...channel, enabled: false };
     }),
     active: channels[0].id as ScopeSettings["active"],

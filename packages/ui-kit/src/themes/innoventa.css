@@ -1,0 +1,137 @@
+/*
+ * Innoventa — the jMUI design (Html/jmui/styles.css): radius zero everywhere, hairlines, Onest for words and JetBrains
+ * Mono for data, fixed 40px rows (32 compact), a 344px inspector, micro-labels tracked .09em, and an orange accent with
+ * DARK ink on it. Shadows only on what floats.
+ */
+[data-theme="innoventa"] {
+  color-scheme: light;
+  --kit-shape-density: 1;
+  --kit-shape-text: 13;
+  --kit-shape-radius-small: 0;
+  --kit-shape-radius-control: 0;
+  --kit-shape-radius-surface: 0;
+  --kit-shape-radius-dialog: 0;
+  --kit-shape-control: 32;
+  --kit-shape-control-small: 26;
+  --kit-shape-row: 40;
+  --kit-shape-row-dense: 32;
+  --kit-shape-rail: 216;
+  --kit-shape-inspector: 344;
+  --kit-border-width: 1px;
+  --kit-band: 3px;
+  --kit-font-ui: Onest, "Segoe UI", system-ui, sans-serif;
+  --kit-font-heading: var(--kit-font-ui);
+  --kit-font-control: var(--kit-font-ui);
+  --kit-weight-heading: 600;
+  --kit-heading-tracking: 0;
+  --kit-micro-label-tracking: 0.09em;
+  --kit-badge-dot: none;
+  --kit-empty-frame: 0;
+  --kit-facts-label-font: var(--kit-font-technical);
+  --kit-facts-label-transform: uppercase;
+  --kit-facts-label-tracking: var(--kit-micro-label-tracking);
+  --kit-intensity: 1;
+  --kit-soft-amount: 11%;
+
+  --kit-bg: #f2f2ef;
+  --kit-surface: #ffffff;
+  --kit-surface-2: #f7f7f5;
+  --kit-well: #f0f0ec;
+  --kit-ink: #191917;
+  --kit-secondary: #5c5c56;
+  --kit-muted: #66665f;
+  --kit-line: #e4e4df;
+  --kit-line-strong: #cfcfc8;
+  --kit-scrim: #19191780;
+  --kit-shadow-color: #191917;
+  --kit-shadow-pop: 0 8px 24px #19191724;
+  --kit-accent-base: var(--kit-palette-on-light, #e8590c);
+  --kit-accent-strong-towards: #000000;
+  --kit-on-accent: #191917;
+  --kit-good-base: #2f7d3b;
+  --kit-warn-base: #9a6700;
+  --kit-danger-base: #c22f2f;
+}
+
+[data-theme="innoventa"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #10100f;
+  --kit-surface: #1a1a17;
+  --kit-surface-2: #141412;
+  --kit-well: #242420;
+  --kit-ink: #f2f2ef;
+  --kit-secondary: #b0b0a8;
+  --kit-muted: #9a9a92;
+  --kit-line: #2c2c28;
+  --kit-line-strong: #3d3d37;
+  --kit-scrim: #000000a6;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 8px 24px #00000080;
+  --kit-accent-base: var(--kit-palette-on-dark, #e8590c);
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #191917;
+  --kit-good-base: #64ad70;
+  --kit-warn-base: #d4a84a;
+  --kit-danger-base: #e0716a;
+}
+
+/* ── how Innoventa draws its parts (Html/jmui/styles.css: .sidebar, .nav-item, .btn; ui/composites/Toolbar's
+      SegmentedControl). The chassis — the sidebar, the station bar — is dark in BOTH modes and never inverts. ── */
+[data-theme="innoventa"] {
+  --kit-rail-ground: #181816;
+  --kit-rail-line: #2a2a27;
+  --kit-rail-ink: #e6e6e0;
+  --kit-rail-label-ink: #8a8a82;
+  --kit-rail-label-size: calc(9px * var(--kit-ui-scale));
+  --kit-rail-label-tracking: 0.12em;
+  --kit-rail-padding: 10px 0 4px;
+  --kit-navigation-item-height: calc(34px * var(--kit-ui-scale));
+  --kit-navigation-item-padding: 0 calc(14px * var(--kit-ui-scale));
+  --kit-navigation-item-gap: calc(10px * var(--kit-ui-scale));
+  --kit-navigation-item-font-size: calc(12.5px * var(--kit-ui-scale));
+  --kit-navigation-item-weight: 400;
+  --kit-navigation-item-active-weight: 400;
+  --kit-navigation-item-ink: #a3a39b;
+  --kit-navigation-item-icon: currentColor;
+  --kit-navigation-item-hover-ground: transparent;
+  --kit-navigation-item-hover-ink: #e6e6e0;
+  --kit-navigation-item-active-ground: #232320;
+  --kit-navigation-item-active-ink: #ffffff;
+  --kit-navigation-item-active-icon: currentColor;
+  --kit-navigation-item-active-bar: 2px;
+  --kit-navigation-item-bar-inset: 0px;
+  --kit-navigation-group-gap: var(--kit-space-1);
+  --kit-button-padding-x: calc(14px * var(--kit-ui-scale));
+  --kit-button-hover-ground: var(--kit-surface-2);
+  --kit-button-hover-border: var(--kit-muted);
+  --kit-strip-ground: transparent;
+  --kit-strip-border: var(--kit-line-strong);
+  --kit-strip-padding: 0px;
+  --kit-strip-gap: 0px;
+  --kit-option-height: var(--kit-control-small);
+  --kit-option-padding: 0 calc(10px * var(--kit-ui-scale));
+  --kit-option-radius: 0px;
+  --kit-option-font-size: var(--kit-text-xs);
+  --kit-option-hover-ground: var(--kit-surface-2);
+  --kit-option-divider: var(--kit-border-width) solid var(--kit-line);
+  --kit-selected-ground: var(--kit-accent-soft);
+  --kit-selected-ink: var(--kit-accent-strong);
+  --kit-selected-border: transparent;
+  --kit-selected-weight: 500;
+  --kit-selected-shadow: 0 0 0 transparent;
+}
+
+/* the accent's tones as jMUI wrote them (accent-deep, accent-soft, accent-border), not derived */
+[data-theme="innoventa"] { --kit-accent: #e8590c; --kit-accent-strong: #c44e0b; --kit-accent-soft: #fdeee3; }
+[data-theme="innoventa"][data-mode="dark"] { --kit-accent: #e8590c; --kit-accent-strong: #f07b3a; --kit-accent-soft: #2b2018; }
+
+/* ── Innoventa's tones (ui/useTheme ACCENT_TONES, styles/theme.css [data-tone]): the accent, its deep text tone, its soft
+      ground. "theme" is Ember. ── */
+[data-theme="innoventa"][data-palette="teal"] { --kit-accent: #009797; --kit-accent-strong: #008181; --kit-accent-soft: #e0f5f4; }
+[data-theme="innoventa"][data-mode="dark"][data-palette="teal"] { --kit-accent: #009797; --kit-accent-strong: #00aeae; --kit-accent-soft: #152525; }
+[data-theme="innoventa"][data-palette="cobalt"] { --kit-accent: #1f86f8; --kit-accent-strong: #1f73d2; --kit-accent-soft: #e7f2ff; }
+[data-theme="innoventa"][data-mode="dark"][data-palette="cobalt"] { --kit-accent: #1f86f8; --kit-accent-strong: #4e9eff; --kit-accent-soft: #1b222d; }
+[data-theme="innoventa"][data-palette="violet"] { --kit-accent: #a16cef; --kit-accent-strong: #885cca; --kit-accent-soft: #f3eeff; }
+[data-theme="innoventa"][data-mode="dark"][data-palette="violet"] { --kit-accent: #a16cef; --kit-accent-strong: #b186f6; --kit-accent-soft: #24202c; }
+
+[data-theme="innoventa"] { --kit-navigation-item-radius: 0px; --kit-navigation-item-spacing: 0px; --kit-rail-label-padding: 6px var(--kit-space-4); --kit-navigation-group-gap: 14px; }

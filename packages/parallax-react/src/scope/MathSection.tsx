@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_MATH, channelName, windowOf, type MathChannel, type SampleMemory, type ScopeSettings } from "@jmouse/parallax/oscilloscope";
 import { formatQuantity } from "@jmouse/parallax/quantities";
-import { MATH_OPERATIONS, mathName, mathReading, mathUnit, mathUnitsOf } from "@jmouse/parallax/scope";
+import { MATH_OPERATIONS, mathName, mathReading, mathUnit, mathUnitsOf, type ReadoutRow } from "@jmouse/parallax/scope";
 import { Segments, Stepper } from "../controls/BenchControls";
 import { TraceColor } from "./TraceColor";
 
@@ -89,8 +89,11 @@ export function MathTools({ settings, onChange }: { settings: ScopeSettings; onC
   );
 }
 
-/** The math channel under the screen, read twice a second as the channels are: what it is, its scale, its swing and mean. */
-export function MathReading({ memory, settings, back }: { memory: SampleMemory; settings: ScopeSettings; back: number }) {
+/**
+ * The math channel as the screen's readout lists it, read twice a second as the channels are: what it is, its scale, its
+ * swing and mean over the window the screen shows. Null while the math channel is off.
+ */
+export function useMathReading(memory: SampleMemory, settings: ScopeSettings, back: number): ReadoutRow | null {
   const math = settings.math;
   const [reading, setReading] = useState<ReturnType<typeof mathReading>>(null);
   useEffect(() => {
@@ -110,10 +113,14 @@ export function MathReading({ memory, settings, back }: { memory: SampleMemory; 
     return null;
   }
   const unit = mathUnit(math, mathUnitsOf(math, settings));
-  return (
-    <div>
-      <strong><i className={`parallax-swatch parallax-probe-swatch parallax-probe-${math.color}`} aria-hidden="true" />M · {mathName(math)} · {formatQuantity(math.voltsPerDivision, unit)}/div</strong>
-      <span>{reading ? `${formatQuantity(reading.maximum - reading.minimum, unit)} pp · ${formatQuantity(reading.mean, unit)} avg` : "—"}</span>
-    </div>
-  );
+  return {
+    key: "M", color: math.color,
+    cells: [
+      { text: "M", tone: "name" },
+      { text: mathName(math), tone: "note" },
+      { text: `${formatQuantity(math.voltsPerDivision, unit)}/div`, tone: "setting", numeric: true },
+      { text: reading ? `${formatQuantity(reading.maximum - reading.minimum, unit)} pp` : "—", tone: "reading", numeric: true },
+      { text: reading ? `${formatQuantity(reading.mean, unit)} avg` : "", tone: "reading", numeric: true },
+    ],
+  };
 }

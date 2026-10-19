@@ -5,7 +5,7 @@ import { SymbolPicture } from "../symbols/SymbolDrawing";
 import { readSymbolDrawing } from "@jmouse/parallax/schematic";
 import { ComputedFrame } from "../viewers/ComputedViewport";
 import { drawingOfCircuit, isCircuit, withShownValues } from "@jmouse/parallax/circuit";
-import { EmulatorInstrument } from "../circuit/EmulatorInstrument";
+import { SimulatorInstrument } from "../circuit/SimulatorInstrument";
 import { Schematic } from "../circuit/Schematic";
 import { ComponentPreview } from "../symbols/ComponentPreview";
 import type { ComputationTarget } from "@jmouse/parallax/computation";
@@ -75,7 +75,7 @@ function InstrumentPresentation({ detail, target, values, representation, onData
   if (!shown) {
     return null;
   }
-  return <EmulatorInstrument representation={shown} computation={computation}
+  return <SimulatorInstrument representation={shown} computation={computation}
     title={detail.summary.title} context={{ circuit: `${detail.summary.slug}@${detail.definitionRevision}`, settings: "{}" }}
     diagram={circuit ? (selectNode) => <Schematic elements={withShownValues(circuit.elements, detail.parameters, values)}
       drawing={drawingOfCircuit(circuit)} onProbeSelect={selectNode} /> : undefined} />;

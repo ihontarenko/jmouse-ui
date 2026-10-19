@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
-  HORIZONTAL_DIVISIONS, VERTICAL_DIVISIONS, holdsWholeRecord, ScreenWindow,
+  HORIZONTAL_DIVISIONS, POSITION_LIMIT, VERTICAL_DIVISIONS, holdsWholeRecord, ScreenWindow, zoomedChannel,
   type ChannelId, type PlaybackClock, type SampleMemory, type ScopeChannel, type ScopeSettings, type Window,
 } from "@jmouse/parallax/oscilloscope";
 import { ladderStep } from "@jmouse/parallax/quantities";
 import { Stage } from "@jmouse/parallax/visual";
-import { cursorAt, paintScreenMarks, Persistence, probeColors, SCREEN, ScreenAnalysis, screenTraces } from "@jmouse/parallax/scope";
-import { useEmulatorAppearance } from "../circuit/useEmulatorAppearance";
+import { cursorAt, cursorPlates, paintScreenMarks, Persistence, phasorPlate, probeColors, SCREEN, ScreenAnalysis, screenTraces, spectrumPlate, type CursorPlate, type ReadoutPlate } from "@jmouse/parallax/scope";
+import { CursorReadouts, ScreenReadout } from "./ScreenReadout";
+import { useSimulatorAppearance } from "../circuit/useSimulatorAppearance";
 
 /**
  * The oscilloscope's screen: the acquisition memory drawn through the drawing library's stage on the instrument
@@ -15,7 +16,12 @@ import { useEmulatorAppearance } from "../circuit/useEmulatorAppearance";
  * The wheel scales the axis the reader chose (time, or the active channel's volts), Shift+wheel the other one;
  * dragging sideways looks back in time, up and down moves the active trace; a double click fits every trace.
  */
-export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChannel, onFit, onTriggered, label, waiting, idle, clock }: {
+export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChannel, onFit, onTriggered, label, waiting, idle, clock, shown, legend }: {
+  /**
+   * The readout against time — each trace's scale and readings, the time base, the trigger —, drawn as the screen's one
+   * table in its top left corner. A spectrum's and a phasor diagram's tables are the screen's own, in the same place.
+   */
+  legend?: ReadoutPlate | null;
   memory: SampleMemory;
   /** Samples stream in: the screen plays them from this clock, smoothly, instead of jumping with each frame. */
   clock?: PlaybackClock;
@@ -28,6 +34,8 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
   onFit: () => void;
   /** Told when the trigger fires, with the window it fired in — single shot stops on it. */
   onTriggered?: (window: Window) => void;
+  /** Where the screen looked at its last frame, and what it drew it from — for the readings to measure what is shown. */
+  shown?: { current: { view: Window; source: SampleMemory } | null };
   label: string;
   /** Shown instead of the screen's content while nothing has been measured. */
   waiting?: string | null;
@@ -37,9 +45,14 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
    */
   idle?: string;
 }) {
-  const appearance = useEmulatorAppearance();
+  const appearance = useSimulatorAppearance();
   const stageHost = useRef<HTMLDivElement>(null);
   const [driver, setDriver] = useState<"webgl" | "canvas" | null>(null);
+  // A spectrum's or a phasor diagram's table, handed up from the frame loop only when what it says changes.
+  const [analysisPlate, setAnalysisPlate] = useState<ReadoutPlate | null>(null);
+  const readoutHost = useRef<HTMLDivElement>(null);
+  // The cursors' tags, handed up the same way: their readings move with the signal, so at most ten times a second.
+  const [cursorTags, setCursorTags] = useState<CursorPlate[]>([]);
   const frame = useRef<HTMLDivElement>(null);
   const state = useRef({ settings, back, waiting, idle, onTriggered, clock, trails: { count: 8, intensity: 0.5 }, drawn: -1, drawnMemory: null as SampleMemory | null, drawnTime: Number.NaN, drawnStart: Number.NaN, heldKey: "" });
   state.current.settings = settings;
@@ -48,6 +61,8 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
   state.current.waiting = waiting;
   state.current.idle = idle;
   state.current.onTriggered = onTriggered;
+  const shownFrame = useRef(shown);
+  shownFrame.current = shown;
   state.current.clock = clock;
   state.current.drawn = -1;
 
@@ -71,13 +86,34 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
     // The FFT and phasor displays read a few times a second and averaged, not at every frame: they shook otherwise.
     const analysis = new ScreenAnalysis();
     const screenWindow = new ScreenWindow();
+    let plateKey = "";
+    const handPlate = (plate: ReadoutPlate | null) => {
+      const key = plate ? JSON.stringify(plate) : "";
+      if (key !== plateKey) {
+        plateKey = key;
+        setAnalysisPlate(plate);
+      }
+    };
+    let tagsKey = "";
+    let tagsAt = 0;
+    const handTags = (tags: CursorPlate[], now: number) => {
+      const key = tags.length ? JSON.stringify(tags) : "";
+      if (key !== tagsKey && (key === "" || tagsKey === "" || now - tagsAt > 100)) {
+        tagsKey = key;
+        tagsAt = now;
+        setCursorTags(tags);
+      }
+    };
     let animation = 0;
     const draw = () => {
       animation = requestAnimationFrame(draw);
       const current = state.current;
       // Where the screen looks is decided in one place, apart from drawing: `ScreenWindow`.
       const now = performance.now();
-      const { view, shownTime, newlyTriggered } = screenWindow.frame(memory, current.settings, { back: current.back, clock: current.clock, now });
+      const { view, shownTime, newlyTriggered, source } = screenWindow.frame(memory, current.settings, { back: current.back, clock: current.clock, now });
+      if (shownFrame.current) {
+        shownFrame.current.current = { view, source };
+      }
       if (newlyTriggered) {
         current.onTriggered?.(view);
       }
@@ -101,8 +137,15 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
       const columns = Math.max(1, stage.size.width);
       const settingsNow = current.settings;
       const waitingText = empty ? current.waiting ?? current.idle ?? "No samples yet" : null;
-      const readout = empty ? undefined : analysis.read(memory, settingsNow, view, now);
-      const traces = empty ? [] : screenTraces(memory, settingsNow, view, columns, colors, readout);
+      // A held picture the memory has rolled past is drawn from its copy.
+      const readout = empty ? undefined : analysis.read(source, settingsNow, view, now);
+      handPlate(!readout ? null : settingsNow.display === "fft" ? spectrumPlate(settingsNow, readout) : settingsNow.display === "phasors" ? phasorPlate(readout) : null);
+      const timeDisplay = (settingsNow.display ?? "time") === "time";
+      handTags(empty || !timeDisplay ? [] : cursorPlates(settingsNow, view,
+        (channel, time) => source.length ? source.reading(channel, Math.min(source.length - 1, source.indexAt(time))) : Number.NaN), now);
+      const plateBox = readoutHost.current;
+      const reserved = plateBox && settingsNow.display === "phasors" ? { width: plateBox.offsetWidth, height: plateBox.offsetHeight } : { width: 0, height: 0 };
+      const traces = empty ? [] : screenTraces(source, settingsNow, view, columns, colors, readout);
       // What the kept traces were drawn against: another scale, zero, time base or display would leave them on the wrong axes.
       const heldKey = JSON.stringify([settingsNow.display, settingsNow.horizontal, settingsNow.secondsPerDivision, settingsNow.channels.map((channel) => [channel.enabled, channel.voltsPerDivision, channel.position]), settingsNow.math]);
       // Trails belong to traces against time or against each other; a spectrum or a phasor diagram is a reading, not a sweep.
@@ -126,7 +169,7 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
       }
       const layers = [
         ...(settingsNow.hold && !empty ? [{ id: "held", batches: persistence.heldLayer() }] : []),
-        ...(trails && !empty ? [{ id: "trails", batches: persistence.trailLayer(trails.count, trails.intensity) }] : []),
+        ...(trails && !empty ? [{ id: "trails", batches: persistence.trailLayer(trails.count, trails.intensity, settingsNow.phosphor) }] : []),
         ...(settingsNow.phosphor && !settingsNow.hold && !empty ? [{ id: "afterglow", batches: persistence.layer(now) }] : []),
         { id: "traces", batches: traces },
       ];
@@ -134,7 +177,7 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
         layers,
         ...screenGrid(settingsNow.display === "xy" || settingsNow.display === "phasors", stage.size),
         overlay: (context, size, theme) => paintScreenMarks(context, size, theme, settingsNow, view, colors, waitingText, memory.length ? memory.firstTime() : Number.NaN, shownTime,
-          (channel, time) => memory.length ? memory.reading(channel, Math.min(memory.length - 1, memory.indexAt(time))) : Number.NaN, readout),
+          readout, reserved),
       });
       stage.renderNow();
     };
@@ -168,7 +211,11 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
       } else {
         const channel = current.channels.find((candidate) => candidate.id === current.active);
         if (channel) {
-          onChannel(channel.id, { voltsPerDivision: Math.min(1000, Math.max(1e-4, ladderStep(channel.voltsPerDivision, direction))) });
+          // The level under the pointer stays under it: the trace is zoomed into where the reader looks, not off the screen.
+          const box = host.getBoundingClientRect();
+          const anchor = (box.height / 2 - (event.clientY - box.top)) / (box.height / VERTICAL_DIVISIONS);
+          const zoomed = zoomedChannel(channel, Math.min(1000, Math.max(1e-9, ladderStep(channel.voltsPerDivision, direction))), anchor);
+          onChannel(channel.id, { voltsPerDivision: zoomed.voltsPerDivision, position: zoomed.position });
         }
       }
     };
@@ -176,7 +223,12 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
     return () => host.removeEventListener("wheel", wheel);
   }, [onSettings, onChannel]);
 
-  const drag = useRef<{ x: number; y: number; back: number; position: number; replayed: number | null; figure: [number, number] | null } | null>(null);
+  /**
+   * A drag in hand. `axis` is decided by its first few pixels — sideways looks back in time, up and down moves the active
+   * trace — and then kept: a drag that moved a trace up also crept a pixel sideways, which looked into the past and
+   * switched the trigger off until «Back to live».
+   */
+  const drag = useRef<{ x: number; y: number; back: number; position: number; replayed: number | null; figure: [number, number] | null; axis: "time" | "level" | null } | null>(null);
   /** Dragging the trigger's level marker on the right edge: the level follows the pointer in the source's volts. */
   const levelDrag = useRef(false);
   /** The cursor being dragged by its line. */
@@ -238,7 +290,7 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
         }
         const [across, up] = settings.channels.filter((channel) => channel.enabled);
         drag.current = { x: event.clientX, y: event.clientY, back, position: activeChannel?.position ?? 0, replayed: clock?.replay?.time ?? null,
-          figure: settings.display === "xy" && across && up ? [across.position, up.position] : null };
+          figure: settings.display === "xy" && across && up ? [across.position, up.position] : null, axis: null };
         event.currentTarget.setPointerCapture(event.pointerId);
         event.currentTarget.classList.add("parallax-is-panning");
       }}
@@ -270,17 +322,27 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
           onChannel(up.id, { position: round(start.figure[1] - (event.clientY - start.y) / division) });
           return;
         }
+        if (start.axis === null) {
+          const across = Math.abs(event.clientX - start.x);
+          const up = Math.abs(event.clientY - start.y);
+          if (Math.max(across, up) < DRAG_DECIDES_PIXELS) {
+            return;
+          }
+          start.axis = across > up ? "time" : "level";
+        }
         // A replay is scrolled like a tape under the screen; the stream is looked back into.
         const replay = clock?.replay;
-        if (replay && start.replayed !== null) {
-          replay.seek(start.replayed - (event.clientX - start.x) * secondsPerPixel());
-        } else if (!holdsWholeRecord(settings)) {
-          onBack(Math.min(maximumBack(), Math.max(0, start.back + (event.clientX - start.x) * secondsPerPixel())));
+        if (start.axis === "time") {
+          if (replay && start.replayed !== null) {
+            replay.seek(start.replayed - (event.clientX - start.x) * secondsPerPixel());
+          } else if (!holdsWholeRecord(settings)) {
+            onBack(Math.min(maximumBack(), Math.max(0, start.back + (event.clientX - start.x) * secondsPerPixel())));
+          }
         }
-        if (activeChannel) {
+        if (activeChannel && start.axis === "level") {
           const position = Math.round((start.position - (event.clientY - start.y) * divisionsPerPixel()) * 10) / 10;
           if (position !== activeChannel.position) {
-            onChannel(activeChannel.id, { position: Math.max(-4, Math.min(4, position)) });
+            onChannel(activeChannel.id, { position: Math.max(-POSITION_LIMIT, Math.min(POSITION_LIMIT, position)) });
           }
         }
       }}
@@ -299,21 +361,32 @@ export function ScopeScreen({ memory, settings, back, onSettings, onBack, onChan
           }
         } else if ((event.key === "ArrowUp" || event.key === "ArrowDown") && activeChannel) {
           event.preventDefault();
-          onChannel(activeChannel.id, { position: Math.max(-4, Math.min(4, activeChannel.position + (event.key === "ArrowUp" ? 0.5 : -0.5))) });
+          onChannel(activeChannel.id, { position: Math.max(-POSITION_LIMIT, Math.min(POSITION_LIMIT, activeChannel.position + (event.key === "ArrowUp" ? 0.5 : -0.5))) });
         } else if (event.key === "+" || event.key === "-") {
           event.preventDefault();
           const direction = event.key === "+" ? -1 : 1;
           if (settings.wheel === "time") {
             onSettings({ secondsPerDivision: Math.min(1, Math.max(1e-9, ladderStep(settings.secondsPerDivision, direction))) });
           } else if (activeChannel) {
-            onChannel(activeChannel.id, { voltsPerDivision: Math.max(1e-4, ladderStep(activeChannel.voltsPerDivision, direction)) });
+            const zoomed = zoomedChannel(activeChannel, Math.max(1e-9, ladderStep(activeChannel.voltsPerDivision, direction)), 0);
+            onChannel(activeChannel.id, { voltsPerDivision: zoomed.voltsPerDivision, position: zoomed.position });
           }
         } else if (event.key === "Home") {
           onBack(0);
+        } else if (/^[1-4]$/.test(event.key)) {
+          // 1–4 take the n-th channel on in hand: the one the wheel scales and a drag moves.
+          const chosen = settings.channels.filter((channel) => channel.enabled)[Number(event.key) - 1];
+          if (chosen) {
+            event.preventDefault();
+            onSettings({ active: chosen.id });
+          }
         }
       }}
     >
       <div ref={stageHost} className="parallax-visual-host parallax-scope-stage" aria-hidden="true" />
+      <ScreenReadout ref={readoutHost} plate={settings.display === "fft" || settings.display === "phasors" ? analysisPlate : waiting ? null : legend ?? null}
+        active={settings.active} onActivate={(active) => onSettings({ active })} foldable />
+      <CursorReadouts tags={cursorTags} screen={frame} corner={readoutHost} />
     </div>
   );
 }
@@ -334,6 +407,9 @@ function screenGrid(xy: boolean, size: { width: number; height: number }) {
     divisions: { horizontal: across, vertical: VERTICAL_DIVISIONS },
   };
 }
+
+/** How far a drag goes, in pixels, before it is known whether it pans time or moves a trace. */
+const DRAG_DECIDES_PIXELS = 4;
 
 /** How near a cursor's line, in pixels, the pointer grabs it. */
 const CURSOR_REACH_PIXELS = 7;

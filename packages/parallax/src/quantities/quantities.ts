@@ -5,6 +5,17 @@
 
 const prefixes: Record<string, number> = { p: 1e-12, n: 1e-9, u: 1e-6, "µ": 1e-6, "μ": 1e-6, m: 1e-3, k: 1e3, K: 1e3, M: 1e6, G: 1e9 };
 
+/**
+ * The symbols units are written with: a jMX document's units come back in their canonical ASCII names (`Ohm`,
+ * `degC`), which a reader should see as Ω and °C. Every formatting below writes a unit through this.
+ */
+const UNIT_SYMBOLS: Record<string, string> = { Ohm: "Ω", ohm: "Ω", Ω: "Ω", degC: "°C", deg: "°" };
+
+/** A unit as it is written for a reader: its symbol when it has one. */
+export function unitSymbol(unit: string): string {
+  return UNIT_SYMBOLS[unit] ?? unit;
+}
+
 /** Units a prefix never goes on: a share, an angle, a level against a reference — «µ%» means nothing. */
 const UNPREFIXED = new Set(["%", "‰", "°", "°C", "dB"]);
 
@@ -28,7 +39,8 @@ export function parseQuantity(text: string, unit = ""): number {
 }
 
 /** SI → `4.7 k`, `100 n`, `2 m` with the unit after it: the shortest honest spelling, three significant digits. */
-export function formatQuantity(value: number, unit = "", digits = 3): string {
+export function formatQuantity(value: number, unitName = "", digits = 3): string {
+  const unit = unitSymbol(unitName);
   if (!Number.isFinite(value)) {
     return "—";
   }
@@ -48,7 +60,8 @@ export function formatQuantity(value: number, unit = "", digits = 3): string {
  * SI → a meter's readout: `11.00 V`, `1.000 A`, `235.2 mA` — always `digits` significant figures, trailing zeros
  * kept, so the figures stand still while the value moves, as a bench meter's display does.
  */
-export function formatReadout(value: number, unit = "", digits = 4): string {
+export function formatReadout(value: number, unitName = "", digits = 4): string {
+  const unit = unitSymbol(unitName);
   if (!Number.isFinite(value)) {
     return "—";
   }

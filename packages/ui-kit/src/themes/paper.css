@@ -1,0 +1,58 @@
+/*
+ * Paper — warm paper and ink, taken exactly from the Parallax library sample (Parallax/FE theme-paper.css; Ivan,
+ * 2026-10-13: «прикольні відтінки … занеси в точності»), on Parallax's shape. Its dark side is ink-dark paper: the same
+ * warm cast and the same vermilion, lifted to read on a dark ground.
+ *
+ * ⚠️ Paper keeps its own vermilion whatever the palette says — its accent names a colour rather than
+ * var(--kit-palette-on-…) — and it keeps its colours whole (intensity 1). The intensity axis can still calm it.
+ */
+[data-theme="paper"] {
+  color-scheme: light;
+  --kit-intensity: 1;
+  --kit-soft-amount: 11%;
+
+  --kit-bg: #efe7d6;
+  --kit-surface: #faf6ec;
+  --kit-surface-2: #f4eddf;
+  --kit-well: #e6dcc6;
+  --kit-ink: #221a12;
+  --kit-secondary: #4a3d2e;
+  --kit-muted: #75664f;
+  --kit-line: #d6c8ad;
+  --kit-line-strong: #9c8a6a;
+  --kit-scrim: #221a1266;
+  --kit-shadow-color: #3a2a14;
+  --kit-shadow-pop: 0 12px 32px -12px #3a2a1440, 0 1px 2px #3a2a141a;
+  --kit-accent-base: #a2381a;
+  --kit-accent-strong-towards: #000000;
+  --kit-on-accent: #fff8ee;
+  --kit-good-base: #3d6b2c;
+  --kit-warn-base: #a0650f;
+  --kit-danger-base: #9e2219;
+  --kit-focus-ring: #1f4e8c;
+  --kit-change-modified: #1f4e8c;
+}
+
+[data-theme="paper"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #1b1712;
+  --kit-surface: #231e17;
+  --kit-surface-2: #1f1a14;
+  --kit-well: #16130f;
+  --kit-ink: #efe6d4;
+  --kit-secondary: #cdbfa6;
+  --kit-muted: #a3937a;
+  --kit-line: #3a3226;
+  --kit-line-strong: #5e523f;
+  --kit-scrim: #0b0907b3;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 16px 40px -12px #00000099, 0 1px 2px #00000066;
+  --kit-accent-base: #e2734f;
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #1b1712;
+  --kit-good-base: #94bd7f;
+  --kit-warn-base: #e3a94e;
+  --kit-danger-base: #e8806f;
+  --kit-focus-ring: #8fb1e0;
+  --kit-change-modified: #8fb1e0;
+}

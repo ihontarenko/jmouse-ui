@@ -4,3 +4,4 @@ export * from "./QuantityField";
 export * from "./Segmented";
 export * from "./Hotkeys";
 export * from "./PanelSection";
+export * from "./ToolMenu";

@@ -44,6 +44,25 @@ export interface ScopeChannel {
    * M = CH1 − CH2 can stand on the screen alone. Absent in settings kept before it existed: drawn.
    */
   shown?: boolean;
+  /**
+   * What the reading is written over with, X being the probe's reading: `X * pi / 2`, `abs(X)`. Applied as the memory is
+   * read, so the trace, the trigger, the measurements and the math channel all see it. Absent or empty: the reading.
+   */
+  expression?: string;
+}
+
+/** The farthest a trace's zero may stand from the screen's centre, in divisions: far enough to look at 1 V by the µV. */
+export const POSITION_LIMIT = 1e6;
+
+/**
+ * A channel scaled one step of the 1–2–5 ladder, with the level at `anchor` — divisions above the screen's centre, where
+ * the pointer is — staying where it stands: zooming in on a 1 V trace at the screen's middle keeps the trace there
+ * instead of throwing it a thousand divisions off the top.
+ */
+export function zoomedChannel<Channel extends { voltsPerDivision: number; position: number }>(channel: Channel, voltsPerDivision: number, anchor: number): Channel {
+  const level = (anchor - channel.position) * channel.voltsPerDivision;
+  const position = anchor - level / voltsPerDivision;
+  return { ...channel, voltsPerDivision, position: Math.max(-POSITION_LIMIT, Math.min(POSITION_LIMIT, Math.round(position * 100) / 100)) };
 }
 
 /** Whether a channel's trace is on the screen: read, and not hidden. */
@@ -117,7 +136,7 @@ export interface ScopeSettings {
   phosphor: boolean;
   /**
    * Trails, as an electron-beam screen leaves them: the last sweeps under the live one, each older one fainter and
-   * thinner. How many and how bright is the reader's appearance (`EmulatorAppearance.scopeTrails`), not the scope's.
+   * thinner. How many and how bright is the reader's appearance (`SimulatorAppearance.scopeTrails`), not the scope's.
    * Absent in settings kept before it existed: off.
    */
   trails?: boolean;
@@ -127,13 +146,17 @@ export interface ScopeSettings {
    */
   hold?: boolean;
   /**
+   * How a live run is acquired: `gapless` — every sample read, the run slowed as far as that takes, so a deep time base
+   * holds an unbroken record —, or `realtime` — real time first, one block a frame. Absent: gapless.
+   */
+  acquisition?: "gapless" | "realtime";
+  /**
    * What the screen plots: each channel against time, or — `xy` — the first channel on, across, against the second, up:
-   * two signals as one figure, a Lissajous figure for two sines; or — `xyz` — the first three as one figure in space, the
-   * third into the screen; or — `fft` — each channel's spectrum over the window shown,
+   * two signals as one figure, a Lissajous figure for two sines; or — `fft` — each channel's spectrum over the window shown,
    * its amplitude in dBV against the frequency; or — `phasors` — every channel at the first one's fundamental as an arrow,
    * its length the amplitude and its angle the lead. Absent in settings kept before it existed: time.
    */
-  display?: "time" | "xy" | "xyz" | "fft" | "phasors";
+  display?: "time" | "xy" | "fft" | "phasors";
   /**
    * How much time the screen holds: `divisions` — the time base times ten, swept or rolled through the memory —, or
    * `record` — the whole record, from its first sample to now, the axis compressing as the run goes on, as a chart
@@ -242,8 +265,12 @@ function latestWholeCrossing(memory: SampleMemory, settings: ScopeSettings, span
   }
   const own = memory.acquisitionStart(latest);
   const previous = own > 0 ? memory.acquisitionStart(own - 1) : 0;
-  const stop = Math.max(1, Math.min(memory.indexAt(end - span * 3), previous));
+  // Back three screens, through the acquisition before the latest — and at least the last TRIGGER_SEARCH_SAMPLES: at a
+  // fine time base three screens are microseconds, and a 1 kHz edge was a millisecond back, never found.
+  const stop = Math.max(1, Math.min(memory.indexAt(end - span * 3), previous, latest - TRIGGER_SEARCH_SAMPLES));
   let acquisition = { first: -1, last: -1, start: Number.NaN, end: Number.NaN };
+  let longestAcquisition = 0;
+  let partial: number | null = null;
   for (let index = latest; index >= stop; index--) {
     if (!memory.continues(index)) {
       continue;
@@ -264,13 +291,20 @@ function latestWholeCrossing(memory: SampleMemory, settings: ScopeSettings, span
       const first = memory.acquisitionStart(index);
       const last = memory.acquisitionEnd(index);
       acquisition = { first, last, start: memory.time(first), end: memory.time(last) };
+      longestAcquisition = Math.max(longestAcquisition, acquisition.end - acquisition.start);
     }
     if (crossing - before >= acquisition.start && crossing + after <= acquisition.end) {
       return crossing;
     }
+    partial ??= crossing;
   }
-  return null;
+  // A screen longer than every acquisition searched cannot hold one whole: the latest crossing is the trigger then, its
+  // window crossing a gap. Without this, zooming the time base out past a live block's length lost the trigger for good.
+  return longestAcquisition < span ? partial : null;
 }
+
+/** How many samples back the trigger always looks, whatever the time base: a frame's worth of a gapless run and more. */
+const TRIGGER_SEARCH_SAMPLES = 50_000;
 
 /** What a channel read over a window. */
 export interface Measurement {

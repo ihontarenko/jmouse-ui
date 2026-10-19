@@ -9,6 +9,7 @@ export { Replay } from "./Replay";
 export { ScreenWindow, type ScreenFrame, type ScreenMoment } from "./ScreenWindow";
 export { REPLAY_ORDERS, TIME_CURVES, phaseOf, shareAt, timeCurve, type ReplayOrder, type TimeCurve } from "./timeCourse";
 export {
-  CHANNEL_IDS, DEFAULT_MATH, HORIZONTAL_DIVISIONS, PROBE_COLORS, VERTICAL_DIVISIONS, channelDrawn, channelName, channelSource, channelUnit, holdsWholeRecord, measure, windowOf,
+  CHANNEL_IDS, DEFAULT_MATH, HORIZONTAL_DIVISIONS, POSITION_LIMIT, PROBE_COLORS, VERTICAL_DIVISIONS, channelDrawn, zoomedChannel, channelName, channelSource, channelUnit, holdsWholeRecord, measure, windowOf,
   type ChannelId, type MathChannel, type MathOperation, type Measurement, type ScopeChannel, type ScopeSettings, type TriggerEdge, type TriggerMode, type Window,
 } from "./instrument";
+export { compileReadingExpression, isIdentityExpression, type CompiledExpression, type ReadingTransform } from "./readingExpression";

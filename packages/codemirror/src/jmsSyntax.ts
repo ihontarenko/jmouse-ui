@@ -2,7 +2,7 @@ import {
     StreamLanguage, LanguageSupport, LanguageDescription, type StreamParser, type StringStream,
 } from '@codemirror/language';
 import { tags, type Tag } from '@lezer/highlight';
-import { expressionKeyword, scriptEvent, scriptFacade } from './tags';
+import { annotationType, expressionKeyword, scriptEvent, scriptFacade } from './tags';
 
 /**
  * `.jms` — jMouse Script, the sixth dialect on the same core, beside `.jmp`, `.jmm`, `.jmq`, `.jmv` and
@@ -26,7 +26,7 @@ import { expressionKeyword, scriptEvent, scriptFacade } from './tags';
  * dialect's keywords as an ordinary name wherever a name belongs — `ScriptToken.nameTokens()` — because
  * a host is entitled to an event called `on` or a facade method called `end`. So a word in a *name
  * position* is a name here too, whatever it is spelled: after `@`, after a `.`, after `on`, after
- * `function`, after `local`, after `for`. `@world.end()` is a facade call, not a block terminator, and
+ * `function`, after `let`/`local`/`const`, after `for`. `@world.end()` is a facade call, not a block terminator, and
  * a grammar that got that wrong would make a correct file look broken.
  *
  * <p>**`#` is both a comment and a constant access.** `# a note` opens a line comment; the `#` of
@@ -45,7 +45,10 @@ import { expressionKeyword, scriptEvent, scriptFacade } from './tags';
 const DECLARATIONS = new Set(['include', 'script', 'behaviour', 'behavior']);
 
 /** The house around a body — what opens a handler, guards it, and delimits it. */
-const KEYWORDS = new Set(['on', 'when', 'do', 'then', 'end', 'function', 'local']);
+const KEYWORDS = new Set(['on', 'when', 'do', 'then', 'end', 'function', 'let', 'local', 'const']);
+
+/** What declares a name: `let` and `local` are one word spelled twice; `const` may not be written again. */
+const DECLARING = new Set(['let', 'local', 'const']);
 
 /** Statements that move somewhere else. A reader scanning for *what happens when* scans for these. */
 const BRANCHES = new Set(['if', 'elseif', 'else', 'for', 'return']);
@@ -73,7 +76,8 @@ type Expecting =
     | 'constant'  // just read the `#` of `@name#CONST`
     | 'field'     // just read the `$` of `@name:$field`
     | 'event'     // just read `on`
-    | 'name'      // just read `function`, `local` or `for`
+    | 'name'      // just read `function`, `let`, `local`, `const` or `for`
+    | 'type'      // just read the `:` of `let count : int`, `(count : int)` or `) : double`
     | null;
 
 interface JmsState {
@@ -90,6 +94,15 @@ interface JmsState {
     afterFacade: boolean;
     /** Nothing but whitespace has been seen on this line. */
     lineStart:   boolean;
+    /** On a `function` line, before its body: parameters and the result may carry a type. */
+    signature:   boolean;
+    /**
+     * The token just read is a name a type may follow — a declared name, a parameter, the `)` closing a signature.
+     *
+     * <p>⚠️ Only there is a `:` an annotation: elsewhere it is the `:` of `a ? b : c`, and reading the word after
+     * it as a type would colour a value as one.</p>
+     */
+    annotatable: boolean;
 }
 
 /**
@@ -108,6 +121,7 @@ const TOKEN_TAGS: Record<string, Tag> = {
     constant:    tags.atom,
     field:       tags.attributeName,
     definition:  tags.definition(tags.variableName),
+    type:        annotationType,
     string:      tags.string,
     number:      tags.number,
     comment:     tags.comment,
@@ -126,7 +140,7 @@ const parser: StreamParser<JmsState> = {
     name: 'jms',
 
     startState(): JmsState {
-        return { expect: null, afterFacade: false, lineStart: true };
+        return { expect: null, afterFacade: false, lineStart: true, signature: false, annotatable: false };
     },
 
     token(stream: StringStream, state: JmsState): string | null {
@@ -134,6 +148,8 @@ const parser: StreamParser<JmsState> = {
             state.lineStart   = true;
             state.expect      = null;
             state.afterFacade = false;
+            state.signature   = false;
+            state.annotatable = false;
         }
 
         if (stream.eatSpace()) {
@@ -158,8 +174,11 @@ const parser: StreamParser<JmsState> = {
             return 'comment';
         }
 
-        const wasExpecting = state.expect;
-        const wasLineStart = state.lineStart;
+        const wasExpecting   = state.expect;
+        const wasLineStart   = state.lineStart;
+        const wasAnnotatable = state.annotatable;
+
+        state.annotatable = false;
 
         state.expect    = null;
         state.lineStart = false;
@@ -241,6 +260,21 @@ const parser: StreamParser<JmsState> = {
             return 'operator';
         }
 
+        // The colon of an annotation: the word after it is a type, and stands apart from everything else.
+        if (character === ':' && wasAnnotatable) {
+            stream.next();
+            state.expect = 'type';
+
+            return 'punctuation';
+        }
+
+        if (character === ')' && state.signature) {
+            stream.next();
+            state.annotatable = true;
+
+            return 'punctuation';
+        }
+
         if (character && '(){}[],;:'.includes(character)) {
             stream.next();
 
@@ -267,7 +301,11 @@ const parser: StreamParser<JmsState> = {
                 case 'event':
                     return 'event';
                 case 'name':
+                    state.annotatable = true;
+
                     return 'definition';
+                case 'type':
+                    return 'type';
                 default:
                     break;
             }
@@ -278,8 +316,14 @@ const parser: StreamParser<JmsState> = {
                 return 'keyword';
             }
 
-            if (word === 'function' || word === 'local' || word === 'for') {
-                state.expect = 'name';
+            // `state` and `parameter` declare only where a name and `:` or `=` follow: a host hands its scripts a plain
+            // `state`, and `when state == 'FAILED'` must stay a comparison of it.
+            const opensDeclaration = (word === 'state' || word === 'parameter')
+                && stream.match(/^\s+[A-Za-z_]\w*\s*(?::|=(?!=))/, false);
+
+            if (word === 'function' || DECLARING.has(word) || word === 'for' || opensDeclaration) {
+                state.expect    = 'name';
+                state.signature = state.signature || word === 'function';
 
                 return BRANCHES.has(word) ? 'branch' : 'keyword';
             }
@@ -306,6 +350,9 @@ const parser: StreamParser<JmsState> = {
             if (KEYWORDS.has(word)) {
                 return 'keyword';
             }
+
+            // A parameter of the signature being read may be annotated.
+            state.annotatable = state.signature;
 
             return 'variable';
         }

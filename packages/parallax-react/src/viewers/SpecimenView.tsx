@@ -113,8 +113,11 @@ function FourierTile({ loadSpecimen }: { loadSpecimen: SpecimenLoader }) {
   );
 }
 
-/** The circuit drawn from its own document, and its step response playing as its resistance grows. */
-function LowPassTile({ loadSpecimen }: { loadSpecimen: SpecimenLoader }) {
+/**
+ * The circuit drawn from its own document, and its step response playing as its resistance grows — the specimen a
+ * circuit bench shows on its own, and the fourth tile of {@link SpecimenGrid}.
+ */
+export function CircuitSpecimen({ loadSpecimen }: { loadSpecimen: SpecimenLoader }) {
   const library = useParallaxPartLibrary();
   const animation = useAsync((signal) => loadSpecimen<Animation>("low-pass", signal), []);
   const circuit = useAsync((signal) => loadSpecimen<{ definition: CircuitDefinition; parameters: ParameterDefinition[] }>("low-pass-circuit", signal), []);
@@ -152,7 +155,7 @@ export function SpecimenGrid({ compact = false, loadSpecimen }: { compact?: bool
       <StillTile name="lorenz" title="Lorenz attractor" caption="differential system · turning"
         definition="ẋ = σ(y − x),  ẏ = x(ρ − z) − y,  ż = xy − βz" loadSpecimen={loadSpecimen} />
       <FourierTile loadSpecimen={loadSpecimen} />
-      <LowPassTile loadSpecimen={loadSpecimen} />
+      <CircuitSpecimen loadSpecimen={loadSpecimen} />
     </div>
   );
 }

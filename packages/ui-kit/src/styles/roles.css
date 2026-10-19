@@ -1,0 +1,33 @@
+/* jMouse UI-kit — the typographic roles, counts, meters, address rows and the keyboard help (taken from Innoventa's
+   jMUI library with the same names and properties). */
+
+/* ===================== typographic roles ===================== */
+.kit-text-mono { font: var(--kit-text-sm) var(--kit-font-technical); }
+.kit-text-numeric { font: var(--kit-text-sm) var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-text-dim { margin: 0; color: var(--kit-secondary); font-size: var(--kit-text-sm); }
+.kit-section-title { display: flex; align-items: center; gap: var(--kit-space-3); padding-bottom: var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-section-title > h2 { font-size: var(--kit-text-base); font-weight: var(--kit-weight-heading); }
+.kit-count { display: inline-flex; justify-content: center; flex: none; min-width: 1.25em; color: var(--kit-muted); font: var(--kit-text-xs) var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-count[data-tone="active"] { color: var(--kit-accent-strong); }
+
+/* ===================== meter ===================== */
+.kit-meter { --kit-tone: var(--kit-accent); display: grid; gap: var(--kit-space-1); }
+.kit-meter[data-tone="good"] { --kit-tone: var(--kit-good); }
+.kit-meter[data-tone="warn"] { --kit-tone: var(--kit-warn); }
+.kit-meter[data-tone="danger"] { --kit-tone: var(--kit-danger); }
+.kit-meter-caption { display: flex; align-items: baseline; justify-content: space-between; gap: var(--kit-space-3); }
+.kit-meter-value { color: var(--kit-secondary); font: var(--kit-text-xs) var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-meter-track { width: 100%; height: 6px; background: var(--kit-well); }
+.kit-meter-track > i { display: block; height: 100%; background: var(--kit-tone); }
+
+/* ===================== address row ===================== */
+.kit-address-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kit-space-2); padding: var(--kit-space-2); border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-address-label { font-size: var(--kit-text-sm); font-weight: var(--kit-weight-control); }
+.kit-address-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--kit-secondary); }
+.kit-address-url:hover { color: var(--kit-accent-strong); }
+
+/* ===================== keyboard help ===================== */
+.kit-keyboard-help { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--kit-space-5); }
+.kit-keyboard-help-column { display: grid; align-content: start; gap: var(--kit-space-4); }
+.kit-keyboard-help-group { display: grid; align-content: start; gap: 6px; }
+.kit-keyboard-help-row { display: flex; align-items: center; justify-content: space-between; gap: var(--kit-space-4); color: var(--kit-secondary); font-size: var(--kit-text-sm); }

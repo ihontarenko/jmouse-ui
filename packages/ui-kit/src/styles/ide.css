@@ -1,0 +1,173 @@
+/*
+ * jMouse UI-kit — the IDE frame (Burin's, from Html/Burin/styles/ide.css): a title bar, a stripe of tool-window buttons
+ * on each side, a tool window per side and one at the bottom, the editor in the middle, the status bar under it all.
+ *
+ *  ┌ title bar ─────────────────────────────────────────────────────────┐
+ *  │ stripe │ tool window │ editor                  │ tool window │ stripe │
+ *  │        ├─────────────┴──────────── bottom tool window ┴─────────────┤        │
+ *  └ status bar ────────────────────────────────────────────────────────┘
+ */
+
+.kit-ide { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; min-height: 0; overflow: hidden; background: var(--kit-bg); }
+.kit-ide[data-viewport] { height: 100dvh; }
+.kit-ide-body { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; min-height: 0; }
+.kit-ide-area { display: flex; min-width: 0; min-height: 0; }
+.kit-ide-area > .kit-split { flex: 1; }
+
+/* ---------- title bar ---------- */
+.kit-title-bar { display: flex; align-items: center; gap: var(--kit-space-1); min-width: 0; height: calc(40 * var(--kit-unit)); padding: 0 var(--kit-space-2); background: var(--kit-surface-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-title-bar-end { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.kit-title-bar-separator { width: 1px; align-self: stretch; margin: var(--kit-space-2) var(--kit-space-1); background: var(--kit-line); }
+.kit-widget {
+  display: inline-flex; align-items: center; gap: var(--kit-space-2); min-height: var(--kit-control-small); padding: 0 var(--kit-space-2);
+  border: 0; border-radius: var(--kit-radius-control); background: transparent; color: var(--kit-ink); cursor: pointer;
+  font: var(--kit-weight-control) var(--kit-text-sm) / 1 var(--kit-font-control); white-space: nowrap;
+}
+.kit-widget:hover, .kit-widget[aria-expanded="true"] { background: var(--kit-well); }
+.kit-widget > .kit-icon { color: var(--kit-muted); }
+.kit-widget-badge { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--kit-radius-small); background: var(--kit-accent); color: var(--kit-on-accent); font: 700 var(--kit-text-2xs) / 1 var(--kit-font-control); }
+.kit-widget-quiet { color: var(--kit-muted); font-weight: 400; }
+
+/* ---------- stripes ---------- */
+.kit-stripe { display: flex; flex-direction: column; align-items: center; gap: 2px; width: calc(40 * var(--kit-unit)); padding: var(--kit-space-2) 0; overflow: hidden auto; background: var(--kit-surface-2); }
+.kit-stripe[data-side="start"] { border-right: var(--kit-border-width) solid var(--kit-line); }
+.kit-stripe[data-side="end"] { border-left: var(--kit-border-width) solid var(--kit-line); }
+.kit-stripe-gap { flex: 1; }
+.kit-stripe-button {
+  position: relative; display: grid; place-items: center; width: calc(30 * var(--kit-unit)); height: calc(30 * var(--kit-unit));
+  border: 0; border-radius: var(--kit-radius-control); background: transparent; color: var(--kit-secondary); cursor: pointer;
+}
+.kit-stripe-button > .kit-icon { width: calc(18px * var(--kit-ui-scale)); height: calc(18px * var(--kit-ui-scale)); }
+.kit-stripe-button:hover { background: var(--kit-well); color: var(--kit-ink); }
+.kit-stripe-button[aria-pressed="true"] { background: var(--kit-accent-soft); color: var(--kit-accent); }
+.kit-stripe-count { position: absolute; top: 2px; right: 2px; min-width: 12px; height: 12px; padding: 0 3px; border-radius: 6px; background: var(--kit-accent); color: var(--kit-on-accent); font: 700 8px / 12px var(--kit-font-control); text-align: center; }
+
+/* ---------- tool windows ---------- */
+.kit-tool-window { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; background: var(--kit-surface); box-shadow: var(--kit-shadow-surface); }
+.kit-tool-head { display: flex; align-items: center; gap: var(--kit-space-1); flex: none; min-width: 0; min-height: calc(34 * var(--kit-unit)); padding: 0 var(--kit-space-1) 0 var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-tool-head > h2 { font: var(--kit-weight-heading) var(--kit-text-sm) / 1 var(--kit-font-heading); white-space: nowrap; }
+.kit-tool-head > .kit-panel-actions { gap: 1px; }
+.kit-tool-head .kit-tabs[data-variant="strip"] { margin-left: var(--kit-space-2); background: transparent; padding: 0; }
+.kit-tool-toolbar { display: flex; align-items: center; gap: 1px; flex: none; padding: 2px var(--kit-space-1); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-tool-toolbar > .kit-search { flex: 1; }
+.kit-tool-toolbar .kit-input { border-color: transparent; background: var(--kit-well); }
+.kit-tool-body { flex: 1; min-height: 0; overflow: auto; }
+.kit-tool-body[data-padded] { padding: var(--kit-space-3); }
+
+/* the editor between the tool windows */
+.kit-editor { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; background: var(--kit-canvas); color: var(--kit-canvas-ink); }
+.kit-editor-body { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
+
+/* ---------- find bar: find (and replace) inside the open file ---------- */
+.kit-find-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--kit-space-2); align-items: center; flex: none; padding: var(--kit-space-1) var(--kit-space-2); background: var(--kit-canvas-2); border-bottom: var(--kit-border-width) solid var(--kit-canvas-line); }
+.kit-find-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.kit-find-row > .kit-input { flex: 1; min-width: 120px; min-height: var(--kit-control-small); background: var(--kit-canvas); color: var(--kit-canvas-ink); border-color: var(--kit-canvas-line); font-family: var(--kit-font-technical); }
+.kit-find-row > .kit-input[aria-invalid="true"] { border-color: var(--kit-danger); }
+.kit-find-count { min-width: 72px; padding: 0 var(--kit-space-2); color: var(--kit-canvas-muted); font: var(--kit-text-xs) var(--kit-font-technical); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kit-find-bar .kit-button[data-variant="quiet"] { color: var(--kit-canvas-muted); }
+.kit-find-bar .kit-button[data-variant="quiet"]:hover { background: var(--kit-canvas-selection); color: var(--kit-canvas-ink); }
+.kit-find-bar .kit-button[aria-pressed="true"] { background: var(--kit-canvas-selection); color: var(--kit-canvas-accent); }
+
+@media (max-width: 760px) {
+  .kit-stripe { display: none; }
+}
+
+/* ---------- the title bar's own parts ---------- */
+.kit-title-bar-brand { display: flex; align-items: center; gap: var(--kit-space-2); min-width: 0; padding: 0 var(--kit-space-1); color: var(--kit-ink); text-decoration: none; }
+.kit-title-bar-brand:hover { text-decoration: none; }
+.kit-title-bar-mark { display: grid; width: calc(22px * var(--kit-ui-scale)); height: calc(22px * var(--kit-ui-scale)); }
+.kit-title-bar-mark > svg { width: 100%; height: 100%; }
+.kit-wordmark { font: 800 calc(15px * var(--kit-ui-scale)) / 1 Inter, sans-serif; letter-spacing: -0.045em; white-space: nowrap; }
+.kit-wordmark-last { color: var(--kit-accent); }
+.kit-title-bar-group { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: var(--kit-radius-control); }
+.kit-title-bar-group > .kit-button[data-tone="good"]:hover { background: var(--kit-good-soft); }
+.kit-widget-badge[data-tone="good"] { background: var(--kit-good); }
+.kit-widget-badge[data-tone="warn"] { background: var(--kit-warn); }
+.kit-widget-badge[data-tone="danger"] { background: var(--kit-danger); }
+.kit-file-type[data-shape="round"] { border-radius: 50%; text-transform: none; }
+
+/* ---------- tool-window content ---------- */
+.kit-tool-tabs { display: flex; gap: 1px; min-width: 0; margin-left: var(--kit-space-2); overflow-x: auto; scrollbar-width: none; }
+.kit-tool-tab { display: inline-flex; align-items: center; gap: var(--kit-space-1); min-height: calc(var(--kit-control-small) - 2px); padding: 0 var(--kit-space-2); border: 0; border-radius: var(--kit-radius-small); background: transparent; color: var(--kit-secondary); font: var(--kit-weight-control) var(--kit-text-xs) / 1 var(--kit-font-control); white-space: nowrap; text-decoration: none; cursor: pointer; }
+.kit-tool-tab:hover, .kit-tool-tab[aria-selected="true"] { background: var(--kit-well); color: var(--kit-ink); text-decoration: none; }
+span.kit-tool-tab:not([aria-selected="true"]) { cursor: default; }
+.kit-tool-tab > .kit-icon { width: 13px; height: 13px; }
+.kit-tool-tab-count { color: var(--kit-muted); font-family: var(--kit-font-technical); }
+.kit-tool-status { display: inline-flex; align-items: center; gap: var(--kit-space-3); margin-left: var(--kit-space-2); }
+.kit-tool-status .kit-progress { width: 72px; }
+.kit-tool-note { padding: var(--kit-space-3); color: var(--kit-muted); font-size: var(--kit-text-xs); line-height: 1.5; }
+
+.kit-console { min-height: 100%; margin: 0; padding: var(--kit-space-2) var(--kit-space-3); background: var(--kit-surface); color: var(--kit-ink); font: var(--kit-text-sm) / 1.55 var(--kit-font-code); font-feature-settings: var(--kit-code-features); white-space: pre-wrap; overflow-wrap: anywhere; }
+.kit-console [data-tone="prompt"] { color: var(--kit-accent); }
+.kit-console [data-tone="path"] { color: var(--kit-change-modified); }
+.kit-console [data-tone="branch"] { color: var(--kit-change-added); }
+.kit-console [data-tone="information"], .kit-console [data-tone="level-debug"], .kit-console [data-tone="exit"] { color: var(--kit-muted); }
+.kit-console [data-tone="level-info"] { color: var(--kit-good); }
+.kit-console [data-tone="level-warn"] { color: var(--kit-warn); }
+.kit-console [data-tone="level-error"] { color: var(--kit-danger); }
+.kit-console a { color: var(--kit-accent); text-decoration: underline; }
+.kit-console-cursor { display: inline-block; width: 0.6em; height: 1.1em; vertical-align: text-bottom; background: var(--kit-ink); opacity: 0.7; }
+
+.kit-tool-notification { display: grid; gap: var(--kit-space-2); padding: var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); font-size: var(--kit-text-sm); }
+.kit-tool-notification > header { display: flex; align-items: center; gap: var(--kit-space-2); }
+.kit-tool-notification > header > time { margin-left: auto; color: var(--kit-muted); font: var(--kit-text-2xs) var(--kit-font-technical); }
+.kit-tool-notification-icon { color: var(--kit-accent); }
+.kit-tool-notification-icon[data-tone="good"] { color: var(--kit-good); }
+.kit-tool-notification-icon[data-tone="warn"] { color: var(--kit-warn); }
+.kit-tool-notification-icon[data-tone="danger"] { color: var(--kit-danger); }
+.kit-tool-notification > p { margin: 0; color: var(--kit-secondary); }
+.kit-tool-notification[data-read] { opacity: 0.72; }
+.kit-tool-notification-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kit-space-2); }
+
+/* ---------- commit log: the graph column and its lanes ---------- */
+.kit-commit-log { width: 100%; border-collapse: collapse; font-size: var(--kit-text-sm); }
+.kit-commit-log th { position: sticky; top: 0; z-index: 1; height: calc(28 * var(--kit-unit)); padding: 0 var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); color: var(--kit-muted); font: var(--kit-weight-control) var(--kit-text-2xs) / 1 var(--kit-font-control); letter-spacing: 0.06em; text-align: left; text-transform: uppercase; }
+.kit-commit-log td { height: calc(24 * var(--kit-unit)); padding: 0 var(--kit-space-2); white-space: nowrap; }
+.kit-commit-log tbody tr { outline: 0; cursor: default; }
+.kit-commit-log tbody tr:hover { background: var(--kit-surface-2); }
+.kit-commit-log tbody tr[aria-selected="true"] { background: var(--kit-accent-soft); }
+.kit-commit-log tbody tr:focus-visible { box-shadow: inset 0 0 0 1px var(--kit-accent); }
+.kit-commit-log td.kit-commit-graph { width: 64px; padding: 0 0 0 var(--kit-space-2); }
+.kit-commit-graph > svg { display: block; width: 56px; height: calc(24 * var(--kit-unit)); overflow: visible; }
+.kit-commit-subject { width: 60%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kit-commit-author, .kit-commit-date { color: var(--kit-muted); }
+.kit-commit-date { font-family: var(--kit-font-technical); font-size: var(--kit-text-xs); font-variant-numeric: tabular-nums; }
+.kit-commit-reference { display: inline-flex; align-items: center; gap: 3px; min-height: 16px; margin-right: var(--kit-space-1); padding: 0 5px; border-radius: var(--kit-radius-small); font: 600 var(--kit-text-2xs) / 1 var(--kit-font-technical); vertical-align: 1px; }
+.kit-commit-reference[data-kind="head"] { background: var(--kit-accent-soft); color: var(--kit-accent); }
+.kit-commit-reference[data-kind="remote"] { background: var(--kit-good-soft); color: var(--kit-good); }
+.kit-commit-reference[data-kind="tag"] { background: var(--kit-warn-soft); color: var(--kit-warn); }
+
+/* ---------- breadcrumbs: at the editor's foot, and at the status bar's start ---------- */
+.kit-code-breadcrumbs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.kit-code-breadcrumb { display: inline-flex; align-items: center; gap: 2px; }
+.kit-code-breadcrumb > button { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border: 0; border-radius: var(--kit-radius-small); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.kit-code-breadcrumb-separator { width: 11px; height: 11px; opacity: 0.6; }
+.kit-code-breadcrumbs[data-placement="editor"] { flex: none; min-height: calc(24 * var(--kit-unit)); padding: 0 var(--kit-space-3); border-top: var(--kit-border-width) solid var(--kit-canvas-line); background: var(--kit-canvas); color: var(--kit-canvas-muted); font: var(--kit-text-xs) / 1 var(--kit-font-control); }
+.kit-code-breadcrumbs[data-placement="editor"] button:hover { background: var(--kit-canvas-selection); color: var(--kit-canvas-ink); }
+.kit-code-breadcrumbs[data-placement="status"] .kit-code-breadcrumb-separator { width: 10px; height: 10px; opacity: 1; color: var(--kit-muted); }
+.kit-code-breadcrumbs[data-placement="status"] button { color: var(--kit-secondary); }
+.kit-code-breadcrumbs[data-placement="status"] button:hover { background: var(--kit-well); color: var(--kit-ink); }
+.kit-code-breadcrumbs[data-placement="status"] > .kit-code-breadcrumb:last-child > button { color: var(--kit-ink); }
+.kit-status-meter { position: relative; justify-content: center; min-width: 92px; overflow: hidden; font-family: var(--kit-font-technical); }
+.kit-status-meter::before { content: ""; position: absolute; inset: 3px auto 3px 0; width: var(--kit-status-used, 40%); border-radius: var(--kit-radius-small); background: var(--kit-accent-soft); }
+.kit-status-meter > span { position: relative; }
+
+/* ---------- the editor with nothing open ---------- */
+.kit-editor-empty { display: grid; place-content: center; justify-items: center; gap: var(--kit-space-4); height: 100%; color: var(--kit-canvas-muted); font-size: var(--kit-text-sm); }
+.kit-editor-empty > p { margin: 0; font-size: var(--kit-text-md); }
+.kit-editor-empty > dl { display: grid; grid-template-columns: auto auto; gap: var(--kit-space-2) var(--kit-space-4); margin: 0; }
+.kit-editor-empty-row { display: contents; }
+.kit-editor-empty dt { text-align: right; }
+.kit-editor-empty kbd + kbd { margin-left: 4px; }
+.kit-editor-empty dd { margin: 0; }
+
+@media (max-width: 760px) {
+  .kit-wordmark[data-compact] { display: none; }
+  .kit-code-breadcrumbs[data-placement="status"] { display: none; }
+}
+
+/* a tool window in the frame: ruled off from the editor on the side it touches */
+.kit-ide-window { height: 100%; min-width: 0; min-height: 0; }
+.kit-ide-window[data-placement="start"] { border-right: var(--kit-border-width) solid var(--kit-line); }
+.kit-ide-window[data-placement="end"] { border-left: var(--kit-border-width) solid var(--kit-line); }
+.kit-ide-window[data-placement="bottom"] { border-top: var(--kit-border-width) solid var(--kit-line); }

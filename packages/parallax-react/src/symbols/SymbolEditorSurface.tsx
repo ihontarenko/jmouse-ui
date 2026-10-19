@@ -127,12 +127,13 @@ export function SymbolEditorSurface({ object = null, value, onChange, categories
   </>;
 
   const stage = <>
+    {/* One row, as the circuit sheet's: the tools and edits on the left, the zoom at the end. The symbol's name is the
+        bar's and the inspector's; what the pointer does next is the status line's, under the drawing. */}
     <div data-parallax-part="stage-toolbar" className="parallax-stage-toolbar">
-      <span className="parallax-title">{title || "New symbol"}</span><span className="parallax-technical">{slug || "unsaved"} · {2 * extent.halfWidth} × {2 * extent.halfHeight}</span>
       <ToolPicker tools={SYMBOL_TOOLS} value={tool} onChange={editing.chooseTool} />
       <EditActions hasSelection={selected.length > 0} canUndo={editing.canUndo} canRedo={editing.canRedo} onUndo={editing.undo} onRedo={editing.redo}
         onRemove={editing.remove} onDuplicate={editing.duplicate} onRotate={editing.rotate} onMirror={editing.mirror} />
-      <span className="parallax-hint">{status}</span>
+      <span className="parallax-push" />
       <ViewControls onZoom={editing.zoomBy} onFit={editing.fit} zoomPercent={editing.zoomPercent} />
     </div>
     <div data-parallax-part="stage-body" className="parallax-stage-body">
@@ -172,7 +173,8 @@ export function SymbolEditorSurface({ object = null, value, onChange, categories
       {error ? <span className="parallax-diagnostic parallax-danger" role="alert"><ParallaxIcon name="error" />{error}</span>
         : inside.length ? <span className="parallax-diagnostic parallax-warn"><ParallaxIcon name="warning" />{inside.map((pin) => pin.name).join(", ")} {inside.length === 1 ? "is" : "are"} inside the box</span>
           : <span className="parallax-diagnostic parallax-good"><ParallaxIcon name="check" />Every pin is on the edge or outside it</span>}
-      <span className="parallax-push">box {2 * extent.halfWidth} × {2 * extent.halfHeight} · origin at the centre · units are sheet units</span>
+      <span className="parallax-hint">{status}</span>
+      <span className="parallax-push">box {2 * extent.halfWidth} × {2 * extent.halfHeight}</span>
     </div>
   </>;
 

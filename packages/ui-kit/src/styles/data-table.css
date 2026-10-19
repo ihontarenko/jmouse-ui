@@ -1,0 +1,59 @@
+/* jMouse UI-kit — Innoventa's listing table. Fixed row heights (density moves them, padding never does), a sticky
+   opaque head on the CELLS, the selected row an inset accent band; below 760px the table becomes a list of records. */
+
+.kit-data-table { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-data-table-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kit-space-3); padding: 6px var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); background: var(--kit-accent-soft); }
+.kit-data-table-bulk > b { font: var(--kit-text-base) var(--kit-font-technical); }
+.kit-data-table-bulk > span { color: var(--kit-secondary); font-size: var(--kit-text-sm); }
+.kit-data-table-clear { margin-left: auto; padding: 0; border: 0; background: transparent; color: var(--kit-secondary); font-size: var(--kit-text-sm); cursor: pointer; text-underline-offset: 2px; }
+.kit-data-table-clear:hover { color: var(--kit-ink); text-decoration: underline; }
+.kit-data-table-phone-sort { display: none; align-items: center; gap: var(--kit-space-2); padding: var(--kit-space-2) var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-data-table-sort-menu { margin-left: auto; min-height: 32px; padding: 0 var(--kit-space-2); font-size: var(--kit-text-xs); }
+.kit-data-table-scroll { flex: 1; min-height: 0; overflow: auto; }
+
+.kit-data-table-grid { width: 100%; border-collapse: collapse; font-size: var(--kit-text-sm); }
+.kit-data-table-grid th {
+  position: sticky; top: 0; z-index: 2; height: calc(34 * var(--kit-unit)); padding: 0 var(--kit-space-3);
+  border-bottom: var(--kit-border-width) solid var(--kit-line-strong); background: var(--kit-surface);
+  text-align: left; vertical-align: middle; white-space: nowrap;
+  font: 500 var(--kit-text-2xs) / 1.2 var(--kit-font-technical); letter-spacing: var(--kit-micro-label-tracking); text-transform: uppercase; color: var(--kit-muted);
+}
+.kit-data-table-grid th[data-tick], .kit-data-table-grid td[data-tick] { width: 36px; padding: 0 var(--kit-space-2); }
+.kit-data-table-grid [data-number] { text-align: right; }
+.kit-data-table-grid td[data-number] { font-family: var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-data-table-grid [data-primary] { min-width: 176px; }
+.kit-data-table-sort { display: inline-flex; align-items: center; gap: var(--kit-space-1); padding: 0; border: 0; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.kit-data-table-sort:hover, .kit-data-table-sort[data-sorted] { color: var(--kit-ink); }
+.kit-data-table-sort > span { font-size: 0.8em; opacity: 0; }
+.kit-data-table-sort[data-sorted] > span { opacity: 1; }
+.kit-data-table-grid tbody tr { height: var(--kit-row); border-bottom: var(--kit-border-width) solid var(--kit-line); outline: 0; transition: background-color var(--kit-ease); }
+.kit-data-table-grid tbody tr:last-child { border-bottom: 0; }
+.kit-data-table-grid tbody tr[data-id]:hover, .kit-data-table-grid tbody tr[data-id]:focus-visible { background: var(--kit-surface-2); }
+.kit-data-table-grid tbody tr[aria-selected="true"] { background: var(--kit-accent-soft); box-shadow: inset var(--kit-band) 0 0 0 var(--kit-accent); }
+.kit-data-table-grid td { height: var(--kit-row); padding: 0 var(--kit-space-3); white-space: nowrap; vertical-align: middle; }
+.kit-data-table-cell-label { display: none; }
+.kit-data-table-cell-value { display: contents; }
+.kit-data-table-group { background: var(--kit-surface-2); }
+.kit-data-table-grid .kit-data-table-group > th { position: static; height: auto; padding: 6px var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); background: transparent; color: var(--kit-secondary); letter-spacing: 0.06em; }
+.kit-data-table-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kit-space-3); padding: 9px var(--kit-space-3); border-top: var(--kit-border-width) solid var(--kit-line); }
+.kit-data-table-keys { margin-left: auto; }
+
+@media (max-width: 1024px) {
+  .kit-data-table-grid [data-optional] { display: none; }
+}
+
+/* A phone reads a record at a time: the name on its own line, then the figures flowing, each with its column's name. */
+@media (max-width: 760px) {
+  .kit-data-table-phone-sort { display: flex; }
+  .kit-data-table-grid, .kit-data-table-grid tbody { display: block; }
+  .kit-data-table-grid thead { display: none; }
+  .kit-data-table-grid tbody tr { display: block; height: auto; padding: var(--kit-space-2) var(--kit-space-3); }
+  .kit-data-table-grid .kit-data-table-group, .kit-data-table-grid .kit-data-table-group > th { display: block; }
+  .kit-data-table-grid td { display: inline-flex; align-items: baseline; gap: 6px; height: auto; padding: 0 var(--kit-space-4) 0 0; }
+  .kit-data-table-grid td[data-primary] { display: block; padding: 0 0 2px; white-space: normal; }
+  .kit-data-table-grid td[data-tick] { display: block; width: auto; padding: 0 0 var(--kit-space-1); }
+  .kit-data-table-grid td[data-optional] { display: none; }
+  .kit-data-table-grid td[data-number] { text-align: left; }
+  .kit-data-table-cell-label { display: inline; }
+  .kit-data-table-keys { display: none; }
+}

@@ -3,7 +3,7 @@ import type { ParameterDefinition } from "@jmouse/parallax";
 
 /**
  * One parameter as a slider (Parallax-UI `.parameter`): its symbol and label, the value in the unit it is written in,
- * the track, and the bounds under it. The one way a parameter is set — on the emulator's bench, on an object's stand,
+ * the track, and the bounds under it. The one way a parameter is set — on the simulator's bench, on an object's stand,
  * in a scene.
  */
 export function ParameterSlider({ parameter, value, onChange, idPrefix = "parameter", bounds = true }: {

@@ -1,0 +1,114 @@
+/* jMouse UI-kit — containers: panel, section, inspector, disclosure, dialog, drawer, splitter, card. A card is one
+   independent object; nothing here nests a card in a card. */
+
+/* ===================== panel ===================== */
+.kit-panel { display: flex; flex-direction: column; min-width: 0; background: var(--kit-surface); border: var(--kit-border-width) solid var(--kit-line); border-radius: var(--kit-radius-surface); box-shadow: var(--kit-shadow-surface); }
+.kit-panel-head { display: flex; align-items: center; gap: var(--kit-space-2); min-height: calc(var(--kit-control) + 8px); padding: var(--kit-space-2) var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-panel-head > h2, .kit-panel-head > h3 { font-size: var(--kit-text-base); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kit-panel-head-meta { color: var(--kit-muted); font-size: var(--kit-text-xs); }
+.kit-panel-actions { margin-left: auto; display: flex; align-items: center; gap: var(--kit-space-1); }
+.kit-panel-body { padding: var(--kit-space-3); min-width: 0; }
+.kit-panel-body[data-flush] { padding: 0; }
+.kit-panel-body + .kit-panel-body { border-top: var(--kit-border-width) solid var(--kit-line); }
+.kit-panel-body[data-scroll] { flex: 1; min-height: 0; overflow: auto; }
+.kit-panel-foot { display: flex; align-items: center; gap: var(--kit-space-2); padding: var(--kit-space-2) var(--kit-space-3); border-top: var(--kit-border-width) solid var(--kit-line); font-size: var(--kit-text-xs); color: var(--kit-muted); }
+
+/* ===================== section: a ruled block in a page, no extra box ===================== */
+.kit-section { display: grid; gap: var(--kit-space-3); min-width: 0; }
+.kit-section-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--kit-space-2); padding-bottom: var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-section-head > h2 { font-size: var(--kit-text-lg); }
+.kit-section-head > p { color: var(--kit-muted); font-size: var(--kit-text-sm); }
+.kit-section-head > .kit-panel-actions { align-self: center; }
+
+/* ===================== page header ===================== */
+.kit-page-header { display: grid; gap: var(--kit-space-2); min-width: 0; }
+.kit-page-header-row { display: flex; align-items: center; gap: var(--kit-space-3); flex-wrap: wrap; min-width: 0; }
+.kit-page-header h1 { font-size: var(--kit-text-2xl); font-weight: var(--kit-weight-display); letter-spacing: -0.02em; min-width: 0; }
+.kit-page-header-description { color: var(--kit-secondary); font-size: var(--kit-text-md); max-width: 72ch; }
+.kit-page-header-actions { margin-left: auto; display: flex; align-items: center; gap: var(--kit-space-2); flex-wrap: wrap; }
+
+/* ===================== inspector: the right column that explains the selection ===================== */
+.kit-inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--kit-surface); }
+.kit-inspector-head { display: grid; gap: 2px; padding: var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); min-width: 0; }
+.kit-inspector-head h2 { font-size: var(--kit-text-md); overflow-wrap: anywhere; }
+.kit-inspector-head-row { display: flex; align-items: flex-start; gap: var(--kit-space-2); }
+.kit-inspector-subtitle { color: var(--kit-muted); font: var(--kit-text-xs) var(--kit-font-technical); overflow-wrap: anywhere; }
+.kit-inspector-body { flex: 1; min-height: 0; overflow: auto; }
+.kit-inspector-group { display: grid; gap: var(--kit-space-2); padding: var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-inspector-group:last-child { border-bottom: 0; }
+.kit-inspector-group > h3 { display: flex; justify-content: space-between; align-items: center; gap: var(--kit-space-2); }
+
+/* ===================== disclosure ===================== */
+.kit-disclosure { border-top: var(--kit-border-width) solid var(--kit-line); }
+.kit-disclosure > summary {
+  display: flex; align-items: center; gap: var(--kit-space-2); min-height: var(--kit-control); padding: 0 var(--kit-space-3);
+  list-style: none; cursor: pointer; color: var(--kit-ink); font-size: var(--kit-text-sm); font-weight: var(--kit-weight-control);
+}
+.kit-disclosure > summary::-webkit-details-marker { display: none; }
+.kit-disclosure > summary:hover { background: var(--kit-well); }
+.kit-disclosure > summary > .kit-disclosure-chevron { margin-left: auto; color: var(--kit-muted); transition: transform var(--kit-ease); }
+.kit-disclosure[open] > summary > .kit-disclosure-chevron { transform: rotate(180deg); }
+.kit-disclosure-meta { color: var(--kit-muted); font-weight: 400; font-size: var(--kit-text-xs); }
+.kit-disclosure-body { display: grid; gap: var(--kit-space-2); padding: var(--kit-space-2) var(--kit-space-3) var(--kit-space-3); }
+
+/* ===================== dialog and drawer (native <dialog>: focus is trapped, Esc closes, focus returns) ===================== */
+.kit-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0;
+  border: var(--kit-border-width) solid var(--kit-line); border-radius: var(--kit-radius-dialog);
+  background: var(--kit-surface); color: var(--kit-ink); box-shadow: var(--kit-shadow-pop);
+  flex-direction: column; overflow: hidden;
+}
+.kit-dialog[open] { display: flex; }
+.kit-dialog[data-size="small"] { width: min(420px, calc(100vw - 32px)); }
+.kit-dialog[data-size="wide"] { width: min(760px, calc(100vw - 32px)); }
+.kit-dialog[data-size="full"] { width: min(1200px, calc(100vw - 32px)); height: calc(100dvh - 48px); }
+.kit-dialog::backdrop { background: var(--kit-scrim); }
+.kit-dialog-head { display: flex; align-items: flex-start; gap: var(--kit-space-3); padding: var(--kit-space-4) var(--kit-space-5); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-dialog-head h2 { font-size: var(--kit-text-xl); }
+.kit-dialog-head p { margin-top: 2px; color: var(--kit-muted); font-size: var(--kit-text-sm); }
+.kit-dialog-head > .kit-button { margin-left: auto; margin-top: -4px; margin-right: -8px; }
+.kit-dialog-body { display: grid; align-content: start; gap: var(--kit-space-4); flex: 1; min-height: 0; padding: var(--kit-space-4) var(--kit-space-5); overflow: auto; }
+.kit-dialog-foot { display: flex; align-items: center; gap: var(--kit-space-2); padding: var(--kit-space-3) var(--kit-space-5); border-top: var(--kit-border-width) solid var(--kit-line); font-size: var(--kit-text-xs); color: var(--kit-muted); }
+.kit-dialog-foot > .kit-panel-actions { gap: var(--kit-space-2); }
+
+.kit-dialog[data-placement="end"], .kit-dialog[data-placement="start"] {
+  height: 100dvh; max-height: 100dvh; width: min(420px, 100vw); margin: 0; border-radius: 0; border-width: 0;
+}
+.kit-dialog[data-placement="end"] { margin-left: auto; border-left-width: 1px; }
+.kit-dialog[data-placement="start"] { margin-right: auto; border-right-width: 1px; }
+.kit-dialog[data-placement][data-size="wide"] { width: min(640px, 100vw); }
+
+/* ===================== splitter: the handle between two resizable panes ===================== */
+.kit-split { display: flex; min-width: 0; min-height: 0; }
+.kit-split[data-orientation="vertical"] { flex-direction: column; }
+.kit-split-pane { min-width: 0; min-height: 0; overflow: auto; }
+.kit-split-pane[data-fill] { flex: 1; }
+.kit-split-pane > .kit-split { height: 100%; }
+.kit-split-pane[hidden], .kit-split-handle[hidden] { display: none; }
+.kit-split-handle { position: relative; flex: none; z-index: 2; width: 5px; margin: 0 -2px; cursor: col-resize; touch-action: none; outline: 0; }
+.kit-split[data-orientation="vertical"] > .kit-split-handle { width: auto; height: 5px; margin: -2px 0; cursor: row-resize; }
+.kit-split-handle::after { content: ""; position: absolute; inset: 0 2px; background: transparent; transition: background-color var(--kit-ease); }
+.kit-split[data-orientation="vertical"] > .kit-split-handle::after { inset: 2px 0; }
+.kit-split-handle:hover::after, .kit-split-handle:focus-visible::after, .kit-split-handle[data-dragging]::after { background: var(--kit-accent); }
+
+/* ===================== card: one independent object ===================== */
+.kit-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(220px * var(--kit-ui-scale)), 1fr)); gap: var(--kit-space-3); }
+.kit-card {
+  display: grid; grid-auto-rows: auto; grid-template-rows: auto; align-content: start; min-width: 0; overflow: hidden;
+  background: var(--kit-surface); border: var(--kit-border-width) solid var(--kit-line); border-radius: var(--kit-radius-surface); box-shadow: var(--kit-shadow-surface);
+  color: var(--kit-ink); text-decoration: none; transition: border-color var(--kit-ease);
+}
+a.kit-card:hover, button.kit-card:hover { border-color: var(--kit-accent); text-decoration: none; }
+.kit-card[aria-selected="true"], .kit-card[aria-current="true"] { border-color: var(--kit-accent); box-shadow: 0 0 0 2px var(--kit-accent-soft); }
+.kit-card-media { display: grid; place-items: center; aspect-ratio: 16 / 9; overflow: hidden; background: var(--kit-surface-2); border-bottom: var(--kit-border-width) solid var(--kit-line); color: var(--kit-accent); }
+.kit-card-body { display: grid; align-content: start; gap: var(--kit-space-1); padding: var(--kit-space-2) var(--kit-space-3) var(--kit-space-3); }
+.kit-card-body h3 { font-size: var(--kit-text-base); }
+.kit-card-meta { display: flex; align-items: center; gap: var(--kit-space-2); margin-top: var(--kit-space-1); font-size: var(--kit-text-xs); color: var(--kit-muted); }
+
+/* Innoventa's dialog sizes and bodies */
+.kit-dialog[data-size="large"] { width: min(980px, calc(100vw - 32px)); height: min(88dvh, 860px); }
+.kit-dialog-body[data-flush] { padding: 0; gap: 0; }
+.kit-dialog-body[data-fill] { align-content: stretch; grid-template-rows: minmax(0, 1fr); }
+@media (max-width: 600px) {
+  .kit-dialog[data-phone="sheet"] { width: 100vw; max-width: 100vw; max-height: 100dvh; margin: auto 0 0; border-width: var(--kit-border-width) 0 0; border-radius: var(--kit-radius-dialog) var(--kit-radius-dialog) 0 0; }
+}

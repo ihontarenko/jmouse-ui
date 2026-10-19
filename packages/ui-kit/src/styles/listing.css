@@ -1,0 +1,135 @@
+/* jMouse UI-kit — the parts a listing screen is made of, taken from Innoventa's library with the same names: the
+   toolbar's search and filter chips, the view switch, the row menu, route tabs' counts, phone crumbs, the waiting and
+   skeleton states, the pager. */
+
+/* ---- menus given as data, and a row's own menu ---- */
+.kit-menu-entry { display: contents; }
+.kit-row-menu {
+  display: grid; place-items: center; flex: none; width: 24px; height: 24px; padding: 0;
+  border: var(--kit-border-width) solid transparent; border-radius: var(--kit-radius-small);
+  background: transparent; color: var(--kit-muted); cursor: pointer;
+  transition: background-color var(--kit-ease), border-color var(--kit-ease), color var(--kit-ease);
+}
+.kit-row-menu:hover, .kit-row-menu[aria-expanded="true"] { border-color: var(--kit-line); background: var(--kit-surface); color: var(--kit-ink); }
+
+/* ---- the toolbar's search: the field draws the chrome and clears itself ---- */
+.kit-search-inline {
+  display: flex; align-items: center; gap: var(--kit-space-2); width: min(280px, 100%); height: var(--kit-control); padding: 0 10px;
+  border: var(--kit-border-width) solid var(--kit-line-strong); border-radius: var(--kit-radius-control); background: var(--kit-surface);
+}
+.kit-search-inline:focus-within { border-color: var(--kit-accent); }
+.kit-search-inline > .kit-icon { color: var(--kit-muted); }
+.kit-search-inline > input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--kit-ink); font: var(--kit-text-sm) var(--kit-font-control); }
+.kit-search-inline > input::placeholder { color: var(--kit-muted); }
+.kit-search-inline > input::-webkit-search-cancel-button { appearance: none; }
+.kit-search-inline > button { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--kit-muted); cursor: pointer; }
+.kit-search-inline > button:hover { color: var(--kit-ink); }
+@media (max-width: 760px) { .kit-search-inline { width: 100%; } }
+
+/* ---- a filter that is on ---- */
+.kit-filter-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--kit-control); padding: 0 var(--kit-space-1) 0 10px; white-space: nowrap;
+  border: var(--kit-border-width) solid color-mix(in srgb, var(--kit-accent) 35%, var(--kit-line)); border-radius: var(--kit-radius-control);
+  background: var(--kit-accent-soft); color: var(--kit-accent-strong); font-size: var(--kit-text-xs);
+}
+.kit-filter-chip > button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: inherit; opacity: 0.7; cursor: pointer; }
+.kit-filter-chip > button:hover { opacity: 1; color: var(--kit-danger); }
+
+/* ---- the view switch: pressed buttons in one border ---- */
+.kit-segmented-control { display: inline-flex; border: var(--kit-border-width) solid var(--kit-strip-border); border-radius: var(--kit-radius-control); overflow: hidden; }
+.kit-segmented-control > button {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--kit-control-small); padding: 0 10px; border: 0;
+  background: transparent; color: var(--kit-secondary); font-size: var(--kit-text-xs); cursor: pointer;
+  transition: background-color var(--kit-ease), color var(--kit-ease);
+}
+.kit-segmented-control > button + button { border-left: var(--kit-border-width) solid var(--kit-line); }
+.kit-segmented-control > button:hover { background: var(--kit-surface-2); color: var(--kit-ink); }
+.kit-segmented-control > button[aria-pressed="true"] { background: var(--kit-selected-ground); color: var(--kit-selected-ink); font-weight: var(--kit-selected-weight); box-shadow: inset 0 0 0 1px var(--kit-selected-border); }
+
+/* ---- route tabs: the count is a chip of its own, so it never joins the next label ---- */
+.kit-tab-count[data-chip] { padding: 1px 6px; background: var(--kit-well); color: var(--kit-secondary); font-weight: 500; }
+a.kit-tab[aria-current="page"] { font-weight: 600; }
+a.kit-tab:focus-visible { outline-offset: -2px; }
+
+/* ---- crumbs on a phone: the last one, and the way up ---- */
+.kit-crumbs { display: flex; align-items: center; gap: var(--kit-space-2); }
+.kit-crumbs-up { display: none; }
+@media (max-width: 760px) {
+  .kit-crumbs-up { display: inline-flex; }
+  .kit-crumbs-up .kit-row-menu { width: 32px; height: 32px; }
+  .kit-crumbs li:not([data-last]) { display: none; }
+  .kit-crumbs li + li::before { display: none; }
+}
+
+/* ---- empty: the frame is the theme's ---- */
+.kit-empty { border: var(--kit-empty-frame, 1px dashed var(--kit-line-strong)); }
+.kit-empty[data-flush] { border: 0; }
+.kit-empty[data-tone="danger"] > .kit-icon, .kit-empty[data-tone="danger"] > strong { color: var(--kit-danger); }
+
+/* ---- waiting as a block, a whole page waiting, a list loading ---- */
+.kit-waiting-block { display: grid; justify-items: center; gap: var(--kit-space-3); padding: var(--kit-space-7) var(--kit-space-5); text-align: center; color: var(--kit-secondary); font-size: var(--kit-text-sm); }
+.kit-page-waiting { min-height: 100dvh; align-content: center; }
+.kit-table-skeleton { display: grid; gap: var(--kit-space-2); padding: var(--kit-space-3); border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+
+/* ---- pager ---- */
+.kit-pager { display: flex; align-items: center; gap: var(--kit-space-2); }
+
+/* ---- inspector parts ---- */
+.kit-inspector-empty { display: grid; gap: var(--kit-space-2); padding: var(--kit-space-6) var(--kit-space-3); text-align: center; }
+.kit-inspector-empty > p { font-size: var(--kit-text-sm); font-weight: var(--kit-weight-control); }
+.kit-inspector-empty > small { color: var(--kit-muted); font-size: var(--kit-text-xs); }
+
+/* ---- facts across the width, pair lists ---- */
+.kit-facts dt { font-family: var(--kit-facts-label-font, inherit); text-transform: var(--kit-facts-label-transform, none); letter-spacing: var(--kit-facts-label-tracking, normal); overflow-wrap: anywhere; }
+.kit-facts[data-layout="wide"] { grid-template-columns: repeat(auto-fill, minmax(180px, 240px)); gap: var(--kit-space-3) var(--kit-space-5); }
+.kit-fact { display: grid; align-content: start; gap: 2px; }
+.kit-pair-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.kit-pair-list > li { display: flex; align-items: center; gap: var(--kit-space-2); padding: 6px 0; font-size: var(--kit-text-sm); }
+.kit-pair-list > li + li { border-top: var(--kit-border-width) solid var(--kit-line); }
+.kit-pair-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kit-pair-side { margin-left: auto; flex: none; color: var(--kit-secondary); }
+
+/* ---- stats band: one bordered band; the dividers are the gap ---- */
+.kit-stats-band { border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-stats-band-cells { display: flex; flex-wrap: wrap; gap: var(--kit-border-width); background: var(--kit-line); }
+.kit-stat { display: grid; align-content: center; gap: 5px; flex: 1; min-width: 0; padding: var(--kit-space-3) var(--kit-space-4); border: 0; background: var(--kit-surface); color: var(--kit-ink); text-align: left; text-decoration: none; font: inherit; }
+.kit-stat[data-meter] { flex: 1.4; }
+.kit-stat[data-interactive] { cursor: pointer; transition: background-color var(--kit-ease); }
+.kit-stat[data-interactive]:hover { background: var(--kit-surface-2); text-decoration: none; }
+.kit-stat[aria-pressed="true"], .kit-stat[aria-expanded="true"] { background: var(--kit-accent-soft); box-shadow: inset 0 -2px 0 var(--kit-accent); }
+.kit-stat-value { font: var(--kit-weight-control) var(--kit-text-xl) / 1.1 var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-stat-value[data-tone="good"] { color: var(--kit-good); } .kit-stat-value[data-tone="warn"] { color: var(--kit-warn); } .kit-stat-value[data-tone="danger"] { color: var(--kit-danger); } .kit-stat-value[data-tone="accent"] { color: var(--kit-accent-strong); }
+.kit-stat-caption { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--kit-muted); font-size: var(--kit-text-xs); line-height: 1.25; }
+.kit-stats-band-expansion { border-top: var(--kit-border-width) solid var(--kit-line); }
+@media (max-width: 860px) { .kit-stats-band-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); } .kit-stats-band-cells > :last-child { grid-column: auto / -1; } }
+@media (max-width: 560px) { .kit-stats-band-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- the facet rail: links that narrow a listing ---- */
+.kit-facet-rail { display: flex; flex-direction: column; flex: none; width: calc(200px * var(--kit-ui-scale)); overflow-y: auto; border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-facet-rail[data-wide] { width: calc(280px * var(--kit-ui-scale)); }
+.kit-facet-rail[data-split] { overflow: hidden; }
+.kit-facet-rail[data-presentation="sheet"] { width: 100%; max-height: 70vh; border: 0; }
+.kit-facet-rail[data-presentation="sheet"][data-split] { height: 70vh; }
+@media (max-width: 1024px) { .kit-facet-rail[data-presentation="aside"] { display: none; } }
+.kit-facet-group { display: grid; }
+.kit-facet-group[data-scrolls] { flex: 1; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+.kit-facet-group-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; justify-content: space-between; gap: var(--kit-space-2); padding: 10px var(--kit-space-3) 6px; background: var(--kit-surface); }
+.kit-facet-group-search { padding: 0 var(--kit-space-2) var(--kit-space-2); }
+.kit-facet-group-search[data-ruled] { padding: var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-facet-group-links, .kit-filter-rail-links { display: grid; align-content: start; }
+.kit-facet-group[data-scrolls] .kit-facet-group-links { min-height: 0; overflow-y: auto; }
+.kit-filter-rail-entry { display: grid; }
+.kit-facet-link { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: var(--kit-space-2); min-height: 32px; padding: 0 var(--kit-space-3); border-left: var(--kit-band) solid transparent; color: var(--kit-ink); font-size: var(--kit-text-sm); text-decoration: none; transition: background-color var(--kit-ease), border-color var(--kit-ease); }
+.kit-facet-link[data-glyph] { grid-template-columns: 14px minmax(0, 1fr) auto; }
+.kit-facet-link:hover { background: var(--kit-surface-2); text-decoration: none; }
+.kit-facet-link[aria-current="true"] { border-left-color: var(--kit-accent); background: var(--kit-accent-soft); font-weight: var(--kit-weight-control); }
+.kit-facet-link[data-empty] { color: var(--kit-muted); }
+.kit-facet-link[data-depth] { padding-left: 28px; }
+.kit-facet-link > .kit-icon { width: 12px; height: 12px; color: var(--kit-muted); }
+.kit-facet-link-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kit-facet-dot { width: 8px; height: 8px; background: var(--kit-line-strong); }
+.kit-facet-dot[data-kind] { background: hsl(var(--kit-type-hue) var(--kit-type-saturation) var(--kit-type-lightness)); }
+.kit-facet-glyph { color: var(--kit-muted); font-size: var(--kit-text-xs); text-align: center; }
+.kit-facet-divider { margin: var(--kit-space-2) var(--kit-space-3); }
+.kit-facet-heading { padding: 6px var(--kit-space-3) var(--kit-space-1); }
+.kit-facet-nothing { padding: var(--kit-space-4) var(--kit-space-3); color: var(--kit-muted); font-size: var(--kit-text-xs); text-align: center; }

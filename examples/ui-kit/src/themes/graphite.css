@@ -1,0 +1,64 @@
+/*
+ * Graphite — a product's own theme, written in this showcase rather than in the kit, the way a product writes one: this
+ * file, imported after `@jmouse/ui-kit/styles.css`, and one line in the catalogue (`../catalogue.ts`). Charcoal and
+ * amber; slightly denser than Parallax, square-ish corners, a heavier border. It follows the palette axis because its
+ * accent names `--kit-palette-on-…` first.
+ */
+[data-theme="graphite"] {
+  color-scheme: light;
+  --kit-shape-density: 0.95;
+  --kit-shape-text: 13;
+  --kit-shape-radius-small: 1;
+  --kit-shape-radius-control: 2;
+  --kit-shape-radius-surface: 3;
+  --kit-shape-radius-dialog: 4;
+  --kit-shape-control: 30;
+  --kit-shape-control-small: 24;
+  --kit-shape-row: 34;
+  --kit-shape-row-dense: 26;
+  --kit-border-width: 1px;
+  --kit-band: 3px;
+  --kit-font-ui: Manrope, Inter, system-ui, sans-serif;
+  --kit-intensity: 0.8;
+
+  --kit-bg: #ecebe8;
+  --kit-surface: #f9f8f6;
+  --kit-surface-2: #f2f1ee;
+  --kit-well: #e4e2de;
+  --kit-ink: #1d1c20;
+  --kit-secondary: #45434a;
+  --kit-muted: #6d6a72;
+  --kit-line: #d6d3ce;
+  --kit-line-strong: #9a968f;
+  --kit-scrim: #1d1c2080;
+  --kit-shadow-color: #1d1c20;
+  --kit-shadow-pop: 0 12px 32px -12px #1d1c2040, 0 1px 2px #1d1c201a;
+  --kit-accent-base: var(--kit-palette-on-light, #a8610c);
+  --kit-accent-strong-towards: #000000;
+  --kit-on-accent: #ffffff;
+  --kit-good-base: #2e7a52;
+  --kit-warn-base: #96590c;
+  --kit-danger-base: #b23a32;
+}
+
+[data-theme="graphite"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #17161a;
+  --kit-surface: #1f1e22;
+  --kit-surface-2: #1b1a1e;
+  --kit-well: #141316;
+  --kit-ink: #ece8e1;
+  --kit-secondary: #c2bcb2;
+  --kit-muted: #948d82;
+  --kit-line: #302e33;
+  --kit-line-strong: #524e56;
+  --kit-scrim: #08070ab3;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 16px 40px -12px #000000a6, 0 1px 2px #00000066;
+  --kit-accent-base: var(--kit-palette-on-dark, #f0b35a);
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #17130c;
+  --kit-good-base: #7fd1a6;
+  --kit-warn-base: #f0b35a;
+  --kit-danger-base: #f08a7e;
+}

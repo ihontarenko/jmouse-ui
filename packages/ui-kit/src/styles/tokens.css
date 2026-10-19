@@ -1,0 +1,319 @@
+/*
+ * jMouse UI-kit — tokens: the vocabulary, its defaults, and what is derived from it.
+ *
+ * ── Who decides what ─────────────────────────────────────────────────────────────────────────────────────────────
+ *   ../themes/<name>.css   [data-theme="<name>"]   A THEME is a product's whole look: its geometry (density, radii,
+ *                                                  border width, control and row heights, columns), its typefaces and
+ *                                                  weights, what fills the primary action — and its colours, in BOTH
+ *                                                  modes: light under [data-theme="<name>"], dark under
+ *                                                  [data-theme="<name>"][data-mode="dark"]. Parallax, Raccoon, Paper…
+ *   data-mode on <html>    light | dark             Which side of the theme is shown. Every theme has both.
+ *   ./axes.css             data-* on <html>         The reader's own adjustments over the theme: palette, intensity,
+ *                                                  contrast, size, density, typeface, weight, shape, surfaces, canvas,
+ *                                                  motion. Each defaults to "theme" — as the theme says.
+ *
+ * The cascade order is the contract (styles/index.css): tokens < themes < axes < base < components. A theme beats
+ * these defaults; an axis the reader chose beats the theme. Everything is prefixed `--kit-`, so it never meets a
+ * host's own `--accent` or `--border`.
+ *
+ * ── How a colour reaches a component ─────────────────────────────────────────────────────────────────────────────
+ * A theme names its ground, surfaces, ink and lines as they are, and its accent and status colours as BASES
+ * (`--kit-accent-base`, `--kit-good-base`, …). The roles the components read (`--kit-accent`, `--kit-good`, their
+ * soft and strong variants, the canvas) are derived below from the bases and the intensity, so a theme file is values
+ * only. A theme that lets the palette axis repaint it writes `--kit-accent-base: var(--kit-palette-on-light, <its
+ * accent>)` (`-on-dark` in its dark block); one that keeps its accent whatever the palette writes the colour alone.
+ *
+ * ── How a size reaches a component ───────────────────────────────────────────────────────────────────────────────
+ * A theme names `--kit-shape-*` numbers (px at 100%). The roles the components read (`--kit-space-3`,
+ * `--kit-radius-control`, `--kit-control`) are those numbers times the reader's interface size and density.
+ *
+ * ── Why everything derived is declared on [data-theme] too ───────────────────────────────────────────────────────
+ * ⚠️ A custom property is computed where it is declared and inherited as that result. Declared on :root alone, an
+ * accent or a radius derived from the page's theme would be carried into a region that wears another theme — a dark
+ * rail on a light page, a theme preview. Re-declaring the derived roles on every [data-theme] lets each scope derive
+ * its own from its own values.
+ */
+
+/* ---- the defaults every theme starts from: Parallax UI's numbers ---- */
+:root {
+  /* density: how much air there is; the density axis multiplies it */
+  --kit-shape-density: 1;
+  /* the body step of the type scale, in px at 100%: 13 is Parallax's, 14 is Raccoon's */
+  --kit-shape-text: 13;
+  /* radii by role, in px */
+  --kit-shape-radius-small: 2;
+  --kit-shape-radius-control: 4;
+  --kit-shape-radius-surface: 6;
+  --kit-shape-radius-dialog: 8;
+  /* heights, in px at density 1 */
+  --kit-shape-control: 32;
+  --kit-shape-control-small: 26;
+  --kit-shape-row: 36;
+  --kit-shape-row-dense: 28;
+  --kit-shape-topbar: 52;
+  --kit-shape-editor-tabs: 36;
+  --kit-shape-status-bar: 26;
+  /* columns, in px */
+  --kit-shape-rail: 232;
+  --kit-shape-inspector: 304;
+  --kit-shape-panel: 272;
+  /* lines */
+  --kit-border-width: 1px;
+  --kit-band: 3px;                               /* the selection band inside a row, never a border */
+  --kit-focus-offset: 1px;
+  /* typefaces and weights */
+  --kit-font-ui: Inter, system-ui, sans-serif;
+  --kit-font-heading: var(--kit-font-ui);
+  --kit-font-control: var(--kit-font-ui);
+  --kit-font-technical: "JetBrains Mono", ui-monospace, monospace;
+  --kit-font-code: "JetBrains Mono", ui-monospace, monospace;
+  --kit-weight-body: 400;
+  --kit-weight-control: 500;
+  --kit-weight-heading: 550;
+  --kit-weight-display: 600;
+  --kit-weight-navigation: 500;
+  --kit-heading-tracking: -0.01em;
+  --kit-micro-label-tracking: 0.08em;
+  /* colour arithmetic a theme may tune */
+  --kit-intensity: 0.42;                         /* the share of a base colour's chroma kept; 1 keeps it whole */
+  --kit-soft-amount: 9.5%;                       /* how strongly a soft ground carries its colour */
+
+  /* ---- the reader's factors: the axes set these; 1 means "as the theme says" ---- */
+  --kit-ui-scale: 1;
+  --kit-density-factor: 1;
+  --kit-ease: 120ms ease;
+  --kit-shadow-surface: none;
+}
+
+:root,
+[data-theme] {
+  /* ---- space (size × density) ---- */
+  --kit-density: calc(var(--kit-shape-density) * var(--kit-density-factor));
+  --kit-unit: calc(1px * var(--kit-ui-scale) * var(--kit-density));
+  --kit-space-1: calc(4 * var(--kit-unit));
+  --kit-space-2: calc(8 * var(--kit-unit));
+  --kit-space-3: calc(12 * var(--kit-unit));
+  --kit-space-4: calc(16 * var(--kit-unit));
+  --kit-space-5: calc(24 * var(--kit-unit));
+  --kit-space-6: calc(32 * var(--kit-unit));
+  --kit-space-7: calc(48 * var(--kit-unit));
+
+  /* ---- type (size only; density never touches type) ---- */
+  --kit-type-unit: calc(1px * var(--kit-ui-scale) * var(--kit-shape-text) / 13);
+  --kit-text-2xs: calc(10 * var(--kit-type-unit));
+  --kit-text-xs: calc(11 * var(--kit-type-unit));
+  --kit-text-sm: calc(12 * var(--kit-type-unit));
+  --kit-text-base: calc(13 * var(--kit-type-unit));
+  --kit-text-md: calc(14 * var(--kit-type-unit));
+  --kit-text-lg: calc(16 * var(--kit-type-unit));
+  --kit-text-xl: calc(19 * var(--kit-type-unit));
+  --kit-text-2xl: calc(23 * var(--kit-type-unit));
+  --kit-text-3xl: calc(28 * var(--kit-type-unit));
+
+  /* ---- geometry ---- */
+  --kit-radius-small: calc(var(--kit-shape-radius-small) * 1px * var(--kit-ui-scale));
+  --kit-radius-control: calc(var(--kit-shape-radius-control) * 1px * var(--kit-ui-scale));
+  --kit-radius-surface: calc(var(--kit-shape-radius-surface) * 1px * var(--kit-ui-scale));
+  --kit-radius-dialog: calc(var(--kit-shape-radius-dialog) * 1px * var(--kit-ui-scale));
+  --kit-control: calc(var(--kit-shape-control) * var(--kit-unit));
+  --kit-control-small: calc(var(--kit-shape-control-small) * var(--kit-unit));
+  --kit-touch-target: var(--kit-control);
+  --kit-row: calc(var(--kit-shape-row) * var(--kit-unit));
+  --kit-row-dense: calc(var(--kit-shape-row-dense) * var(--kit-unit));
+  --kit-topbar: calc(var(--kit-shape-topbar) * var(--kit-unit));
+  --kit-editor-tabs: calc(var(--kit-shape-editor-tabs) * var(--kit-unit));
+  --kit-status-bar: calc(var(--kit-shape-status-bar) * var(--kit-unit));
+  --kit-icon: calc(16px * var(--kit-ui-scale));
+  --kit-icon-large: calc(20px * var(--kit-ui-scale));
+  --kit-rail: calc(var(--kit-shape-rail) * 1px * var(--kit-ui-scale));
+  --kit-rail-folded: calc(56 * var(--kit-unit));
+  --kit-inspector: calc(var(--kit-shape-inspector) * 1px * var(--kit-ui-scale));
+  --kit-panel: calc(var(--kit-shape-panel) * 1px * var(--kit-ui-scale));
+  --kit-page-max: 1600px;
+
+  /* ---- colour roles ---- */
+  --kit-accent: oklch(from var(--kit-accent-base) l calc(c * var(--kit-intensity)) h);
+  --kit-accent-soft: color-mix(in srgb, var(--kit-accent) var(--kit-soft-amount), transparent);
+  --kit-accent-strong: color-mix(in srgb, var(--kit-accent) 86%, var(--kit-accent-strong-towards));
+  --kit-good: oklch(from var(--kit-good-base) l calc(c * var(--kit-intensity)) h);
+  --kit-warn: oklch(from var(--kit-warn-base) l calc(c * var(--kit-intensity)) h);
+  --kit-danger: oklch(from var(--kit-danger-base) l calc(c * var(--kit-intensity)) h);
+  --kit-good-soft: color-mix(in srgb, var(--kit-good) 14%, transparent);
+  --kit-warn-soft: color-mix(in srgb, var(--kit-warn) 16%, transparent);
+  --kit-danger-soft: color-mix(in srgb, var(--kit-danger) 14%, transparent);
+  --kit-focus-ring: var(--kit-accent);
+
+  /* the primary action: the accent as a fill unless the theme says otherwise (Raccoon fills it with ink) */
+  --kit-primary-fill: var(--kit-accent);
+  --kit-primary-fill-hover: var(--kit-accent-strong);
+  --kit-on-primary: var(--kit-on-accent);
+
+  /* what happened to a file: a tree row, an editor tab */
+  --kit-change-added: var(--kit-good);
+  --kit-change-modified: var(--kit-accent);
+  --kit-change-deleted: var(--kit-muted);
+  --kit-change-conflict: var(--kit-danger);
+  --kit-change-ignored: var(--kit-muted);
+
+  /* the canvas: what code, a document being edited or an instrument is drawn on */
+  --kit-canvas: var(--kit-surface);
+  --kit-canvas-2: var(--kit-surface-2);
+  --kit-canvas-line: var(--kit-line);
+  --kit-canvas-ink: var(--kit-ink);
+  --kit-canvas-muted: var(--kit-muted);
+  --kit-canvas-current: color-mix(in srgb, var(--kit-accent) 5%, transparent);
+  --kit-canvas-selection: color-mix(in srgb, var(--kit-accent) 16%, transparent);
+  --kit-canvas-accent: var(--kit-accent);
+  --kit-canvas-change-added: var(--kit-change-added);
+  --kit-canvas-change-modified: var(--kit-change-modified);
+  --kit-canvas-change-conflict: var(--kit-change-conflict);
+}
+
+/*
+ * ── Code tokens: what a code view draws with ──────────────────────────────────────────────────────────────────────
+ * The editor face, its size and line height, the gutter, and the syntax roles — few, each one a meaning; the keyword
+ * takes the canvas accent so the whole editor wears the palette. The defaults are for a light canvas ("paper"); a dark
+ * mode, the glass canvas and a theme whose canvas is dark override them.
+ */
+:root,
+[data-theme] {
+  --kit-text-code: calc(13px * var(--kit-ui-scale));
+  --kit-code-leading: 1.65;
+  --kit-code-features: "calt" 1, "liga" 1;
+  --kit-gutter: calc(64px * var(--kit-ui-scale));
+  --kit-canvas-guide: #14182112;
+  --kit-canvas-change-deleted: var(--kit-change-deleted);
+  --kit-breakpoint: #d4625d;
+  --kit-syntax-keyword: var(--kit-canvas-accent);
+  --kit-syntax-string: #3f7f2f;
+  --kit-syntax-number: #1f62a8;
+  --kit-syntax-comment: #8a919e;
+  --kit-syntax-annotation: #8a6a16;
+  --kit-syntax-type: #1e232d;
+  --kit-syntax-method: #8f4f14;
+  --kit-syntax-field: #7a3f95;
+  --kit-syntax-constant: #7a3f95;
+  --kit-syntax-hint: #7a8190;
+  --kit-syntax-hint-ground: #1418210a;
+}
+[data-mode="dark"] {
+  --kit-canvas-guide: #ffffff10;
+  --kit-syntax-string: #9fc58c;
+  --kit-syntax-number: #7fb7e0;
+  --kit-syntax-comment: #6f7785;
+  --kit-syntax-annotation: #d6b26a;
+  --kit-syntax-type: #d8dce4;
+  --kit-syntax-method: #e0b88c;
+  --kit-syntax-field: #c69ad6;
+  --kit-syntax-constant: #c69ad6;
+  --kit-syntax-hint: #8a92a0;
+  --kit-syntax-hint-ground: #ffffff0c;
+}
+
+/* A finger is not a cursor: labelled controls grow a step, icon-only ones to the full target. */
+@media (pointer: coarse) {
+  :root,
+  [data-theme] {
+    --kit-control: calc((var(--kit-shape-control) + 4) * var(--kit-unit));
+    --kit-control-small: calc((var(--kit-shape-control-small) + 4) * var(--kit-unit));
+    --kit-touch-target: calc(44 * var(--kit-unit));
+  }
+}
+
+/* ---- a kind's hue (typeHue): the hue is the kind's, the saturation and lightness the mode's ---- */
+:root, [data-theme] { --kit-type-hue: 24; --kit-type-saturation: 42%; --kit-type-lightness: 42%; }
+[data-mode="dark"] { --kit-type-saturation: 40%; --kit-type-lightness: 58%; }
+
+/*
+ * ── Component tokens: how a component draws its states ──────────────────────────────────────────────────────────
+ * A theme decides not only the colours and the sizes but the VOICE of the parts that differ between products: how
+ * far a navigation item stands from the rail's edge and how its current state is marked, how a button is padded and
+ * weighted, what a chosen option in a strip looks like. Each default here is the kit's own look; a theme overrides
+ * only what its product does differently. Components read these and nothing else for these decisions.
+ */
+:root,
+[data-theme] {
+  /* a destination in a rail or a sidebar */
+  --kit-rail-ground: var(--kit-surface-2);
+  --kit-rail-padding: var(--kit-space-3) var(--kit-space-2);
+  --kit-navigation-item-height: var(--kit-control);
+  --kit-navigation-item-padding: 0 var(--kit-space-2);
+  --kit-navigation-item-inset: 0;
+  --kit-navigation-item-gap: var(--kit-space-2);
+  --kit-navigation-item-radius: var(--kit-radius-control);
+  --kit-navigation-item-font-size: var(--kit-text-base);
+  --kit-navigation-item-tracking: normal;
+  --kit-navigation-item-weight: var(--kit-weight-nav);
+  --kit-navigation-item-ink: var(--kit-secondary);
+  --kit-navigation-item-icon: var(--kit-muted);
+  --kit-navigation-item-hover-ground: var(--kit-well);
+  --kit-navigation-item-hover-ink: var(--kit-ink);
+  --kit-navigation-item-active-ground: var(--kit-accent-soft);
+  --kit-navigation-item-active-ink: var(--kit-ink);
+  --kit-navigation-item-active-icon: var(--kit-accent);
+  --kit-navigation-item-active-weight: var(--kit-weight-nav);
+  --kit-navigation-item-active-bar: var(--kit-band);
+  --kit-navigation-item-bar-inset: 0px;
+  --kit-navigation-group-gap: var(--kit-space-4);
+  --kit-navigation-item-spacing: 2px;
+  /* the rail's own group labels and lines — a dark chassis has its own greys */
+  --kit-rail-label-ink: var(--kit-micro-label-ink);
+  --kit-rail-label-padding: 0 var(--kit-space-2) var(--kit-space-1);
+  --kit-rail-label-size: var(--kit-micro-label-size);
+  --kit-rail-label-tracking: var(--kit-micro-label-tracking);
+  --kit-rail-line: var(--kit-line);
+  --kit-rail-ink: var(--kit-ink);
+
+  /* a button */
+  --kit-button-padding-x: var(--kit-space-3);
+  --kit-button-font-size: var(--kit-text-sm);
+  --kit-button-weight: var(--kit-weight-control);
+  --kit-button-radius: var(--kit-radius-control);
+  --kit-button-border: var(--kit-line-strong);
+  --kit-button-ground: var(--kit-surface);
+  --kit-button-hover-ground: var(--kit-tone-soft, var(--kit-accent-soft));
+  --kit-button-hover-border: var(--kit-tone, var(--kit-accent));
+
+  /* a strip of options (segmented, strip tabs, a view switch) and the chosen one in it */
+  --kit-strip-ground: var(--kit-well);
+  --kit-strip-border: var(--kit-line);
+  --kit-strip-padding: 2px;
+  --kit-strip-gap: 2px;
+  --kit-option-height: var(--kit-control-small);
+  --kit-option-padding: 0 var(--kit-space-2);
+  --kit-option-radius: var(--kit-radius-small);
+  --kit-option-font-size: var(--kit-text-sm);
+  --kit-option-weight: var(--kit-weight-control);
+  --kit-option-ink: var(--kit-secondary);
+  --kit-option-hover-ground: transparent;
+  /* a rule between options: none, or a hairline that divides them (Kitsu) */
+  --kit-option-divider: 0 solid transparent;
+  --kit-selected-ground: var(--kit-surface);
+  --kit-selected-ink: var(--kit-ink);
+  --kit-selected-border: transparent;
+  --kit-selected-weight: var(--kit-weight-control);
+  --kit-selected-shadow: 0 1px 2px color-mix(in srgb, var(--kit-shadow-color) 15%, transparent);
+
+  /* the body text of a page — Parallax sets it at text-base (13), Raccoon at its text-sm (13 of a 14 scale) */
+  --kit-body-size: var(--kit-text-base);
+
+  /* the metadata voice */
+  --kit-micro-label-size: var(--kit-text-2xs);
+  --kit-micro-label-weight: 500;
+  --kit-micro-label-font: var(--kit-font-technical);
+  --kit-micro-label-ink: var(--kit-muted);
+}
+
+/* File type roles: the product may override any kind, with both modes sharing these names. */
+:root, [data-theme] {
+  --kit-file-folder: var(--kit-accent);
+  --kit-file-document: hsl(190 var(--kit-type-saturation) var(--kit-type-lightness));
+  --kit-file-code: hsl(215 var(--kit-type-saturation) var(--kit-type-lightness));
+  --kit-file-data: hsl(42 var(--kit-type-saturation) var(--kit-type-lightness));
+  --kit-file-image: hsl(280 var(--kit-type-saturation) var(--kit-type-lightness));
+  --kit-file-audio: hsl(325 var(--kit-type-saturation) var(--kit-type-lightness));
+  --kit-file-video: hsl(255 var(--kit-type-saturation) var(--kit-type-lightness));
+  --kit-file-archive: var(--kit-warn);
+  --kit-file-sheet: var(--kit-good);
+  --kit-file-file: var(--kit-muted);
+}

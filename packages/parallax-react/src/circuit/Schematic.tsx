@@ -12,9 +12,9 @@ import type { PartLoad } from "@jmouse/parallax";
 import { boxBetween, panned, zoomedAbout, zoomedAtCentre, type Box } from "@jmouse/parallax/editor";
 import { ViewControls, ZOOM_STEP } from "../editor/EditorControls";
 import {
-  alternatingWires, alternationSummary, bodyOf, itemBox, keysInBox, selectedItemIds, type CircuitElement, COMMON_TERMINAL, LABEL_TERMINAL, componentReferenceOf, drawCircuit, type DrawingItem, type DrawingWire, elementTypes, type FlowFeed, frameOf, GROUND_TERMINAL, groundNodeOf, isLead, leadHolds, leadLookOf, leaderOptionsOf, lightDashes, loadState, loadText, magnetAt, movedItem, nodeOfContact, nodesByPort, parsePort, partDrawingOf, type PartMove, placeAlternatingLight, type PlacedLight, placeLight, portKey, portsOf, positionOf, type ProbeMarker, probeMarkers, probeOn, type RecentFlowFeed, ropeOptionsOf, routedSheet, type SchematicDocument, SHEET_HEIGHT, SHEET_WIDTH, type SheetProbe, snap, structureOf, type WireAlternation, wireCurrents, type WireEnd, wirePoints, type WireTarget, withCurrentElements, withText,
+  alternatingWires, alternationSummary, bodyOf, DEFAULT_SHEET_LABELS, type ReadingLine, reservedReadingLines, type SheetLabels, shownReadingLines, itemBox, keysInBox, selectedItemIds, type CircuitElement, COMMON_TERMINAL, LABEL_TERMINAL, componentReferenceOf, drawCircuit, type DrawingItem, type DrawingWire, elementTypes, type FlowFeed, frameOf, GROUND_TERMINAL, groundNodeOf, isLead, leadHolds, leadLookOf, leaderOptionsOf, electronDashes, ELECTRON_LAYERS, lightDashes, loadState, loadText, magnetAt, movedItem, nodeOfContact, nodesByPort, parsePort, partDrawingOf, type PartMove, placeAlternatingLight, type PlacedLight, placeLight, portKey, portsOf, positionOf, type ProbeMarker, probeMarkers, probeOn, type RecentFlowFeed, ropeOptionsOf, routedSheet, type SchematicDocument, SHEET_HEIGHT, SHEET_WIDTH, type SheetProbe, snap, structureOf, type WireAlternation, wireCurrents, type WireEnd, wirePoints, type WireTarget, withCurrentElements, withText,
 } from "@jmouse/parallax/circuit";
-import { flowStyle, useEmulatorAppearance } from "./useEmulatorAppearance";
+import { flowStyle, useSimulatorAppearance } from "./useSimulatorAppearance";
 import { CurrentFlow, PartHeatLayer, PartLoadTable } from "./SchematicLoads";
 import { PhaseDials, type PhaseDialsData } from "./PhaseDials";
 import type { SheetEditing } from "./useSheetEditing";
@@ -32,8 +32,10 @@ export interface SheetMeter {
  * placed for it (`schematic/autoplace.ts`); either way every wire is routed by `lib/schematic-routing` and every part
  * is drawn from its symbol document.
  */
-export function Schematic({ elements, drawing, editing, caption, probes = [], meters = [], probedNets = false, onProbeSelect, onProbeMove, probeHint, selectedElement, onElementSelect, levels, loads, flow, recent, readings = true, dials }: {
+export function Schematic({ elements, drawing, editing, caption, probes = [], meters = [], probedNets = false, onProbeSelect, onProbeMove, probeHint, selectedElement, onElementSelect, levels, loads, ambient = 25, flow, recent, readings = true, dials, sheetLabels = DEFAULT_SHEET_LABELS }: {
   elements: readonly CircuitElement[];
+  /** The bench's temperature, °C: what a part warms up from, so its glow is the share of its headroom it has used. */
+  ambient?: number;
   drawing?: string;
   /**
    * When given, the sheet is worked on — a running circuit's too: parts dragged, wires drawn, parts placed, all through
@@ -64,13 +66,15 @@ export function Schematic({ elements, drawing, editing, caption, probes = [], me
   readings?: boolean;
   /** Every part's voltage and current as phasors, drawn as a dial beside it: who lags whom. */
   dials?: PhaseDialsData;
+  /** Which texts each part carries — its name, its value — and how much of its readings block. */
+  sheetLabels?: SheetLabels;
 }) {
   const gridId = useId().replace(/:/g, "");
   const voltages = levels ? new Voltages(levels) : null;
   return <>
     <DrawnSchematic elements={elements} drawing={drawing} editing={editing} caption={caption} probes={probes} meters={meters} probedNets={probedNets}
       onProbeSelect={onProbeSelect} onProbeMove={onProbeMove} probeHint={probeHint} selectedElement={selectedElement} onElementSelect={onElementSelect} gridId={gridId}
-      voltages={voltages} loads={loads} flow={flow} recent={recent} dials={dials} />
+      voltages={voltages} loads={loads} ambient={ambient} flow={flow} recent={recent} dials={dials} sheetLabels={sheetLabels} />
     {readings ? <CircuitReadings levels={levels} loads={loads} /> : null}
   </>;
 }
@@ -83,14 +87,23 @@ export function CircuitReadings({ levels, loads }: { levels?: Record<string, num
   </>;
 }
 
-function DrawnSchematic({ elements, drawing, editing, caption, probes, meters, probedNets, onProbeSelect, onProbeMove, probeHint, selectedElement, onElementSelect, gridId, voltages, loads, flow, recent, dials }: {
+function DrawnSchematic({ elements, drawing, editing, caption, probes, meters, probedNets, onProbeSelect, onProbeMove, probeHint, selectedElement, onElementSelect, gridId, voltages, loads, ambient, flow, recent, dials, sheetLabels }: {
   elements: readonly CircuitElement[]; drawing?: string; editing?: SheetEditing; caption?: string; probes: readonly SheetProbe[]; meters: readonly SheetMeter[]; probedNets: boolean;
   onProbeSelect?: (node: string, contact: string) => void; onProbeMove?: (channel: string, node: string, contact: string) => void;
   probeHint?: string; selectedElement?: string | null;
-  onElementSelect?: (id: string) => void; gridId: string; voltages: Voltages | null; loads?: Record<string, PartLoad>; flow?: FlowFeed; recent?: RecentFlowFeed;
-  dials?: PhaseDialsData;
+  onElementSelect?: (id: string) => void; gridId: string; voltages: Voltages | null; loads?: Record<string, PartLoad>; ambient: number; flow?: FlowFeed; recent?: RecentFlowFeed;
+  dials?: PhaseDialsData; sheetLabels: SheetLabels;
 }) {
   const library = useParallaxPartLibrary();
+  // The parts whose readings the reader opened — clicked, or Enter on the block —: every line, whatever the depth chosen.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleOpened = useCallback((id: string) => setOpened((current) => {
+    const next = new Set(current);
+    if (!next.delete(id)) {
+      next.add(id);
+    }
+    return next;
+  }), []);
   // The library comes first: where a part's pins are, and so where it is placed, depends on its symbol.
   const references = elements.map((element) => element.type === "MODEL" ? element.component ?? "" : elementTypes[element.type].component ?? "").filter(Boolean);
   const libraryRevision = usePartLibrary(references);
@@ -151,18 +164,23 @@ function DrawnSchematic({ elements, drawing, editing, caption, probes, meters, p
     // A probe's tag stands up and to the right of the one contact its tip is drawn on.
     ...markers.map(({ tip, stack }) => ({ left: tip.point.x + 5, right: tip.point.x + 40, top: tip.point.y - 18 - stack * 12, bottom: tip.point.y - 4 - stack * 12 })),
   ], [sheet, placed, markers]);
-  const readingKey = flow ? placed.items.map((item) => `${item.id}:${1 + writtenFigures(library, item).length + meters.filter((meter) => meter.part === item.id).length}`).join("|") : "";
+  // Room is made for each block at the depth shown — a brief block one line and its meters, an opened one every line.
+  const readingKey = flow ? placed.items.map((item) => {
+    const meterCount = meters.filter((meter) => meter.part === item.id).length;
+    const lineCount = 1 + writtenFigures(library, item).length + meterCount;
+    return `${item.id}:${reservedReadingLines(lineCount, meterCount, sheetLabels.readings, opened.has(item.id))}`;
+  }).join("|") : "";
   const labels = useMemo(() => placeLabels(library, placed.items, (item) => bodyOf(library, item), obstacles,
     new Map(readingKey ? readingKey.split("|").map((entry) => [entry.split(":")[0], Number(entry.split(":")[1])] as [string, number]) : [])),
   [placed, obstacles, readingKey]);
   // A text that stands away from its part is tied back to it by the same rope as a lead: one kind of tether on a sheet.
   // The parts whose readings block has a line now: what it takes or gives, a figure it displays, a meter on it.
-  const readingParts = new Set(placed.items.filter((item) => readingLinesOf(library, item, loads, meters).length > 0).map((item) => item.id));
+  const readingParts = new Set(placed.items.filter((item) => shownReadingLines(readingLinesOf(library, item, loads, meters), opened.has(item.id) ? "full" : sheetLabels.readings).length > 0).map((item) => item.id));
   const readingKeyNow = [...readingParts].sort().join("|");
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `readingKeyNow` stands for the set
   const leaders = useMemo(() => leadersOf(labels, readingParts), [labels, readingKeyNow]);
   const ropes = useMemo(() => [...leads, ...leaders], [leads, leaders]);
-  const appearance = useEmulatorAppearance();
+  const appearance = useSimulatorAppearance();
   const ropeBounds = useMemo(() => leadBoundsOf(placed.items), [placed.items]);
   const leadOptions = useMemo(() => ropeOptionsOf(appearance, ropeBounds), [appearance, ropeBounds]);
   const tethers = useTethers(svg, ropes, leadOptions);
@@ -221,15 +239,16 @@ function DrawnSchematic({ elements, drawing, editing, caption, probes, meters, p
       })}
       {flow ? <CurrentFlows document={placed} shapeOf={shapeOf} tetherOf={tetherOf} flow={flow} recent={recent} onAlternation={setAlternation} /> : null}
       {sheet.junctions.map((point) => <circle key={`${point.x},${point.y}`} className="parallax-circuit-diagram-junction" cx={point.x} cy={point.y} r="3.5" />)}
-      {loads ? <PartHeatLayer document={document} loads={loads} /> : null}
+      {loads ? <PartHeatLayer document={document} loads={loads} ambient={ambient} /> : null}
       {loads ? <PartIndicators document={document} loads={loads} voltages={voltages} /> : null}
       {dials ? <PhaseDials document={document} dials={dials} /> : null}
       <TextLeaders leaders={leaders} shapes={tethers.shapes} />
-      {flow ? <PartReadings document={document} labels={labels} loads={loads} meters={meters}
+      {flow ? <PartReadings document={document} labels={labels} loads={loads} meters={meters} detail={sheetLabels.readings} opened={opened}
+        onToggle={(id) => { if (!gestures.suppressesClick()) { toggleOpened(id); } }}
         onTextDown={editing?.tool === "select" ? gestures.textDown : undefined} onTextReset={editing ? (id) => editing.setItemLabel(id, "readings", null) : undefined} /> : null}
       {editing ? <SheetWireHits document={placed} editing={editing} shapeOf={shapeOf} tetherOf={tetherOf} onWireDown={gestures.wireDown}
         onLeadDown={gestures.leadDown} onHoldDown={gestures.holdDown} heldBend={gestures.heldBend} /> : null}
-      <SheetParts document={document} labels={labels} nodeByPort={nodeByPort}
+      <SheetParts document={document} labels={labels} sheetLabels={sheetLabels} nodeByPort={nodeByPort}
         onProbeSelect={editing?.tool === "wire" ? undefined : onProbeSelect}
         selectedIds={selectedIds} onItemSelect={selectItem}
         onPartDown={editing?.tool === "select" ? gestures.partDown : undefined} movingIds={movingIds}
@@ -245,6 +264,19 @@ function DrawnSchematic({ elements, drawing, editing, caption, probes, meters, p
   </figure>;
 }
 
+/** Each wire's electron scatter, by wire and spacing: made once, so a redraw of the sheet does not re-place every wire. */
+const electronScatters = new Map<string, readonly { dashes: string; length: number }[]>();
+
+function electronLayers(wireId: string, spacing: number): readonly { dashes: string; length: number }[] {
+  const key = `${wireId}|${spacing}`;
+  let layers = electronScatters.get(key);
+  if (!layers) {
+    layers = Array.from({ length: ELECTRON_LAYERS }, (_, layer) => electronDashes(wireId, layer, spacing));
+    electronScatters.set(key, layers);
+  }
+  return layers;
+}
+
 /**
  * Current along every wire at the moment the clock is at: each light stands where the charge that has passed along its
  * wire puts it — Kirchhoff's sums over charges as over currents —, so it moves exactly as far as the circuit's time
@@ -258,7 +290,7 @@ function CurrentFlows({ document, shapeOf, tetherOf, flow: feed, recent, onAlter
 }) {
   const placed = useRef(new Map<string, PlacedLight>());
   const alternating = useRef(new Map<string, WireAlternation>());
-  const appearance = useEmulatorAppearance();
+  const appearance = useSimulatorAppearance();
   // Four times a second, which wires reverse too fast to be shown moving: classified over the last quarter second of
   // wall time, so slowing the run down brings their lights back within a moment.
   useEffect(() => {
@@ -302,10 +334,12 @@ function CurrentFlows({ document, shapeOf, tetherOf, flow: feed, recent, onAlter
     });
   }), [feed, document, appearance]);
   const filter = `flow-glow-${useId().replace(/:/g, "")}`;
+  const style = appearance.currentStyle ?? "LIGHT";
   const dashes = lightDashes(appearance.lightSpacing);
-  return <g className="parallax-circuit-diagram-flows" style={flowStyle(appearance)}>
+  return <g className={`parallax-circuit-diagram-flows parallax-flow-${style.toLowerCase()}`} style={flowStyle(appearance)}>
     <defs><filter id={filter} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4" /></filter></defs>
-    {document.wires.map((wire) => <CurrentFlow key={wire.id} d={shapeOf(wire)} tether={tetherOf(wire)} filter={filter} dashes={dashes}
+    {document.wires.map((wire) => <CurrentFlow key={`${wire.id}-${style}`} d={shapeOf(wire)} tether={tetherOf(wire)} filter={filter} dashes={dashes}
+      electrons={style === "ELECTRONS" ? electronLayers(wire.id, appearance.lightSpacing) : undefined}
       onPlaced={(light) => (light ? placed.current.set(wire.id, light) : placed.current.delete(wire.id))} />)}
   </g>;
 }
@@ -314,9 +348,9 @@ function CurrentFlows({ document, shapeOf, tetherOf, flow: feed, recent, onAlter
  * The parts, their labels and their contacts: everything on the sheet that does not follow the voltages, kept out of
  * the redraw a running circuit asks for several times a second.
  */
-const SheetParts = memo(function SheetParts({ document, labels, nodeByPort, onProbeSelect, selectedIds, onItemSelect, onPartDown, movingIds,
+const SheetParts = memo(function SheetParts({ document, labels, sheetLabels, nodeByPort, onProbeSelect, selectedIds, onItemSelect, onPartDown, movingIds,
   onTextDown, onTextReset }: {
-  document: SchematicDocument; labels: ReturnType<typeof placeLabels>; nodeByPort: Map<string, string>;
+  document: SchematicDocument; labels: ReturnType<typeof placeLabels>; sheetLabels: SheetLabels; nodeByPort: Map<string, string>;
   onProbeSelect?: (node: string, contact: string) => void; selectedIds: ReadonlySet<string>; onItemSelect: (item: DrawingItem, adding: boolean) => void;
   onPartDown?: (event: ReactPointerEvent<SVGGElement>, item: DrawingItem) => void; movingIds: ReadonlySet<string>;
   onTextDown?: (event: ReactPointerEvent<SVGElement>, item: DrawingItem, text: PartText, at: { x: number; y: number }) => void;
@@ -336,6 +370,7 @@ const SheetParts = memo(function SheetParts({ document, labels, nodeByPort, onPr
           <PartSymbol item={item} className="parallax-drawing-symbol" />
         </g>}
       <PartLabels item={item} nameClassName="parallax-circuit-diagram-name" valueClassName="parallax-circuit-diagram-value" placement={labels.get(item.id)}
+        showName={sheetLabels.names} showValue={sheetLabels.values}
         onTextDown={onTextDown ? (event, which, at) => onTextDown(event, item, which, at) : undefined}
         onTextReset={onTextReset ? (which) => onTextReset(item.id, which) : undefined} />
     </g>)}
@@ -402,13 +437,13 @@ function PartIndicators({ document, loads, voltages }: { document: SchematicDocu
  * largest, the solver's rounding —, each figure its component displays, and each meter on it. The one rule for what
  * the block shows and whether its leader is drawn.
  */
-function readingLinesOf(library: PartLibraryView, item: DrawingItem, loads: Record<string, PartLoad> | undefined, meters: readonly SheetMeter[]):
-  { key: string; text: string; meter: boolean }[] {
+function readingLinesOf(library: PartLibraryView, item: DrawingItem, loads: Record<string, PartLoad> | undefined, meters: readonly SheetMeter[]): ReadingLine[] {
   const floor = 1e-6 * Math.max(0, ...Object.values(loads ?? {}).map((load) => Math.abs(load.power ?? 0)));
   const load = loadText(library, item, loads?.[item.id], floor);
   const shown = loads?.[item.id]?.displays ?? {};
   const figures = writtenFigures(library, item).filter(([name]) => shown[name] !== undefined)
-    .map(([name, unit, caption]) => ({ key: `display:${name}`, text: `${name} ${formatReadout(shown[name], unit, 3)}${caption ? ` ${caption}` : ""}`, meter: false }));
+    .map(([name, unit, caption]) => ({ key: `display:${name}`, text: `${name} ${formatReadout(shown[name], unit, 3)}${caption ? ` ${caption}` : ""}`, meter: false,
+      ...(STRESS_FIGURES.has(name) ? { stress: shown[name] } : {}) }));
   return [...(load ? [{ key: "load", text: load, meter: false }] : []), ...figures,
     ...meters.filter((meter) => meter.part === item.id).map((meter) => ({ key: meter.id, text: `${meter.id} ${meter.text}`, meter: true }))];
 }
@@ -417,23 +452,55 @@ function readingLinesOf(library: PartLibraryView, item: DrawingItem, loads: Reco
  * Each part's readings block where the label rule put it: what it takes and how warm it is, then each meter on it,
  * framed so a meter's figure reads as an instrument's display and not as the part's own.
  */
-function PartReadings({ document, labels, loads, meters, onTextDown, onTextReset }: {
+/** The figures a component displays as a share of a limit: the realistic bench fails a part when one reaches 100 %. */
+const STRESS_FIGURES = new Set(["overvoltage", "overcurrent"]);
+
+/**
+ * Each part's readings block where the label rule put it, at the depth the reader chose: what it takes and how warm it
+ * is, the figures its component displays, then each meter on it — framed so a meter's figure reads as an instrument's
+ * display and not as the part's own. A brief block opens over the sheet while the pointer is on it, and stays open
+ * when clicked (Enter or Space from the keyboard); clicked again it folds back.
+ */
+function PartReadings({ document, labels, loads, meters, detail, opened, onToggle, onTextDown, onTextReset }: {
   document: SchematicDocument; labels: Map<string, LabelPlacement>; loads?: Record<string, PartLoad>; meters: readonly SheetMeter[];
+  detail: SheetLabels["readings"]; opened: ReadonlySet<string>; onToggle: (id: string) => void;
   onTextDown?: (event: ReactPointerEvent<SVGElement>, item: DrawingItem, text: PartText, at: { x: number; y: number }) => void;
   onTextReset?: (id: string) => void;
 }) {
   const library = useParallaxPartLibrary();
-  return <g className="parallax-circuit-diagram-readings" aria-hidden="true">
+  const [hovered, setHovered] = useState<string | null>(null);
+  return <g className="parallax-circuit-diagram-readings">
     {document.items.map((item) => {
       const block = labels.get(item.id)?.readings;
       if (!block) {
         return null;
       }
-      const lines = readingLinesOf(library, item, loads, meters);
-      return <g key={item.id} className={onTextDown ? "parallax-circuit-diagram-text-movable" : undefined}
+      const all = readingLinesOf(library, item, loads, meters);
+      const open = opened.has(item.id);
+      const lines = shownReadingLines(all, open || hovered === item.id ? "full" : detail);
+      if (!lines.length) {
+        return null;
+      }
+      const folds = all.length > shownReadingLines(all, detail).length || open;
+      // Opened past the room the sheet made for it, the block stands on a plate so it reads over wires and parts.
+      const plate = lines.length > shownReadingLines(all, detail).length;
+      const widest = Math.max(...lines.map((line) => line.text.length * 6 + 8));
+      const plateLeft = block.anchor === "start" ? block.point.x - 3 : block.anchor === "end" ? block.point.x - widest + 3 : block.point.x - widest / 2;
+      return <g key={item.id} className={`parallax-circuit-diagram-reading-block${onTextDown ? " parallax-circuit-diagram-text-movable" : ""}`}
+        data-open={open || undefined} role={folds ? "button" : undefined} tabIndex={folds ? 0 : undefined}
+        aria-expanded={folds ? open : undefined} aria-label={`${item.id}: ${all.map((line) => line.text).join("; ")}`}
+        onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered((current) => current === item.id ? null : current)}
+        onClick={folds ? () => onToggle(item.id) : undefined}
+        onKeyDown={folds ? (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onToggle(item.id);
+          }
+        } : undefined}
         onPointerDown={onTextDown ? (event) => onTextDown(event, item, "readings", block.anchor === "start" ? block.point
           : { x: block.point.x - (block.anchor === "end" ? READING_RESERVE : READING_RESERVE / 2), y: block.point.y }) : undefined}
         onDoubleClick={onTextReset && item.labels?.readings ? () => onTextReset(item.id) : undefined}>
+        {plate ? <rect className="parallax-circuit-diagram-reading-plate" x={plateLeft} y={block.point.y - 11} width={widest} height={lines.length * READING_LINE + 4} /> : null}
         {lines.map((line, index) => {
           const y = block.point.y + index * READING_LINE;
           const width = line.text.length * 6 + 8;

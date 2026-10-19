@@ -1,0 +1,162 @@
+/*
+ * Kitsu — warm stone neutrals, the mark's own ember as the accent, four radii by role (control 6, surface 8, dialog 12),
+ * one control height of 30, and a focus ring that stands 2px off the control (Kitsu/FE/src/styles.css, --kt-*).
+ */
+[data-theme="kitsu"] {
+  color-scheme: light;
+  --kit-shape-density: 1;
+  --kit-shape-text: 13;
+  --kit-shape-radius-small: 4;
+  --kit-shape-radius-control: 6;
+  --kit-shape-radius-surface: 8;
+  --kit-shape-radius-dialog: 12;
+  --kit-shape-control: 30;
+  --kit-shape-control-small: 24;
+  --kit-shape-row: 36;
+  --kit-shape-row-dense: 28;
+  --kit-shape-rail: 232;
+  --kit-shape-inspector: 320;
+  --kit-border-width: 1px;
+  --kit-band: 3px;
+  --kit-focus-offset: 2px;
+  --kit-font-ui: Inter, system-ui, sans-serif;
+  --kit-intensity: 1;
+  --kit-soft-amount: 13%;
+
+  --kit-bg: #f5f4f0;
+  --kit-surface: #ffffff;
+  --kit-surface-2: #faf9f6;
+  --kit-well: #ebe9e3;
+  --kit-ink: #090d1b;
+  --kit-secondary: #4b505b;
+  --kit-muted: #686d78;
+  --kit-line: #dfddd8;
+  --kit-line-strong: #959aa3;
+  --kit-scrim: #090d1bb8;
+  --kit-shadow-color: #090d1b;
+  --kit-shadow-pop: 0 12px 32px -12px #090d1b40, 0 1px 2px #090d1b1a;
+  --kit-accent-base: #ff641b;
+  --kit-accent-strong-towards: #150a03;
+  --kit-on-accent: #2b1206;
+  --kit-good-base: #1c5f44;
+  --kit-warn-base: #8a5318;
+  --kit-danger-base: #9c302c;
+  /* the ring is the darkened accent, never the fill's own value — it must show on an accent-filled control */
+  --kit-focus-ring: color-mix(in oklab, var(--kit-accent) 74%, #150a03);
+}
+
+[data-theme="kitsu"][data-mode="dark"] {
+  color-scheme: dark;
+  --kit-bg: #121114;
+  --kit-surface: #1a181b;
+  --kit-surface-2: #161417;
+  --kit-well: #211e22;
+  --kit-ink: #f3f0ee;
+  --kit-secondary: #a8a2a8;
+  --kit-muted: #847e86;
+  --kit-line: #2a262c;
+  --kit-line-strong: #565059;
+  --kit-scrim: #050406cc;
+  --kit-shadow-color: #000000;
+  --kit-shadow-pop: 0 16px 40px -12px #00000099, 0 1px 2px #00000066;
+  --kit-accent-base: #ff641b;
+  --kit-accent-strong-towards: #ffffff;
+  --kit-on-accent: #2b1206;
+  --kit-good-base: #6ed3a1;
+  --kit-warn-base: #e8b877;
+  --kit-danger-base: #f39a94;
+  --kit-focus-ring: color-mix(in oklab, var(--kit-accent) 70%, #ffffff);
+}
+
+/* ── the accent's tones, derived exactly as Kitsu derives them (Kitsu/FE/src/styles.css) ── */
+[data-theme="kitsu"] {
+  --kit-accent: var(--kit-accent-base);
+  --kit-accent-hover: #ef5710;
+  --kit-accent-strong: color-mix(in oklab, var(--kit-accent) 74%, #150a03);
+  --kit-accent-soft: color-mix(in oklab, var(--kit-accent) 13%, var(--kit-surface));
+  --kit-accent-line: color-mix(in oklab, var(--kit-accent) 38%, var(--kit-surface));
+  --kit-primary-fill-hover: var(--kit-accent-hover);
+}
+[data-theme="kitsu"][data-mode="dark"] {
+  --kit-accent-strong: color-mix(in oklab, var(--kit-accent) 70%, #ffffff);
+  --kit-accent-soft: color-mix(in oklab, var(--kit-accent) 16%, var(--kit-surface));
+  --kit-accent-line: color-mix(in oklab, var(--kit-accent) 46%, var(--kit-surface));
+  --kit-focus-ring: var(--kit-accent-strong);
+}
+
+/* ── how Kitsu draws its parts (nav-rows.ts, ui/button.tsx, ui/segmented.tsx, the rail) ── */
+[data-theme="kitsu"] {
+  --kit-rail-ground: #efeee9;
+  --kit-rail-padding: var(--kit-space-2) var(--kit-space-3);
+  --kit-navigation-item-height: calc(30px * var(--kit-ui-scale));
+  --kit-navigation-item-padding: 0 var(--kit-space-2);
+  --kit-navigation-item-radius: var(--kit-radius-control);
+  --kit-navigation-item-font-size: var(--kit-text-base);
+  --kit-navigation-item-tracking: -0.01em;
+  --kit-navigation-item-weight: 600;
+  --kit-navigation-item-active-weight: 650;
+  --kit-navigation-item-hover-ground: #ebe9e4;
+  --kit-navigation-item-active-ink: var(--kit-ink);
+  --kit-navigation-item-active-icon: var(--kit-accent-strong);
+  --kit-navigation-item-active-bar: 2px;
+  --kit-navigation-item-bar-inset: 0px;
+  --kit-navigation-group-gap: var(--kit-space-4);
+  --kit-button-weight: 600;
+  --kit-button-font-size: var(--kit-text-base);
+  --kit-strip-ground: var(--kit-surface);
+  --kit-strip-border: var(--kit-line-strong);
+  --kit-strip-padding: 0px;
+  --kit-strip-gap: 0px;
+  --kit-option-height: var(--kit-control);
+  --kit-option-padding: 0 calc(10px * var(--kit-ui-scale));
+  --kit-option-radius: 0px;
+  --kit-option-font-size: var(--kit-text-sm);
+  --kit-option-weight: 500;
+  --kit-option-hover-ground: #ebe9e4;
+  --kit-option-divider: var(--kit-border-width) solid var(--kit-line);
+  --kit-selected-ground: var(--kit-accent-soft);
+  --kit-selected-ink: var(--kit-ink);
+  --kit-selected-border: var(--kit-accent-line);
+  --kit-selected-weight: 600;
+  --kit-selected-shadow: 0 0 0 transparent;
+  --kit-micro-label-font: var(--kit-font-ui);
+  --kit-micro-label-size: var(--kit-text-xs);
+  --kit-micro-label-weight: 700;
+  --kit-micro-label-tracking: 0.11em;
+}
+[data-theme="kitsu"][data-mode="dark"] {
+  --kit-rail-ground: #171518;
+  --kit-navigation-item-hover-ground: #232027;
+  --kit-option-hover-ground: #232027;
+}
+
+/* ── Kitsu's accents: the hue, its hover, the ink on it — the same in both modes; "theme" is Ember ── */
+[data-theme="kitsu"][data-palette="kurenai"] { --kit-accent-base: #d92b36; --kit-accent-hover: #c4212c; --kit-on-accent: #ffffff; }
+[data-theme="kitsu"][data-palette="sakura"] { --kit-accent-base: #e62d72; --kit-accent-hover: #cf2162; --kit-on-accent: #ffffff; }
+[data-theme="kitsu"][data-palette="fuji"] { --kit-accent-base: #8b5cf6; --kit-accent-hover: #7a4ae8; --kit-on-accent: #ffffff; }
+[data-theme="kitsu"][data-palette="ao"] { --kit-accent-base: #2f7bf5; --kit-accent-hover: #2268dd; --kit-on-accent: #ffffff; }
+[data-theme="kitsu"][data-palette="mizu"] { --kit-accent-base: #0e8b96; --kit-accent-hover: #0b757f; --kit-on-accent: #ffffff; }
+[data-theme="kitsu"][data-palette="matcha"] { --kit-accent-base: #2d9459; --kit-accent-hover: #26804b; --kit-on-accent: #ffffff; }
+[data-theme="kitsu"][data-palette="wakaba"] { --kit-accent-base: #7da818; --kit-accent-hover: #6b9214; --kit-on-accent: #17200a; }
+[data-theme="kitsu"][data-palette="sumi"] { --kit-accent-base: #7d746f; --kit-accent-hover: #6b625d; --kit-on-accent: #ffffff; }
+
+[data-theme="kitsu"] { --kit-navigation-item-spacing: 0px; --kit-rail-label-padding: var(--kit-space-4) var(--kit-space-2) var(--kit-space-1); --kit-navigation-group-gap: 0px; }
+
+/* the type scale exactly as Kitsu writes it (px at 100%), not multiplied from the kit's — Kitsu's steps are 11 · 12 · 13 · 14 · 16 · 19 · 23 */
+[data-theme="kitsu"] {
+  --kit-text-2xs: calc(11px * var(--kit-ui-scale));
+  --kit-text-xs: calc(12px * var(--kit-ui-scale));
+  --kit-text-sm: calc(13px * var(--kit-ui-scale));
+  --kit-text-base: calc(14px * var(--kit-ui-scale));
+  --kit-text-md: calc(16px * var(--kit-ui-scale));
+  --kit-text-lg: calc(19px * var(--kit-ui-scale));
+  --kit-text-xl: calc(23px * var(--kit-ui-scale));
+  --kit-text-2xl: calc(30px * var(--kit-ui-scale));
+  --kit-text-3xl: calc(38px * var(--kit-ui-scale));
+  /* body at text-base; every interactive label — buttons, inputs, navigation — at text-sm */
+  --kit-body-size: var(--kit-text-base);
+  --kit-navigation-item-font-size: var(--kit-text-sm);
+  --kit-button-font-size: var(--kit-text-sm);
+  --kit-option-font-size: var(--kit-text-xs);
+  --kit-micro-label-size: var(--kit-text-2xs);
+}

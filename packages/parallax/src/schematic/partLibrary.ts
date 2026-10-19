@@ -46,6 +46,8 @@ export class ParallaxPartLibrary implements PartLibraryView {
   /** The symbol documents came, or their request failed: a sheet stops waiting for them either way. */
   private symbolsAnswered = false;
   private currentRevision = 0;
+  /** Listeners are to be told of the revision once the current task is over. */
+  private notificationPending = false;
 
   private readonly transport: ParallaxTransport;
 
@@ -160,8 +162,20 @@ export class ParallaxPartLibrary implements PartLibraryView {
     }
   }
 
+  /**
+   * A new revision now, and one call to every listener once the arrivals of this moment are in. A sheet asks for dozens
+   * of models whose answers land one microtask after another; told of each at once, React drew the sheet once per model
+   * inside one chain of microtasks and refused the fiftieth draw as an endless loop ("Maximum update depth exceeded").
+   */
   private publish() {
     this.currentRevision += 1;
-    this.listeners.forEach((listener) => listener());
+    if (this.notificationPending) {
+      return;
+    }
+    this.notificationPending = true;
+    setTimeout(() => {
+      this.notificationPending = false;
+      this.listeners.forEach((listener) => listener());
+    }, 0);
   }
 }

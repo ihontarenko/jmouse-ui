@@ -231,8 +231,6 @@
   }
 
   /* ---- text and layout helpers ---- */
-  .parallax-scope-foot { scrollbar-width: none; }
-  .parallax-scope-foot::-webkit-scrollbar { display: none; }
   .parallax-label { font-size: var(--parallax-text-xs); color: var(--parallax-muted); font-family: var(--parallax-font-technical); }
   .parallax-muted { color: var(--parallax-muted); }
   .parallax-secondary { color: var(--parallax-secondary); }
@@ -536,10 +534,15 @@
   .parallax-side-group.parallax-flush > h3 { padding: var(--parallax-space-2) var(--parallax-space-3); }
   .parallax-side-note { padding: var(--parallax-space-3); font-size: var(--parallax-text-xs); color: var(--parallax-muted); line-height: 1.5; display: grid; gap: var(--parallax-space-2); justify-items: start; }
   .parallax-stage-toolbar { display: flex; align-items: center; gap: var(--parallax-space-2); padding: var(--parallax-space-1) var(--parallax-space-3); min-height: calc(var(--parallax-control) + 6px); border-bottom: 1px solid var(--parallax-line); background: var(--parallax-surface); flex-wrap: wrap; }
+  .parallax-stage-foot > .parallax-push { flex: none; white-space: nowrap; }
   .parallax-stage-toolbar .parallax-title { font: var(--parallax-weight-heading) var(--parallax-text-sm) var(--parallax-font-heading); }
-  .parallax-stage-toolbar .parallax-hint { margin-left: auto; font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); white-space: nowrap; }
+  /* The sheet's toolbar is one row: the tools on the left, the View menu at the end. What the pointer does next is said
+     in the status line under the stage, so a long hint never wraps the tools. */
+  .parallax-stage-toolbar > [data-parallax-part="sheet-view"] { margin-left: auto; }
+  .parallax-stage-foot .parallax-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .parallax-stage-foot .parallax-hint strong { color: var(--parallax-ink); font-weight: 600; }
   .parallax-stage-body { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
-  .parallax-stage-foot { display: flex; align-items: center; gap: var(--parallax-space-3); padding: var(--parallax-space-1) var(--parallax-space-3); min-height: calc(var(--parallax-control-small) + 4px); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); flex-wrap: wrap; }
+  .parallax-stage-foot { display: flex; align-items: center; gap: var(--parallax-space-3); padding: var(--parallax-space-1) var(--parallax-space-3); min-height: calc(var(--parallax-control-small) + 4px); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); flex-wrap: nowrap; min-width: 0; }
   .parallax-stage-foot .parallax-diagnostic { font-family: var(--parallax-font-ui); }
   .parallax-sheet { flex: 1; min-height: 0; position: relative; overflow: hidden; background-color: var(--parallax-sheet); background-image: radial-gradient(var(--parallax-sheet-grid) 1px, transparent 1px); background-size: 20px 20px; background-position: 10px 10px; }
   .parallax-scope { display: flex; flex-direction: column; min-height: 0; flex: none; height: var(--parallax-scope-height); border-top: 1px solid var(--parallax-line); background: var(--parallax-screen); color: var(--parallax-screen-text); }
@@ -551,19 +554,47 @@
   /* A narrow panel drops the group captions — the groups stay apart by their gaps — so the tools take two rows, not three. */
   @container (max-width: 1100px) { .parallax-scope-toolbar-caption { display: none; } }
   /* …and its legend keeps the channels' readings alone: the time base, the trigger and the memory are on the panel beside it. */
-  @container (max-width: 1100px) { .parallax-scope-foot > .parallax-scope-foot-setting { display: none; } }
   @container (max-width: 760px) { .parallax-scope-toolbar .parallax-hint { display: none; } }
   .parallax-scope-screen { flex: 1; min-height: 0; position: relative; }
   .parallax-scope-screen canvas { width: 100%; height: 100%; }
-  /* XYZ: the stage fills the screen; the camera presets sit over its top right corner, out of the legend's way. */
-  .parallax-scope-space-stage { position: absolute; inset: 0; }
-  .parallax-scope-space-camera { position: absolute; top: var(--parallax-space-2); right: var(--parallax-space-2); z-index: 1; }
-  /* The legend wraps rather than cuts: a fourth channel's reading half off the edge read as no reading. */
-  .parallax-scope-foot { display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); color: var(--parallax-ink); }
-  /* One line a channel — its name and its reading side by side —: two lines each, five channels took 70 px off a screen that had 150. */
-  .parallax-scope-foot > div { display: flex; align-items: baseline; gap: var(--parallax-space-2); padding: 2px var(--parallax-space-3); border-right: 1px solid var(--parallax-line); font: var(--parallax-text-2xs) var(--parallax-font-technical); color: var(--parallax-muted); min-width: 150px; flex: none; }
-  .parallax-scope-foot > div > strong { display: flex; align-items: center; gap: var(--parallax-space-1); color: var(--parallax-ink); font-weight: 500; }
-  .parallax-scope-foot > div > span { font-variant-numeric: tabular-nums; }
+  /* The screen's readout (ScreenReadout): ONE table in the top left corner for every display, on a translucent plate of
+     the screen's own colour — the traces under it still show, the words stay readable. Fixed columns and right-aligned
+     tabular figures keep a moving number in its place; a setting the reader changed is lit for a moment. */
+  .parallax-screen-readout { position: absolute; top: var(--parallax-space-2); left: var(--parallax-space-2); z-index: 2; max-width: calc(100% - 2 * var(--parallax-space-2)); max-height: calc(100% - 2 * var(--parallax-space-2)); overflow: hidden; display: grid; gap: 2px; padding: var(--parallax-space-1) var(--parallax-space-2); background: color-mix(in srgb, var(--parallax-screen) 78%, transparent); border: 1px solid color-mix(in srgb, var(--parallax-screen-text) 16%, transparent); border-radius: var(--parallax-radius-small); color: var(--parallax-screen-text); font: 11px/1.35 var(--parallax-font-technical); font-variant-numeric: tabular-nums; pointer-events: none; }
+  .parallax-screen-readout-heading { display: flex; align-items: center; gap: var(--parallax-space-2); min-height: 16px; color: color-mix(in srgb, var(--parallax-screen-text) 70%, transparent); }
+  .parallax-screen-readout-heading > span:empty { display: none; }
+  .parallax-screen-readout-fold { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-left: auto; padding: 0; border: 1px solid transparent; border-radius: 2px; background: none; color: inherit; cursor: pointer; transition: border-color 120ms ease, color 120ms ease; }
+  .parallax-screen-readout-fold:hover { border-color: color-mix(in srgb, var(--parallax-screen-text) 40%, transparent); color: var(--parallax-screen-text); }
+  .parallax-screen-readout-fold:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: 1px; }
+  .parallax-screen-readout-fold svg { width: 12px; height: 12px; }
+  /* Folded: the table is one button in the corner, the traces have the screen. */
+  .parallax-screen-readout.parallax-folded { padding: 2px; }
+  .parallax-screen-readout.parallax-folded .parallax-screen-readout-fold { width: 22px; height: 22px; margin: 0; }
+  .parallax-screen-readout.parallax-folded .parallax-screen-readout-fold svg { width: 14px; height: 14px; }
+  /* A cursor's tag: the same plate, placed by its host beside the cursor's line and edged in the accent the line wears. */
+  .parallax-screen-readout.parallax-tag { top: auto; left: auto; border-color: color-mix(in srgb, var(--parallax-accent) 70%, transparent); }
+  .parallax-screen-readout.parallax-tag tr:first-child { color: var(--parallax-accent); }
+  .parallax-screen-readout table { border-collapse: collapse; }
+  .parallax-screen-readout td { padding: 0 0 0 var(--parallax-space-3); white-space: nowrap; vertical-align: baseline; }
+  .parallax-screen-readout td:first-child { padding-left: 0; font-weight: 600; }
+  .parallax-screen-readout td.parallax-numeric { text-align: right; min-width: 6ch; }
+  .parallax-screen-readout tr .parallax-readout-reading, .parallax-screen-readout tr .parallax-readout-setting { color: var(--parallax-screen-text); }
+  .parallax-screen-readout .parallax-readout-note { color: color-mix(in srgb, var(--parallax-screen-text) 62%, transparent); }
+  .parallax-screen-readout-name { pointer-events: auto; padding: 0 3px; margin-left: -3px; border: 1px solid transparent; border-radius: 2px; background: none; color: inherit; font: inherit; cursor: pointer; }
+  .parallax-screen-readout-name:hover { border-color: color-mix(in srgb, currentColor 40%, transparent); }
+  .parallax-screen-readout-name[aria-pressed="true"] { border-color: currentColor; }
+  .parallax-screen-readout-name:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: 1px; }
+  .parallax-screen-readout-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--parallax-space-3); padding-top: 2px; border-top: 1px solid color-mix(in srgb, var(--parallax-screen-text) 14%, transparent); }
+  /* A changed setting: lit in the accent and fading back over 900 ms — seen, not read as a state. */
+  .parallax-readout-lit { animation: parallax-readout-lit 900ms ease-out; border-radius: 2px; }
+  @keyframes parallax-readout-lit {
+    0%, 35% { background: color-mix(in srgb, var(--parallax-accent) 55%, transparent); color: var(--parallax-screen); }
+    100% { background: transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) { .parallax-readout-lit { animation: none; outline: 1px solid var(--parallax-accent); } }
+  .parallax-channel-expression { flex-wrap: wrap; }
+  .parallax-channel-expression > input { flex: 1; min-width: 0; }
+  .parallax-channel-expression-problem { flex-basis: 100%; margin: 0; font-size: var(--parallax-text-xs); color: var(--parallax-danger); }
   .parallax-channel { padding: var(--parallax-space-3); border-bottom: 1px solid var(--parallax-line); display: grid; gap: var(--parallax-space-2); }
   .parallax-channel > header { display: flex; align-items: center; gap: var(--parallax-space-2); }
   .parallax-channel > header h3 { font: var(--parallax-weight-heading) var(--parallax-text-sm) var(--parallax-font-technical); display: flex; align-items: center; gap: var(--parallax-space-2); }
@@ -595,6 +626,9 @@
   .parallax-symbol-hero .parallax-symbol-drawing { width: 180px; height: auto; }
   .parallax-pins-table td:first-child { font-family: var(--parallax-font-technical); font-weight: 600; }
   .parallax-pins-table .parallax-input.parallax-small { min-width: 54px; }
+  /* A coordinate is a few digits: no spinner eating its width — arrow keys still step it. */
+  .parallax-pins-table input[type="number"] { appearance: textfield; -moz-appearance: textfield; text-align: right; padding-inline: var(--parallax-space-1); }
+  .parallax-pins-table input[type="number"]::-webkit-inner-spin-button, .parallax-pins-table input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .parallax-draw-canvas { flex: 1; min-height: 0; position: relative; overflow: hidden; background-color: var(--parallax-sheet); display: grid; place-items: center; }
   .parallax-draw-canvas svg { max-width: 100%; max-height: 100%; }
   .parallax-draw-canvas .parallax-grid-minor { stroke: var(--parallax-sheet-grid); stroke-width: 0.1; }
@@ -743,17 +777,20 @@
   @media (max-width: 1200px) { .parallax-bench-grid.parallax-no-inspector { grid-template-columns: var(--parallax-panel-width) 6px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); } }
   .parallax-run-status strong { color: var(--parallax-ink); font-weight: 500; }
   .parallax-buffer-readout { display: inline-flex; align-items: center; gap: var(--parallax-space-1); }
-  .parallax-buffer-meter { display: inline-block; width: 44px; height: 4px; }
+  .parallax-buffer-meter { display: block; height: 2px; }
   .parallax-buffer-meter.parallax-low > span { background: var(--parallax-warn); }
   .parallax-run-status .parallax-limited strong { color: var(--parallax-warn); }
   /* One line, always: the figures keep their widths so the bar does not jump as they change, and never wrap. */
-  .parallax-tempo { display: inline-flex; align-items: center; flex-wrap: nowrap; flex: none; gap: var(--parallax-space-3); padding: 0 var(--parallax-space-2); border-left: 1px solid var(--parallax-line); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* The run tempo is one readout of a fixed width beside the run status: the speed reached with the buffer as a hairline
+     under it, then the server share. Its words are its title, so it never widens the bar while a circuit runs. */
+  .parallax-tempo { display: inline-flex; align-items: center; flex: none; gap: var(--parallax-space-3); padding: 0 var(--parallax-space-2); border-left: 1px solid var(--parallax-line); font: var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; cursor: help; }
   .parallax-tempo-figure { display: inline-flex; align-items: baseline; gap: var(--parallax-space-1); }
-  .parallax-tempo-figure small { font-size: inherit; text-transform: uppercase; letter-spacing: 0.06em; color: var(--parallax-secondary); }
+  .parallax-tempo-figure:first-child { display: inline-grid; grid-template-columns: auto auto; align-items: center; column-gap: 3px; row-gap: 2px; }
+  .parallax-tempo-figure:first-child > .parallax-icon { width: 12px; height: 12px; color: var(--parallax-warn); }
+  .parallax-tempo-figure:first-child > [data-parallax-part="meter"] { grid-column: 1 / -1; width: 100%; }
+  .parallax-tempo-figure small { font-size: inherit; color: var(--parallax-muted); }
   .parallax-tempo-figure strong { color: var(--parallax-ink); font-weight: 500; }
-  .parallax-tempo-figure.parallax-buffer-readout { align-items: center; }
   .parallax-tempo .parallax-limited strong { color: var(--parallax-warn); }
-  .parallax-tempo-verdict { padding: 0 var(--parallax-space-1); border: 1px solid var(--parallax-warn); color: var(--parallax-warn); text-transform: uppercase; letter-spacing: 0.06em; cursor: help; }
   .parallax-stage-instrument { flex: none; height: var(--parallax-scope-height); min-height: 0; overflow: auto; padding: var(--parallax-space-3); border-top: 1px solid var(--parallax-line); background: var(--parallax-surface); display: grid; gap: var(--parallax-space-3); align-content: start; }
   /* An analysis plot fills the height the instrument is given (the splitter sets it), never 16:10 of a wide stage — at
      1900 px that was 1186 px tall inside 600, and the lower half of every plot, a Bode plot's phase pane with it, was
@@ -894,7 +931,9 @@
   .parallax-current-preview-tube { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 7; }
   .parallax-current-preview-glow { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 6; animation: parallax-current-preview-glow 1.2s linear infinite; }
   .parallax-current-preview-core { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 2.2; animation: parallax-current-preview-core 1.2s linear infinite; }
-  @media (prefers-reduced-motion: reduce) { .parallax-current-preview-glow, .parallax-current-preview-core { animation: none; } }
+  /* Electrons are specks drifting the length of their scatter. */
+  .parallax-current-preview-electrons { stroke: var(--parallax-flow-color, var(--parallax-accent)); stroke-width: 2.8; animation: parallax-current-preview-electrons 4.8s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .parallax-current-preview-glow, .parallax-current-preview-core, .parallax-current-preview-electrons { animation: none; } }
   .parallax-live-part-group { display: grid; gap: var(--parallax-space-1); padding-top: var(--parallax-space-1); }
   .parallax-live-part-name { margin: 0; font: var(--parallax-weight-heading) var(--parallax-text-xs) var(--parallax-font-technical); color: var(--parallax-muted); letter-spacing: .04em; }
   .parallax-live-part-group .parallax-live-part > label { font-family: var(--parallax-font-technical); }
@@ -904,7 +943,7 @@
   .parallax-current-preview-alternating.parallax-forward { animation: parallax-current-preview-forward var(--parallax-alternating-duration, 700ms) linear infinite; }
   .parallax-current-preview-alternating.parallax-back { stroke: var(--parallax-flow-alternating-return-color, var(--parallax-flow-alternating-color, var(--parallax-warn))); animation: parallax-current-preview-back var(--parallax-alternating-duration, 700ms) linear infinite; }
   @media (prefers-reduced-motion: reduce) { .parallax-current-preview-alternating { animation: none; } }
-  .parallax-stage-toolbar .parallax-hint.parallax-probing { color: var(--parallax-ink); display: inline-flex; align-items: center; gap: var(--parallax-space-1); }
+  .parallax-stage-foot .parallax-hint.parallax-probing { color: var(--parallax-ink); display: inline-flex; align-items: center; gap: var(--parallax-space-1); }
   .parallax-bench-instruments { flex: none; height: var(--parallax-scope-height); display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; overflow: hidden; border-top: 1px solid var(--parallax-line); }
   .parallax-bench-instruments > * { min-width: 0; }
   .parallax-bench-instruments > .parallax-scope, .parallax-bench-instruments > .parallax-pane-split > .parallax-scope { height: auto; min-height: 0; border-top: 0; }
@@ -1070,6 +1109,9 @@
   .parallax-circuit-diagram-flow-tube { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:7;opacity:.08;transition:opacity 120ms ease }
   .parallax-circuit-diagram-flow-glow { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:6;stroke-dasharray:10 14;opacity:0 }
   .parallax-circuit-diagram-flow-core { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:2.2;stroke-dasharray:4 20;opacity:0 }
+  /* Electrons: specks a hair long, round, in the tube. */
+  .parallax-circuit-diagram-flow-electrons { stroke:var(--parallax-flow-color,var(--parallax-accent));stroke-width:2.6;stroke-linecap:round }
+  .parallax-circuit-diagram-flow.parallax-alternating .parallax-circuit-diagram-flow-electrons { stroke:var(--parallax-flow-alternating-color,var(--parallax-warn)) }
   /* An alternating wire is drawn by the same neon as a flowing one, in its own colours: the row running back in the return colour. */
   .parallax-circuit-diagram-flow.parallax-alternating path { stroke:var(--parallax-flow-alternating-color,var(--parallax-warn)) }
   .parallax-circuit-diagram-flow.parallax-alternating path.parallax-circuit-diagram-flow-return { stroke:var(--parallax-flow-alternating-return-color,var(--parallax-flow-alternating-color,var(--parallax-warn))) }
@@ -1081,6 +1123,11 @@
   .parallax-circuit-diagram-limit { fill:none;stroke:var(--parallax-warn);stroke-width:1.5;vector-effect:non-scaling-stroke }
   .parallax-circuit-diagram-heat-overheated .parallax-circuit-diagram-limit, .parallax-circuit-diagram-heat-burnt .parallax-circuit-diagram-limit { stroke:var(--parallax-danger,var(--parallax-warn)) }
   .parallax-circuit-diagram-heat-burnt .parallax-circuit-diagram-limit { stroke-dasharray:4 3 }
+  /* A part past its limits carries a badge on its corner: filled in the state's colour, the glyph cut out of it. */
+  .parallax-circuit-diagram-limit-badge rect { fill:var(--parallax-warn);stroke:var(--parallax-instrument-surface,var(--parallax-surface));stroke-width:1 }
+  .parallax-circuit-diagram-limit-badge[data-severity="failed"] rect { fill:var(--parallax-danger,var(--parallax-warn)) }
+  .parallax-circuit-diagram-limit-badge path { fill:none;stroke:var(--parallax-instrument-surface,var(--parallax-surface));stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round }
+  .parallax-circuit-diagram-limit-badge:is([data-glyph="flame"],[data-glyph="bolt"]) path { fill:var(--parallax-instrument-surface,var(--parallax-surface));stroke-width:1 }
   .parallax-circuit-diagram .parallax-circuit-diagram-load { font:10px var(--parallax-font-technical);fill:var(--parallax-warn);font-variant-numeric:tabular-nums }
   .parallax-part-load-table { width:100%;border-collapse:collapse;font:11px var(--parallax-font-technical);font-variant-numeric:tabular-nums }
   .parallax-part-load-table th,.parallax-part-load-table td { padding:3px 12px;border-top:1px solid var(--parallax-line);text-align:right;font-weight:400;background:transparent }
@@ -1111,6 +1158,44 @@
   .parallax-circuit-diagram-probe.parallax-carried .parallax-circuit-diagram-probe-tip { cursor:grabbing;opacity:.85 }
   .parallax-circuit-diagram-probe-clip { fill:none;stroke:var(--parallax-probe,var(--parallax-accent));stroke-width:2.5;stroke-dasharray:3 2;pointer-events:none }
   .parallax-circuit-diagram-probe .parallax-circuit-diagram-probe-tag { fill:var(--parallax-probe,var(--parallax-accent));font:700 10px var(--parallax-font-technical);pointer-events:none }
+  /* A tool menu (ToolMenu): a toolbar button whose panel hangs under it — a settings sheet of sections, each a
+     small-caps heading over rows of a box and a name with its line of explanation. The sheet's View and the screen's
+     Display are two of them. */
+  .parallax-tool-menu { position: relative; display: inline-flex; }
+  .parallax-tool-menu > [data-parallax-part="button"] > svg:last-child { width: 12px; height: 12px; color: var(--parallax-muted); }
+  .parallax-tool-menu-panel { position: fixed; z-index: 60; display: grid; overflow-y: auto; overscroll-behavior: contain; width: 320px; max-width: calc(100vw - 32px); color: var(--parallax-ink); background: var(--parallax-surface); border: 1px solid var(--parallax-line-strong, var(--parallax-line)); border-radius: var(--parallax-radius-small); box-shadow: 0 6px 18px color-mix(in srgb, var(--parallax-ink) 14%, transparent); font: var(--parallax-text-xs) var(--parallax-font-technical); text-align: left; }
+  .parallax-tool-menu-section { display: grid; gap: var(--parallax-space-2); padding: var(--parallax-space-3); }
+  .parallax-tool-menu-section + .parallax-tool-menu-section { border-top: 1px solid var(--parallax-line); }
+  .parallax-tool-menu-section > h3 { margin: 0; font: 600 10px/1 var(--parallax-font-technical); letter-spacing: .08em; text-transform: uppercase; color: var(--parallax-muted); }
+  .parallax-tool-menu-section > [data-parallax-part="segmented"] { display: flex; }
+  .parallax-tool-menu-section > [data-parallax-part="segmented"] > button { flex: 1; }
+  .parallax-tool-menu-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--parallax-space-2); cursor: pointer; }
+  .parallax-tool-menu-row > input { margin: 1px 0 0; accent-color: var(--parallax-accent); }
+  .parallax-tool-menu-row > span { display: grid; gap: 2px; line-height: 1.3; }
+  .parallax-tool-menu-row small { color: var(--parallax-muted); font-size: 11px; line-height: 1.35; }
+  .parallax-tool-menu-choice { grid-template-columns: minmax(0, 1fr) auto; align-items: center; cursor: default; }
+  .parallax-tool-menu-choice > :not(span) { display: inline-flex; gap: var(--parallax-space-1); flex-wrap: nowrap; }
+  .parallax-tool-menu-panel.parallax-wide { width: 440px; }
+  /* The bench's environment: the temperature large, its slider over the whole range, the datasheet temperatures under it. */
+  .parallax-environment-temperature { display: flex; align-items: center; justify-content: space-between; gap: var(--parallax-space-3); }
+  .parallax-environment-temperature > output { font: 600 22px/1 var(--parallax-font-technical); font-variant-numeric: tabular-nums; color: var(--parallax-ink); transition: color 120ms ease; }
+  .parallax-environment-temperature > output.parallax-pending { color: var(--parallax-accent); }
+  .parallax-environment-slider { width: 100%; margin: 0; accent-color: var(--parallax-accent); }
+  .parallax-environment-scale { display: flex; justify-content: space-between; margin-top: -4px; font-size: 10px; color: var(--parallax-muted); }
+  .parallax-environment-table { width: 100%; }
+  .parallax-environment-table input.parallax-input { width: 100%; min-width: 0; text-align: right; }
+  .parallax-tool-menu-controls { display: flex; flex-wrap: wrap; gap: var(--parallax-space-1); }
+  .parallax-tool-menu-note { color: var(--parallax-muted); font-size: 11px; line-height: 1.35; }
+  .parallax-scope-toolbar > [data-parallax-part="scope-display"] { margin-left: auto; }
+  .parallax-tool-menu-foot { display: flex; align-items: center; gap: var(--parallax-space-2); width: 100%; padding: var(--parallax-space-2) var(--parallax-space-3); border: 0; border-top: 1px solid var(--parallax-line); background: none; color: var(--parallax-secondary); font: inherit; text-align: left; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+  .parallax-tool-menu-foot:hover { background: var(--parallax-well); color: var(--parallax-ink); }
+  .parallax-tool-menu-foot:focus-visible { outline: 2px solid var(--parallax-accent); outline-offset: -2px; }
+  .parallax-tool-menu-foot svg { width: 14px; height: 14px; }
+  /* A readings block that folds: a pointer over it, and a plate under it once opened past the room it was given. */
+  .parallax-circuit-diagram-reading-block[role="button"] { cursor:pointer }
+  .parallax-circuit-diagram-reading-block[role="button"]:focus-visible { outline:2px solid var(--parallax-accent);outline-offset:3px }
+  .parallax-circuit-diagram-reading-plate { fill:var(--parallax-instrument-surface,var(--parallax-surface));stroke:var(--parallax-line-strong,var(--parallax-line));stroke-width:1;vector-effect:non-scaling-stroke }
+  .parallax-circuit-diagram-reading-block[data-open] .parallax-circuit-diagram-reading-plate { stroke:var(--parallax-accent) }
   .parallax-circuit-diagram-meter rect { fill:var(--parallax-surface);stroke:var(--parallax-ink);stroke-width:1 }
   .parallax-circuit-diagram-meter text { fill:var(--parallax-ink);font:700 10px var(--parallax-font-technical);font-variant-numeric:tabular-nums }
   /* A probed net is marked by a wide, faint halo around its wires — wider than the widest current (11) and too faint to
@@ -1175,6 +1260,7 @@
   @keyframes parallax-computation-sweep { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
   @keyframes parallax-current-preview-glow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--parallax-period) * -1px); } }
   @keyframes parallax-current-preview-core { from { stroke-dashoffset: calc(var(--parallax-period) * -0.125px); } to { stroke-dashoffset: calc(var(--parallax-period) * -1.125px); } }
+  @keyframes parallax-current-preview-electrons { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--parallax-scatter) * -1px); } }
   @keyframes parallax-current-preview-forward { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--parallax-alternating-period, 16) * -1px); } }
   @keyframes parallax-current-preview-back { from { stroke-dashoffset: calc(var(--parallax-alternating-period, 16) * 0.5px); } to { stroke-dashoffset: calc(var(--parallax-alternating-period, 16) * 1.5px); } }
   @keyframes parallax-circuit-diagram-alternate-forward { from { stroke-dashoffset:0 } to { stroke-dashoffset:calc(var(--parallax-alternating-period,16) * -1px) } }
@@ -1186,7 +1272,7 @@
   }
   /* The oscilloscope's strip: groups, each named in small capitals, a rule between them. */
   .parallax-scope-toolbar-group { display: inline-flex; align-items: center; gap: var(--parallax-space-2); }
-  .parallax-scope-toolbar-group ~ .parallax-scope-toolbar-group { padding-left: var(--parallax-space-3); border-left: 1px solid var(--parallax-line); }
+  .parallax-scope-toolbar-group ~ .parallax-scope-toolbar-group { padding-left: var(--parallax-space-2); border-left: 1px solid var(--parallax-line); }
   .parallax-scope-toolbar-caption { font: 600 10px var(--parallax-font-technical); letter-spacing: 0.08em; text-transform: uppercase; color: var(--parallax-muted); }
   /* The keyboard shortcuts: a dialog of the browser's own, its groups in columns, each key a keycap. */
   .parallax-hotkeys { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; border: 1px solid var(--parallax-line-strong); background: var(--parallax-surface); color: var(--parallax-ink); font: var(--parallax-text-sm, 13px) var(--parallax-font-technical); }

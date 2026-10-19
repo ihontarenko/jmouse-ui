@@ -97,6 +97,11 @@ export interface LiveCircuitInput {
   /** Circuit seconds per second of wall time: 1 is real time. */
   speed: number;
   sampleInterval: number;
+  /**
+   * Every sample read, the run as slow as that takes — an unbroken record at a fine time base —, or real time first,
+   * one block a frame and gaps between. Absent: real time first.
+   */
+  gapless?: boolean;
 }
 
 /** What a session tells its owner, each as it changes; a React hook turns each into its state. */
@@ -160,7 +165,8 @@ export class LiveCircuitSession {
 
   /** What the next start sends; the owner hands it over whenever it draws, as the circuit and its values change. */
   readonly follow = (input: LiveCircuitInput) => {
-    this.input = input;
+    // How it is acquired is set by `acquire`, not by the owner's render: an input without it keeps the one set.
+    this.input = { ...input, gapless: input.gapless ?? this.input.gapless };
   };
 
   /** Whether the server runs a circuit for this session now: the socket is open and the circuit started. */
@@ -303,6 +309,17 @@ export class LiveCircuitSession {
     }
   };
 
+  /** Every sample read from now on, or real time first; the circuit goes on. */
+  readonly acquire = (gapless: boolean) => {
+    if (Boolean(this.input.gapless) === gapless) {
+      return;
+    }
+    this.input = { ...this.input, gapless };
+    if (this.socket && this.started) {
+      this.socket.send({ type: "acquire", gapless });
+    }
+  };
+
   readonly resize = (capacity: number) => {
     this.memory.resize(capacity);
   };
@@ -411,7 +428,7 @@ export class LiveCircuitSession {
     this.sent = { circuit: current.circuit, values: current.values };
     this.probes = probesWithin(this.probes, current.circuit);
     open.send({ type: "start", objectId: current.objectId, definition: current.circuit, values: current.values,
-      interval: current.sampleInterval, speed: current.speed,
+      interval: current.sampleInterval, speed: current.speed, gapless: Boolean(current.gapless),
       probes: this.probes });
     return open;
   }
@@ -456,6 +473,9 @@ export class LiveCircuitSession {
       this.controls = message.controls;
       this.listener.onControls(message.controls);
       this.listener.onBusy(false);
+      // What changed while the circuit was starting — a bench switched to realistic just before Run, a slider moved —
+      // was refused by `edit` then, since nothing ran yet; it is applied now, or the run would go on without it.
+      this.edit(this.input.circuit, this.input.values);
     } else if (message.type === "frame") {
       this.memory.append(message.time, message.channels, message.peaks, message.interval);
       this.traced.append(message.trace.time, message.trace.columns, message.trace.units, message.trace.rms);

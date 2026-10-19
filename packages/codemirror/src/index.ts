@@ -65,6 +65,7 @@ export {
   mappingType,
   scriptEvent,
   scriptFacade,
+  annotationType,
 } from "./tags"
 
 export { jmpSyntax, jmpSyntaxLanguage, jmpLanguageDescription } from "./jmpSyntax"

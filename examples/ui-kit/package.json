@@ -1,0 +1,12 @@
+{
+  "name": "ui-kit-showcase",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The jMouse UI-kit reference: every component of @jmouse/ui-kit, live, in every theme and appearance axis — the page a new screen is composed from. Not a workspace; it resolves its dependencies through the monorepo root's node_modules and reads the package's source, so a change shows without a rebuild.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  }
+}
