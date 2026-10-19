@@ -17,6 +17,8 @@ interface ActionRule {
 }
 
 const isFile = (entry: ExplorerEntry) => entry.kind === "file"
+const isPresent = (entry: ExplorerEntry) => entry.removed !== true
+const isRemoved = (entry: ExplorerEntry) => entry.removed === true
 
 /**
  * Every act's rule, in the order a menu lists them.
@@ -28,9 +30,10 @@ const ACTION_RULES: Record<ExplorerAction, ActionRule> = {
   open: { scope: "entry", fits: isFile },
   download: { method: "read", scope: "entry", fits: isFile },
   copyLink: { method: "shareUrl", scope: "entry" },
-  rename: { method: "rename", scope: "entry" },
-  move: { method: "move", scope: "entry" },
-  remove: { method: "remove", scope: "entry" },
+  rename: { method: "rename", scope: "entry", fits: isPresent },
+  move: { method: "move", scope: "entry", fits: isPresent },
+  remove: { method: "remove", scope: "entry", fits: isPresent },
+  restore: { method: "restore", scope: "entry", fits: isRemoved },
   upload: { method: "upload", scope: "place" },
   createFolder: { method: "createFolder", scope: "place" },
 }

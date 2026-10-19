@@ -25,14 +25,19 @@ export interface ExplorerEntry {
   kind: "folder" | "file"
   /** The media type, when the backend knows it. The name gets a vote too — see `fileKindOf`. */
   mediaType?: string
-  /** Bytes. Absent for a folder. */
+  /** Bytes — of a file, or of everything a folder holds when the product knows it. */
   size?: number
   /** ISO-8601. Formatted by the explorer through `formatDate`. */
   modified?: string
+  /**
+   * Taken out and still recoverable — in a trash, or out of an index. Drawn receded and marked in a word; the acts that
+   * change it are withheld, and `restore` is offered instead when the adapter has it.
+   */
+  removed?: boolean
 }
 
 /** Every act the explorer can offer. */
-export type ExplorerAction = "open" | "download" | "copyLink" | "rename" | "move" | "remove" | "createFolder" | "upload"
+export type ExplorerAction = "open" | "download" | "copyLink" | "rename" | "move" | "remove" | "restore" | "createFolder" | "upload"
 
 /**
  * What an act is done to: one entry, or a folder as a PLACE — somewhere to upload into or make a folder in.
@@ -82,8 +87,14 @@ export interface ExplorerAdapter {
   /**
    * ⚠️ **A folder that still holds something may be refused**, and being refused is the right answer — a one-click
    * delete that takes a branch with it is a click nobody meant. The refusal is shown in the server's own words.
+   *
+   * ⚠️ Returning the entry says it STAYS, marked `removed` — a listing that shows what was removed keeps it there, to be
+   * restored; returning nothing takes it out of the listing.
    */
-  remove?(entry: ExplorerEntry): Promise<void>
+  remove?(entry: ExplorerEntry): Promise<ExplorerEntry | void>
+
+  /** Puts a removed entry back; what comes back replaces it in the listing. */
+  restore?(entry: ExplorerEntry): Promise<ExplorerEntry>
 
   upload?(folderId: string | null, file: File): Promise<ExplorerEntry>
 

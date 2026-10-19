@@ -115,4 +115,4 @@ export { moveFocusAmong, placeUnderAnchor, useAnchoredPopover, type PopoverAlign
 
 // File workspace (the original @jmouse/files manager is independent).
 export { FileGlyph, fileGlyphKind, type FileGlyphKind, type FileGlyphProperties } from "./files/FileGlyph"
-export { FileWorkspace, type FileWorkspaceEntry, type FileWorkspaceLabels, type FileWorkspaceProperties, type FileWorkspaceRename } from "./files/FileWorkspace"
+export { FileWorkspace, type FileWorkspaceEntry, type FileWorkspaceLabels, type FileWorkspaceLocation, type FileWorkspaceProperties, type FileWorkspaceRename } from "./files/FileWorkspace"

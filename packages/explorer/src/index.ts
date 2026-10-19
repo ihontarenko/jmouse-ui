@@ -10,7 +10,7 @@
  * of them owns.
  */
 
-export { Explorer, type ExplorerLabels, type ExplorerProperties } from "./Explorer"
+export { Explorer, type ExplorerLabels, type ExplorerLocation, type ExplorerProperties, type ExplorerToggle } from "./Explorer"
 export { ExplorerViewer, type ExplorerViewerLabels, type ExplorerViewerProperties } from "./ExplorerViewer"
 export type { ExplorerAction, ExplorerAdapter, ExplorerEntry, ExplorerTarget } from "./adapter"
 export { entryActions, permits, placeActions } from "./actions"

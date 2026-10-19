@@ -41,3 +41,21 @@
   .kit-file-panes > .kit-split > .kit-split-pane:last-child { flex: 1; min-height: 0; }
   .kit-file-location .kit-crumbs ol { display: flex; }
 }
+/* The type filter: one strip under the toolbar, each family a toggle with its count. */
+.kit-file-facets { display: flex; flex-wrap: wrap; align-items: center; gap: var(--kit-space-1); padding: var(--kit-space-1) var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
+.kit-file-facets > .kit-micro-label { margin-inline-end: var(--kit-space-1); }
+.kit-file-facets .kit-chip-count { font-variant-numeric: tabular-nums; }
+.kit-file-family { flex: none; width: 8px; height: 8px; background: var(--kit-file-family-color); }
+/* Removed and still recoverable: receded, struck through, and said in a word. */
+.kit-file-name[data-removed] { color: var(--kit-muted); }
+.kit-file-name[data-removed] > span[title] { text-decoration: line-through; text-decoration-color: var(--kit-line-strong); }
+.kit-file-name[data-removed] > .kit-file-glyph, .kit-file-tile-removed .kit-tile-glyph { opacity: 0.5; }
+.kit-file-mark { flex: none; padding: 0 var(--kit-space-1); border: var(--kit-border-width) solid var(--kit-warn); color: var(--kit-secondary); font: var(--kit-weight-control) var(--kit-text-2xs) / 1.6 var(--kit-font-control); letter-spacing: 0.04em; text-transform: uppercase; }
+.kit-file-tile-removed .kit-tile-name { color: var(--kit-muted); text-decoration: line-through; }
+/* A narrow listing keeps the name and the size; the date is the first thing to go. */
+.kit-file-listing { container-type: inline-size; }
+@container (max-width: 520px) { .kit-file-listing [data-column="modified"] { display: none; } }
+/* The page presentation: no frame of its own — the folders are the page's left column, the tabs its header line. */
+.kit-file-workspace[data-presentation="page"] { grid-template-rows: minmax(0, 1fr); background: transparent; }
+.kit-file-workspace[data-presentation="page"]:has(> .kit-file-notice) { grid-template-rows: auto minmax(0, 1fr); }
+.kit-file-workspace[data-presentation="page"] .kit-editor { background: var(--kit-surface); }
