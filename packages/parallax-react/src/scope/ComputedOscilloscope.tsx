@@ -36,9 +36,16 @@ export function ComputedOscilloscope({ dataset, diagram }: { dataset: Dataset | 
     const time = series?.axisValues ?? [];
     const store = new SampleMemory(Math.max(1, time.length));
     const reading = (node: string, index: number) => node === "ground" ? 0 : (series?.values[columns.get(node) ?? -1]?.[index] ?? Number.NaN);
-    const readings = Object.fromEntries(scope.settings.channels.filter((channel) => channel.enabled).map((channel) =>
+    const enabled = scope.settings.channels.filter((channel) => channel.enabled);
+    const readings = Object.fromEntries(enabled.map((channel) =>
       [channel.id, time.map((_, index) => reading(channel.node, index) - reading(channel.reference, index))]));
-    store.append(time, readings);
+    // What a node went through between the samples, as the live scope's peak detection keeps it — only against ground:
+    // the peaks of a difference are not the difference of two nodes' peaks.
+    const peaks = Object.fromEntries(enabled.flatMap((channel) => {
+      const band = channel.reference === "ground" ? series?.peaks?.[series.columns[columns.get(channel.node) ?? -1]] : undefined;
+      return band ? [[channel.id, band]] : [];
+    }));
+    store.append(time, readings, peaks);
     return store;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [series, columns, channelsKey]);

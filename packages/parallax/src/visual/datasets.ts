@@ -125,6 +125,18 @@ export interface TimeSeriesDataset extends Declared {
   units?: string[];
   /** How the axis is read, as what computed the series declares it: evenly, or in decades — a frequency response. */
   axisScale?: "LINEAR" | "LOGARITHMIC";
+  /**
+   * By column, the lowest and highest value it reached over each sample's interval — from the sample before to this
+   * one —, over every step the engine took between: what happened between two samples, which neither shows. A column
+   * left out has none.
+   */
+  peaks?: Record<string, SeriesBand>;
+}
+
+/** A column's lowest and highest value over each sample's interval, sample by sample. */
+export interface SeriesBand {
+  lows: number[];
+  highs: number[];
 }
 
 export interface MatrixAnalysisDataset extends Declared {

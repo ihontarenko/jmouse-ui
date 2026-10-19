@@ -69,9 +69,14 @@ export function buildDrawing(parts: readonly DrawableDataset[], mode: Mode, styl
       case "FEATURE_POINTS":
         markers.push(...features(part, style));
         break;
-      case "TIME_SERIES":
+      case "TIME_SERIES": {
+        const excursions = seriesExcursions(part, style);
+        if (excursions) {
+          batches.push(excursions);
+        }
         batches.push(series(part, style));
         break;
+      }
       case "SCALAR_GRID":
       case "BINARY_GRID":
       case "COMPLEX_GRID":
@@ -160,7 +165,8 @@ function boundsOf(parts: readonly DrawableDataset[], style: LayerStyle): Drawing
         break;
       case "TIME_SERIES": {
         const time = rangeOf(axisOf(part));
-        const value = rangeOf(part.values.flat());
+        const peaks = Object.values(part.peaks ?? {}).flatMap((band) => [...band.lows, ...band.highs]);
+        const value = rangeOf([...part.values.flat(), ...peaks]);
         if (time && value) {
           include([time[0], value[0], time[1], value[1]], 2);
         }
@@ -260,6 +266,60 @@ function series(dataset: TimeSeriesDataset, style: LayerStyle): Batch {
     }
   });
   return { kind: "segments", positions: positions.build(), colors: colors.build(), width: 1.75 + (style.emphasized ? 1 : 0) };
+}
+
+/**
+ * What each column went through between its samples beyond the straight line drawn between them, as a band in its
+ * own colour, faded, over the interval: a transistor's overshoot a nanosecond long between samples 25 ns apart, which
+ * the line through the samples alone does not show. Only the excursion past the line is filled — the whole span from
+ * the lowest to the highest would thicken every slope into a block. Null when no column has peaks.
+ */
+function seriesExcursions(dataset: TimeSeriesDataset, style: LayerStyle): Batch | null {
+  if (!dataset.peaks) {
+    return null;
+  }
+  const axis = axisOf(dataset);
+  const positions = new FloatBuilder();
+  const colors = new FloatBuilder();
+  const indices: number[] = [];
+  let vertices = 0;
+  const band = (from: number, to: number, bottom: number, top: number, color: Rgba) => {
+    positions.push(from, bottom, 0, to, bottom, 0, to, top, 0, from, top, 0);
+    for (let corner = 0; corner < 4; corner++) {
+      colors.push(...color);
+    }
+    indices.push(vertices, vertices + 1, vertices + 2, vertices, vertices + 2, vertices + 3);
+    vertices += 4;
+  };
+  dataset.columns.forEach((name, columnIndex) => {
+    const peaks = dataset.peaks?.[name];
+    if (!peaks) {
+      return;
+    }
+    const column = dataset.values[columnIndex];
+    const range = rangeOf(column);
+    // An excursion smaller than this is the rounding of a float, not something that happened.
+    const negligible = range ? (range[1] - range[0]) * 1e-4 : 0;
+    // Its own colour faded into the background: neither driver blends a filled triangle.
+    const color = rgba(mix(style.theme.background, style.theme.series[columnIndex % style.theme.series.length], 0.45));
+    for (let index = 1; index < column.length; index++) {
+      const top = Math.max(column[index - 1], column[index]);
+      const bottom = Math.min(column[index - 1], column[index]);
+      if (![axis[index - 1], axis[index], top, bottom].every(Number.isFinite)) {
+        continue;
+      }
+      if (peaks.highs[index] - top > negligible) {
+        band(axis[index - 1], axis[index], top, peaks.highs[index], color);
+      }
+      if (bottom - peaks.lows[index] > negligible) {
+        band(axis[index - 1], axis[index], peaks.lows[index], bottom, color);
+      }
+    }
+  });
+  if (vertices === 0) {
+    return null;
+  }
+  return { kind: "triangles", positions: positions.build(), normals: null, colors: colors.build(), indices: new Uint32Array(indices), lit: false };
 }
 
 /**
