@@ -3,6 +3,8 @@
 .kit-file-glyph[data-size="large"] { width: calc(46px * var(--kit-ui-scale)); height: calc(54px * var(--kit-ui-scale)); }
 .kit-file-glyph[data-kind="folder"] { --kit-file-glyph-color: var(--kit-file-folder, var(--kit-accent)); }
 .kit-file-workspace { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; height: 100%; overflow: hidden; background: var(--kit-surface); color: var(--kit-ink); }
+.kit-file-workspace:has(> .kit-file-notice) { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.kit-file-notice { padding: var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
 .kit-file-location { display: flex; align-items: center; gap: var(--kit-space-1); min-width: 0; padding: var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface-2); }
 .kit-file-location .kit-crumbs { min-width: 0; }
 .kit-file-location button.kit-crumb { border: 0; background: transparent; font: inherit; cursor: pointer; }
@@ -11,12 +13,22 @@
 .kit-file-browser { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .kit-file-browser > .kit-toolbar { flex-wrap: wrap; flex-shrink: 0; padding: var(--kit-space-2); border-bottom: var(--kit-border-width) solid var(--kit-line); }
 .kit-file-browser > .kit-toolbar > select { width: auto; }
-.kit-file-listing { flex: 1; min-height: 0; overflow: auto; }
+.kit-file-listing { position: relative; flex: 1; min-height: 0; overflow: auto; outline: var(--kit-border-width) dashed transparent; outline-offset: calc(var(--kit-space-1) * -1); transition: outline-color var(--kit-ease), background-color var(--kit-ease); }
+.kit-file-listing[data-targeted] { outline-color: var(--kit-accent); background: var(--kit-accent-soft); }
+.kit-file-drop-hint { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--kit-space-2) var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-accent); background: var(--kit-surface); color: var(--kit-ink); font-size: var(--kit-text-sm); }
+.kit-file-rename { min-width: 0; width: 100%; }
 .kit-file-listing > .kit-tile-grid { border: 0; }
 .kit-file-listing > .kit-table-scroll { height: 100%; }
 .kit-file-name { display: flex; align-items: center; gap: var(--kit-space-2); max-width: 100%; text-align: start; }
 .kit-file-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kit-file-preview { height: 100%; min-width: 0; min-height: 0; overflow: auto; }
+/* What fills the preview: one picture, document or player at the size of the pane, or text as source. */
+.kit-file-view { display: flex; align-items: center; justify-content: center; height: 100%; min-height: 0; padding: var(--kit-space-3); background: var(--kit-surface-2); }
+.kit-file-view > img, .kit-file-view > video { max-width: 100%; max-height: 100%; object-fit: contain; border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-file-view > iframe { width: 100%; height: 100%; border: var(--kit-border-width) solid var(--kit-line); background: var(--kit-surface); }
+.kit-file-view > audio { width: min(100%, 520px); }
+.kit-file-view[data-kind="text"], .kit-file-view[data-kind="markdown"] { display: block; padding: 0; background: var(--kit-surface); }
+.kit-file-view > .kit-code { height: 100%; margin: 0; border: 0; overflow: auto; }
 .kit-tree-glyph, .kit-editor-tab-glyph { display: inline-flex; align-items: center; flex: none; }
 .kit-file-workspace .kit-tree-end { display: flex; align-items: center; }
 @media (max-width: 640px) {

@@ -109,6 +109,9 @@ export interface TileProperties {
   onDrop?(event: DragEvent): void
   onDragStart?(event: DragEvent): void
   draggable?: boolean
+  /** In place of the name while it is being edited — a field. The tile stops being a button meanwhile: a field inside
+      a button can be neither typed into nor announced. */
+  editor?: ReactNode
   className?: string
 }
 
@@ -116,7 +119,17 @@ export interface TileProperties {
  * One file or folder as a tile. The name takes two lines then an ellipsis, and its SUFFIX never comes apart — the stem
  * may break anywhere, `.step` travels whole.
  */
-export function Tile({ glyph, name, meta, onOpen, onActivate, active = false, actions, targeted = false, onDragOver, onDragLeave, onDrop, onDragStart, draggable = false, className }: TileProperties) {
+export function Tile({ glyph, name, meta, onOpen, onActivate, active = false, actions, targeted = false, onDragOver, onDragLeave, onDrop, onDragStart, draggable = false, editor, className }: TileProperties) {
+  if (editor !== undefined) {
+    return (
+      <div className={joinClassNames("kit-tile", className)} data-active={active ? "" : undefined}>
+        <div className="kit-tile-body">
+          <span className="kit-tile-glyph">{glyph}</span>
+          {editor}
+        </div>
+      </div>
+    )
+  }
   return (
     <div
       draggable={draggable}

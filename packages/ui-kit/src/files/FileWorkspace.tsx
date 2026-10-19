@@ -1,7 +1,7 @@
-﻿import { useEffect, useId, useMemo, useState, type ReactNode } from "react"
+﻿import { useEffect, useId, useMemo, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { Button, IconButton } from "../controls/Button"
 import { Segmented } from "../controls/Choices"
-import { SearchField, Select } from "../controls/Inputs"
+import { Input, SearchField, Select } from "../controls/Inputs"
 import { Split } from "../containers/Split"
 import { Tile, TileGrid } from "../data/Records"
 import { Table, type TableColumn, type TableSort } from "../data/Table"
@@ -38,9 +38,61 @@ const defaultLabels = {
   emptyDescription: "Choose another folder or add files here.", noResults: "No matching files",
   clearSearch: "Clear search", loading: "Loading files", unavailable: "Folder is unavailable",
   unavailableDescription: "It may have been moved, removed, or access may have changed.",
-  preview: "File preview", close: "Close", options: "Options", items: "items",
+  preview: "File preview", close: "Close", options: "Options", items: "items", newName: "New name", dropFiles: "Drop files to add them to this folder",
 }
 export type FileWorkspaceLabels = typeof defaultLabels
+
+/** One entry's name, being edited where it is drawn. Enter or leaving the field keeps it; Escape restores it. */
+export interface FileWorkspaceRename {
+  id: string
+  onCommit(name: string): void
+  onCancel(): void
+}
+
+/**
+ * The field a name is edited in. The stem is selected, not the suffix — renaming `report.pdf` is almost always about
+ * `report`, and a selected `.pdf` is one keystroke from a file nothing can open.
+ */
+function FileNameField({ entry, rename, label }: { entry: FileWorkspaceEntry; rename: FileWorkspaceRename; label: string }) {
+  const [value, setValue] = useState(entry.name)
+  const [settled, setSettled] = useState(false)
+
+  function settle(keep: boolean) {
+    if (settled) {
+      return
+    }
+    setSettled(true)
+    const name = value.trim()
+    if (keep && name && name !== entry.name) {
+      rename.onCommit(name)
+    } else {
+      rename.onCancel()
+    }
+  }
+
+  return <Input size="small" className="kit-file-rename" aria-label={`${label}: ${entry.name}`} value={value} autoFocus
+    ref={(element) => {
+      if (element && element.dataset.selected === undefined) {
+        element.dataset.selected = ""
+        const suffix = entry.kind === "file" ? entry.name.lastIndexOf(".") : -1
+        element.setSelectionRange(0, suffix > 0 ? suffix : entry.name.length)
+      }
+    }}
+    onChange={(event) => setValue(event.target.value)}
+    onClick={(event) => event.stopPropagation()}
+    onDoubleClick={(event) => event.stopPropagation()}
+    onBlur={() => settle(true)}
+    onKeyDown={(event) => {
+      event.stopPropagation()
+      if (event.key === "Enter") {
+        event.preventDefault()
+        settle(true)
+      } else if (event.key === "Escape") {
+        event.preventDefault()
+        settle(false)
+      }
+    }} />
+}
 
 export interface FileWorkspaceProperties {
   entries: FileWorkspaceEntry[]
@@ -57,6 +109,17 @@ export interface FileWorkspaceProperties {
   formatSize?(bytes: number): string
   defaultView?: "tiles" | "list"
   storageKey?: string
+  /** Given, the selection is the host's: the one entry its toolbar and keys act on. */
+  selectedId?: string
+  onSelectedChange?(entry: FileWorkspaceEntry | undefined): void
+  /** The entry whose name is being edited in place. */
+  renaming?: FileWorkspaceRename
+  /** Given, files dragged from the desktop may be dropped on the listing; they land in the shown folder. */
+  onDropFiles?(files: File[]): void
+  /** A band above the panes — an act that failed, an upload in progress. The listing stays usable under it. */
+  notice?: ReactNode
+  /** Keys pressed anywhere inside — where a host binds F2 or Delete to the selection. */
+  onKeyDown?(event: KeyboardEvent<HTMLElement>): void
   className?: string
 }
 
@@ -71,12 +134,22 @@ function readableSize(bytes: number): string {
  * The product owns location, data and capabilities. Tabs, selection and presentation are local UI state.
  * Entries form an acyclic tree, with stable unique IDs and folders as parents; null names the root.
  */
-export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, labels, formatSize = readableSize, defaultView = "tiles", storageKey, className }: FileWorkspaceProperties) {
+export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, labels, formatSize = readableSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, onKeyDown, className }: FileWorkspaceProperties) {
   const text = { ...defaultLabels, ...labels }
   const browserId = useId()
   const [openIds, setOpenIds] = useState<string[]>([])
   const [activeFileId, setActiveFileId] = useState<string>()
-  const [selection, setSelection] = useState<{ directoryId: string | null; id: string }>()
+  const [ownSelection, setOwnSelection] = useState<{ directoryId: string | null; id: string }>()
+  const [dropTargeted, setDropTargeted] = useState(false)
+  const selectionControlled = onSelectedChange !== undefined
+  const selection = selectionControlled ? (hostSelectedId === undefined ? undefined : { directoryId, id: hostSelectedId }) : ownSelection
+  function setSelection(next: { directoryId: string | null; id: string } | undefined) {
+    if (selectionControlled) {
+      onSelectedChange(next === undefined ? undefined : entries.find((entry) => entry.id === next.id))
+    } else {
+      setOwnSelection(next)
+    }
+  }
   const [search, setSearch] = useState({ directoryId, value: "" })
   const query = search.directoryId === directoryId ? search.value : ""
   const [view, setView] = useState(defaultView)
@@ -159,7 +232,7 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
     ...openedFiles.map((entry) => ({ id: entry.id, name: entry.name, glyph: glyph(entry), hint: entry.parentId ? byId.get(entry.parentId)?.name : text.root })),
   ]
   const columns: TableColumn<FileWorkspaceEntry>[] = [
-    { key: "name", header: text.name, sortable: true, cell: (entry) => <span className="kit-file-name">{glyph(entry)}<span>{entry.name}</span></span> },
+    { key: "name", header: text.name, sortable: true, cell: (entry) => <span className="kit-file-name">{glyph(entry)}{renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : <span>{entry.name}</span>}</span> },
     { key: "size", header: text.size, sortable: true, align: "end", technical: true, shrink: true, cell: metadata },
     { key: "modified", header: text.modified, shrink: true, cell: (entry) => entry.modified ?? "\u2014" },
     ...(entryActions ? [{ key: "actions", header: text.options, shrink: true, cell: menu } satisfies TableColumn<FileWorkspaceEntry>] : []),
@@ -173,19 +246,41 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
       <Segmented<"tiles" | "list"> label={text.view} size="small" value={view} onValueChange={setView} options={[{ value: "tiles", label: text.tiles }, { value: "list", label: text.list }]} />
       {actions}
     </Toolbar>
-    <div className="kit-file-listing" aria-busy={loading || undefined}>
+    <div className="kit-file-listing" aria-busy={loading || undefined} data-targeted={dropTargeted ? "" : undefined} {...(onDropFiles && directoryAvailable ? {
+      onDragOver: (event: DragEvent) => {
+        if (event.dataTransfer.types.includes("Files")) {
+          event.preventDefault()
+          event.dataTransfer.dropEffect = "copy"
+          setDropTargeted(true)
+        }
+      },
+      onDragLeave: (event: DragEvent) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setDropTargeted(false)
+        }
+      },
+      onDrop: (event: DragEvent) => {
+        setDropTargeted(false)
+        if (event.dataTransfer.files.length > 0) {
+          event.preventDefault()
+          onDropFiles(Array.from(event.dataTransfer.files))
+        }
+      },
+    } : {})}>
+      {dropTargeted ? <p className="kit-file-drop-hint" aria-live="polite">{text.dropFiles}</p> : null}
       {error ? <Notice tone="danger">{error}</Notice> : loading ? <Waiting label={text.loading} /> : !directoryAvailable ? <EmptyState flush icon="folder" title={text.unavailable} description={text.unavailableDescription} actions={<Button onClick={() => navigate(null)}>{text.root}</Button>} /> : rows.length === 0 ? <EmptyState flush icon={query ? "search" : "folder"} title={query ? text.noResults : text.empty} description={query ? undefined : text.emptyDescription} actions={query ? <Button onClick={() => setSearch({ directoryId, value: "" })}>{text.clearSearch}</Button> : undefined} /> : view === "list" ? <Table label={text.files} columns={columns} rows={rows} rowKey={(entry) => entry.id} sort={sort} onSortChange={setSort} selectedKey={rows.some((entry) => entry.id === selectedId) ? selectedId : undefined} onRowSelect={(entry) => setSelection({ directoryId, id: entry.id })} onRowActivate={open} /> : <TileGrid>
-        {rows.map((entry) => <Tile key={entry.id} name={entry.name} glyph={glyph(entry, "large")} meta={metadata(entry)} active={selectedId === entry.id} onOpen={() => setSelection({ directoryId, id: entry.id })} onActivate={() => open(entry)} actions={menu(entry)} />)}
+        {rows.map((entry) => <Tile key={entry.id} name={entry.name} glyph={glyph(entry, "large")} meta={metadata(entry)} active={selectedId === entry.id} onOpen={() => setSelection({ directoryId, id: entry.id })} onActivate={() => open(entry)} actions={menu(entry)} editor={renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : undefined} />)}
       </TileGrid>}
     </div>
   </div>
 
-  return <section className={joinClassNames("kit-file-workspace", className)} aria-label={text.files} data-tree-visible={treeVisible ? "" : undefined}>
+  return <section className={joinClassNames("kit-file-workspace", className)} aria-label={text.files} data-tree-visible={treeVisible ? "" : undefined} onKeyDown={onKeyDown}>
     <div className="kit-file-location">
       <IconButton icon="folder" size="small" label={treeVisible ? text.hideFolders : text.showFolders} aria-expanded={treeVisible} onClick={() => setTreeVisible(!treeVisible)} />
       <IconButton icon="arrow-up" size="small" label={text.up} disabled={directoryId === null} onClick={() => navigate(directory?.parentId ?? null)} />
       <Crumbs label={text.path} items={[{ label: text.root, onNavigate: () => navigate(null) }, ...ancestors.map((entry) => ({ label: entry.name, onNavigate: () => navigate(entry.id) }))]} renderLink={(crumb, className) => <button className={className} type="button" onClick={crumb.onNavigate}>{crumb.label}</button>} />
     </div>
+    {notice ? <div className="kit-file-notice">{notice}</div> : null}
     <div className="kit-file-panes">
       <Split label={text.folders} defaultSize={260} minimum={180} maximum={480} collapsed={!treeVisible} storageKey={storageKey}>
         <ToolWindow title={text.folders} onHide={() => setTreeVisible(false)} hideLabel={text.hideFolders} toolbar={<Button variant="quiet" size="small" icon="folder" onClick={() => navigate(null)}>{text.root}</Button>}>

@@ -8,3 +8,4 @@
 
 export { fileKindOf, readableFileSize, MAXIMUM_TEXT_BYTES, type FileKind, type ViewableFile } from "./fileKinds"
 export { because } from "./failures"
+export { saveBlob } from "./saveBlob"
