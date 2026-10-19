@@ -32,7 +32,18 @@ export interface ExplorerEntry {
 }
 
 /** Every act the explorer can offer. */
-export type ExplorerAction = "download" | "copyLink" | "rename" | "move" | "remove" | "createFolder" | "upload"
+export type ExplorerAction = "open" | "download" | "copyLink" | "rename" | "move" | "remove" | "createFolder" | "upload"
+
+/**
+ * What an act is done to: one entry, or a folder as a PLACE — somewhere to upload into or make a folder in.
+ *
+ * ⚠️ **A place is named by its ID, and the folder itself only when the explorer knows it.** Opened deep without the
+ * folders above, the explorer has listed a folder it has never been told the name of; asking the product about that
+ * place must not pretend it is the root.
+ */
+export type ExplorerTarget =
+  | { entry: ExplorerEntry }
+  | { place: string | null; folder?: ExplorerEntry }
 
 export interface ExplorerAdapter {
   /** The children of one folder — folders and files together. null is the root. */
@@ -67,15 +78,15 @@ export interface ExplorerAdapter {
    */
   remove?(entry: ExplorerEntry): Promise<void>
 
-  upload?(folderId: string | null, file: File, onProgress?: (percent: number) => void): Promise<ExplorerEntry>
+  upload?(folderId: string | null, file: File): Promise<ExplorerEntry>
 
   /** A public, absolute link worth copying — or null where this entry has none. */
   shareUrl?(entry: ExplorerEntry): string | null
 
   /**
-   * Whether this reader may do this to this entry. `entry` is null for an act on a folder not yet chosen — the root.
+   * Whether this reader may do this to this target.
    *
    * ⚠️ **It narrows, never widens.** An act whose method is absent stays absent whatever this answers.
    */
-  permits?(action: ExplorerAction, entry: ExplorerEntry | null): boolean
+  permits?(action: ExplorerAction, target: ExplorerTarget): boolean
 }

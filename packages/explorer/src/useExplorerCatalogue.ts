@@ -1,6 +1,6 @@
+import { failureStatus, reasonOf } from "@jmouse/file-handling"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ExplorerAdapter, ExplorerEntry } from "./adapter"
-import { because } from "./headless/failures"
 
 /**
  * Everything the explorer has learned about the adapter's tree, and the one folder being looked at.
@@ -11,33 +11,53 @@ import { because } from "./headless/failures"
  *
  * ⚠️ **A folder's listing REPLACES its children.** What `list` answers is the truth about that folder; merging it
  * would keep showing a file somebody removed in another tab until the page reloads.
+ *
+ * ⚠️ **Words are the caller's.** What is kept here is the server's reason and whether the folder has gone; the
+ * sentence around them is written where the labels are, so a translation decides its own word order.
  */
+
+/** Why a request about the tree failed. */
+export interface CatalogueFailure {
+  /** The server's words, or empty when it said nothing. */
+  reason: string
+  /** The folder is not there any more — it was answered as missing, not refused. */
+  gone: boolean
+}
 
 /** The state of the shown folder's listing. */
 export interface FolderState {
   loading: boolean
-  /** The server's words, when the listing could not be had. */
-  failure?: string
+  failure?: CatalogueFailure
 }
 
 export interface ExplorerCatalogue {
   entries: ExplorerEntry[]
   folder: FolderState
-  /** Load the shown folder again — after an act, or when somebody asks. */
-  refresh(): Promise<void>
+  /** The folder shape — `folders` or `ancestors` — could not be had. The listing itself may still be fine. */
+  shapeFailure?: CatalogueFailure
+  dismissShapeFailure(): void
   /** Put what an act answered in place without waiting for a listing. */
   record(entry: ExplorerEntry): void
+  /** Take an entry out — and, for a folder, everything filed under it. */
   forget(entryId: string): void
+}
+
+const GONE_STATUSES = new Set([404, 410])
+
+function catalogueFailureOf(failure: unknown): CatalogueFailure {
+  const status = failureStatus(failure)
+
+  return { reason: reasonOf(failure), gone: status !== undefined && GONE_STATUSES.has(status) }
 }
 
 /**
  * @param adapter how this product reaches its files
  * @param folderId the folder being looked at; null is the root
- * @param unreadable the words for a listing that failed, before the server's own
  */
-export function useExplorerCatalogue(adapter: ExplorerAdapter, folderId: string | null, unreadable: string): ExplorerCatalogue {
+export function useExplorerCatalogue(adapter: ExplorerAdapter, folderId: string | null): ExplorerCatalogue {
   const [entries, setEntries] = useState<Map<string, ExplorerEntry>>(() => new Map())
   const [folder, setFolder] = useState<FolderState>({ loading: true })
+  const [shapeFailure, setShapeFailure] = useState<CatalogueFailure>()
 
   // ⚠️ The newest request per folder wins. Stepping quickly through three folders starts three listings, and the
   // slowest one answering last must not paint its children under the folder somebody is now looking at.
@@ -63,83 +83,97 @@ export function useExplorerCatalogue(adapter: ExplorerAdapter, folderId: string 
     })
   }, [])
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     latestRequest.current += 1
     const request = latestRequest.current
 
     setFolder({ loading: true })
 
-    try {
-      const children = await adapter.list(folderId)
-
-      if (request !== latestRequest.current) {
-        return
-      }
-
-      learn(children, folderId)
-      setFolder({ loading: false })
-    } catch (failure) {
+    adapter.list(folderId).then((children) => {
       if (request === latestRequest.current) {
-        setFolder({ loading: false, failure: `${unreadable}${because(failure)}` })
+        learn(children, folderId)
+        setFolder({ loading: false })
       }
-    }
-  }, [adapter, folderId, learn, unreadable])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+    }, (failure: unknown) => {
+      if (request === latestRequest.current) {
+        setFolder({ loading: false, failure: catalogueFailureOf(failure) })
+      }
+    })
+  }, [adapter, folderId, learn])
 
   // The whole folder shape once, when the backend can give it; otherwise the trail to where we start.
   useEffect(() => {
+    if (!adapter.folders) {
+      return
+    }
+
     let current = true
 
-    if (adapter.folders) {
-      void adapter.folders().then((folders) => {
-        if (current) {
-          learn(folders)
-        }
-      }, () => undefined)
-    }
+    adapter.folders().then((folders) => {
+      if (current) {
+        learn(folders)
+      }
+    }, (failure: unknown) => {
+      if (current) {
+        setShapeFailure(catalogueFailureOf(failure))
+      }
+    })
 
     return () => {
       current = false
     }
   }, [adapter, learn])
 
+  const known = folderId === null || entries.has(folderId)
+
   useEffect(() => {
-    if (folderId === null || entries.has(folderId) || !adapter.ancestors) {
+    if (folderId === null || known || !adapter.ancestors) {
       return
     }
 
     let current = true
 
-    void adapter.ancestors(folderId).then((trail) => {
+    adapter.ancestors(folderId).then((trail) => {
       if (current) {
         learn(trail)
       }
-    }, () => undefined)
+    }, (failure: unknown) => {
+      if (current) {
+        setShapeFailure(catalogueFailureOf(failure))
+      }
+    })
 
     return () => {
       current = false
     }
-    // ⚠️ Not keyed on `entries`: once the trail is known this has nothing to do, and re-running on every learned entry
-    // would ask for the same ancestors again whenever a listing lands.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adapter, folderId, learn])
+  }, [adapter, folderId, known, learn])
 
   const record = useCallback((entry: ExplorerEntry) => learn([entry]), [learn])
 
   const forget = useCallback((entryId: string) => {
     setEntries((current) => {
       const next = new Map(current)
+      const leaving = [entryId]
 
-      next.delete(entryId)
+      while (leaving.length > 0) {
+        const id = leaving.pop()!
+
+        next.delete(id)
+
+        for (const entry of next.values()) {
+          if (entry.parentId === id) {
+            leaving.push(entry.id)
+          }
+        }
+      }
 
       return next
     })
   }, [])
 
+  const dismissShapeFailure = useCallback(() => setShapeFailure(undefined), [])
+
   const list = useMemo(() => Array.from(entries.values()), [entries])
 
-  return { entries: list, folder, refresh: load, record, forget }
+  return { entries: list, folder, shapeFailure, dismissShapeFailure, record, forget }
 }

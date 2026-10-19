@@ -1,7 +1,7 @@
 {
   "name": "@jmouse/ui-kit",
   "version": "0.1.0",
-  "description": "jMouse UI-kit — one token vocabulary, themes as plain CSS files, the appearance axes, and every non-domain component the jMouse products draw with: controls, navigation, containers, data, feedback and the application shells. Plain CSS in its own layer, React components, no other runtime dependency.",
+  "description": "jMouse UI-kit — one token vocabulary, themes as plain CSS files, the appearance axes, and every non-domain component the jMouse products draw with: controls, navigation, containers, data, feedback and the application shells. Plain CSS in its own layer, React components; the one runtime dependency is @jmouse/file-handling, the pure decisions about what a file is.",
   "license": "UNLICENSED",
   "author": "Ivan Hontarenko",
   "type": "module",
@@ -37,6 +37,9 @@
     "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "clean": "node scripts/clean.mjs"
+  },
+  "dependencies": {
+    "@jmouse/file-handling": "^0.1.0"
   },
   "peerDependencies": {
     "react": ">=19.0.0",

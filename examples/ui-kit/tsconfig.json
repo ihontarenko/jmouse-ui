@@ -23,6 +23,9 @@
       "@jmouse/explorer": [
         "../../packages/explorer/src/index.ts"
       ],
+      "@jmouse/file-handling": [
+        "../../packages/file-handling/src/index.ts"
+      ],
       "@jmouse/ui-kit/code": [
         "../../packages/ui-kit/src/code/index.ts"
       ]

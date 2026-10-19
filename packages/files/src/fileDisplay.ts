@@ -66,8 +66,8 @@ export function isPdf(file: Pick<ManagedFile, "contentType">): boolean {
   return file.contentType === "application/pdf"
 }
 
-// ⚠️ Moved to `@jmouse/explorer/headless`, re-exported so this module still answers for it.
-export { saveBlob } from "@jmouse/explorer/headless"
+// ⚠️ Moved to `@jmouse/file-handling`, re-exported so this module still answers for it.
+export { saveBlob } from "@jmouse/file-handling"
 
 /**
  * What to call a directory on screen.

@@ -12,10 +12,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./headless": {
-      "types": "./dist/headless/index.d.ts",
-      "default": "./dist/headless/index.js"
     }
   },
   "scripts": {
@@ -23,21 +19,13 @@
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "clean": "node scripts/clean.mjs"
   },
+  "dependencies": {
+    "@jmouse/file-handling": "^0.1.0"
+  },
   "peerDependencies": {
     "@jmouse/ui-kit": ">=0.1.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@jmouse/ui-kit": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@jmouse/ui-kit": "*",

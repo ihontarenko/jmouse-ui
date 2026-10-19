@@ -34,9 +34,35 @@ interface HttpLikeFailure {
  * @return the parenthetical, or an empty string
  */
 export function because(failure: unknown): string {
-  const parts = describe(failure)
+  const reason = reasonOf(failure)
 
-  return parts.length === 0 ? "" : ` (${parts.join(" — ")})`
+  return reason === "" ? "" : ` (${reason})`
+}
+
+/**
+ * The same words without the brackets — `403 — file:read is required here` — for a sentence that places the reason
+ * itself, as a translated one has to: where a reason goes is a matter of the language's word order.
+ *
+ * @param failure whatever was rejected with
+ * @return the reason, or an empty string
+ */
+export function reasonOf(failure: unknown): string {
+  return describe(failure).join(" — ")
+}
+
+/**
+ * The HTTP status a failure carries, when it carries one — so a caller can tell a folder that has gone (404) from a
+ * refusal (403) or a backend that is down (502) without parsing the words.
+ *
+ * @param failure whatever was rejected with
+ * @return the status, or undefined
+ */
+export function failureStatus(failure: unknown): number | undefined {
+  if (!failure || typeof failure !== "object") {
+    return undefined
+  }
+
+  return (failure as HttpLikeFailure).response?.status
 }
 
 function describe(failure: unknown): string[] {

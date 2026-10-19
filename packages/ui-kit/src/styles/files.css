@@ -16,7 +16,10 @@
 .kit-file-listing { position: relative; flex: 1; min-height: 0; overflow: auto; outline: var(--kit-border-width) dashed transparent; outline-offset: calc(var(--kit-space-1) * -1); transition: outline-color var(--kit-ease), background-color var(--kit-ease); }
 .kit-file-listing[data-targeted] { outline-color: var(--kit-accent); background: var(--kit-accent-soft); }
 .kit-file-drop-hint { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--kit-space-2) var(--kit-space-3); border-bottom: var(--kit-border-width) solid var(--kit-accent); background: var(--kit-surface); color: var(--kit-ink); font-size: var(--kit-text-sm); }
+.kit-file-drop-hint:empty { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); border: 0; white-space: nowrap; }
+.kit-file-rename-field { display: flex; flex-direction: column; gap: var(--kit-space-1); min-width: 0; width: 100%; }
 .kit-file-rename { min-width: 0; width: 100%; }
+.kit-file-rename-problem { color: var(--kit-danger); font-size: var(--kit-text-sm); white-space: normal; }
 .kit-file-listing > .kit-tile-grid { border: 0; }
 .kit-file-listing > .kit-table-scroll { height: 100%; }
 .kit-file-name { display: flex; align-items: center; gap: var(--kit-space-2); max-width: 100%; text-align: start; }
