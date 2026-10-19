@@ -18,13 +18,15 @@
  */
 
 export { FileViewerDialog, type FileViewerProperties } from "./FileViewerDialog"
+
+// ⚠️ Re-exported, not owned: what a file IS lives in `@jmouse/explorer/headless`, the package that outlives this one.
 export {
   fileKindOf,
   readableFileSize,
   MAXIMUM_TEXT_BYTES,
   type FileKind,
   type ViewableFile,
-} from "./fileKinds"
+} from "@jmouse/explorer/headless"
 
 export { FileManager, type FileManagerProperties } from "./FileManager"
 export { DirectoryTree } from "./DirectoryTree"

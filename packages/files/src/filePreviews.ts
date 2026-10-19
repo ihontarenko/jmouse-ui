@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from "react"
-import { fileKindOf } from "./fileKinds"
+import { fileKindOf } from "@jmouse/explorer/headless"
 import type { FileLibraryPort, ManagedFile } from "./types"
 
 /**

@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@jmouse/ui"
-import { fileKindOf, readableFileSize, type ViewableFile } from "./fileKinds"
+import { fileKindOf, readableFileSize, type ViewableFile } from "@jmouse/explorer/headless"
 
 /**
  * Looking at a file without leaving the page it belongs to.
