@@ -384,9 +384,12 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
   function toggleFamily(family: FileFamily) {
     chooseFamilies(chosenFamilies.includes(family) ? chosenFamilies.filter((chosen) => chosen !== family) : [...chosenFamilies, family])
   }
+  // A tab names its folder only when another open tab carries the same name; otherwise the folder is noise.
+  const sharedName = (entry: FileWorkspaceEntry) => openedFiles.some((other) => other.id !== entry.id && other.name === entry.name)
+  const folderNameOf = (entry: FileWorkspaceEntry) => entry.parentId ? byId.get(entry.parentId)?.name : text.root
   const tabs: OpenFile[] = [
     { id: browserId, name: directory?.name ?? text.root, icon: "folder", pinned: true },
-    ...openedFiles.map((entry) => ({ id: entry.id, name: entry.name, glyph: glyph(entry), hint: entry.parentId ? byId.get(entry.parentId)?.name : text.root })),
+    ...openedFiles.map((entry) => ({ id: entry.id, name: entry.name, glyph: glyph(entry), hint: sharedName(entry) ? folderNameOf(entry) : undefined })),
   ]
   const entryName = (entry: FileWorkspaceEntry) => <span className="kit-file-name" data-removed={entry.removed ? "" : undefined}>
     {glyph(entry)}
