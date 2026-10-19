@@ -1,20 +1,17 @@
 import type { CSSProperties } from "react"
+import { fileFamilyOf, type FileFamily } from "@jmouse/file-handling"
 import { joinClassNames } from "../lib/classNames"
 
-export type FileGlyphKind = "folder" | "document" | "code" | "data" | "image" | "audio" | "video" | "archive" | "sheet" | "file"
+export type FileGlyphKind = FileFamily | "folder"
 
-/** File recognition belongs to the library; products can supply a kind for their own formats. */
+/**
+ * File recognition belongs to the library; products can supply a kind for their own formats.
+ *
+ * ⚠️ **The family comes from `@jmouse/file-handling`**, the same table the viewers decide by — the kit kept its own
+ * extension list until it disagreed with them about `.svg`, `.md` and `.pdf` on one screen.
+ */
 export function fileGlyphKind(name: string, mediaType = ""): FileGlyphKind {
-  const extension = name.split(".").pop()?.toLowerCase() ?? ""
-  if (/^(png|jpe?g|gif|webp|avif|svg|heic|bmp|tiff?)$/.test(extension) || mediaType.startsWith("image/")) { return "image" }
-  if (/^(mp3|wav|flac|ogg|m4a|aac)$/.test(extension) || mediaType.startsWith("audio/")) { return "audio" }
-  if (/^(mp4|mkv|webm|mov|avi|m4v)$/.test(extension) || mediaType.startsWith("video/")) { return "video" }
-  if (/^(zip|rar|7z|tar|gz|jar|war|iso)$/.test(extension)) { return "archive" }
-  if (/^(csv|tsv|xlsx?|ods|numbers)$/.test(extension)) { return "sheet" }
-  if (/^(json|jsonl|ya?ml|toml|ini|properties|env)$/.test(extension)) { return "data" }
-  if (/^(java|[cm]?[jt]sx?|py|rs|go|c|cpp|h|cs|kt|sql|html?|css|scss|xml|sh|ps1|jmp|jms)$/.test(extension)) { return "code" }
-  if (/^(md|mdx|txt|pdf|docx?|odt|rtf)$/.test(extension) || mediaType.startsWith("text/")) { return "document" }
-  return "file"
+  return fileFamilyOf(name, mediaType)
 }
 
 export interface FileGlyphProperties {

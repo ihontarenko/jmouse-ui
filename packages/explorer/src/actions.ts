@@ -1,4 +1,4 @@
-import type { ExplorerAction, ExplorerAdapter, ExplorerEntry } from "./adapter"
+import type { ExplorerAction, ExplorerAdapter, ExplorerEntry, ExplorerTarget } from "./adapter"
 
 /**
  * What may be done, decided once.
@@ -7,68 +7,76 @@ import type { ExplorerAction, ExplorerAdapter, ExplorerEntry } from "./adapter"
  * while F2 refused it — or the reverse — is the drift that happens the moment two places answer the same question.
  */
 
-/** Which method each act needs. */
-const REQUIRED_METHOD: Record<ExplorerAction, keyof ExplorerAdapter> = {
-  download: "read",
-  copyLink: "shareUrl",
-  rename: "rename",
-  move: "move",
-  remove: "remove",
-  createFolder: "createFolder",
-  upload: "upload",
+interface ActionRule {
+  /** The adapter method the act needs; absent for an act the explorer does by itself. */
+  method?: keyof ExplorerAdapter
+  /** Whether the act is about an entry or about a folder as a place. */
+  scope: "entry" | "place"
+  /** Whether the act makes sense for this entry at all, whatever the reader may do. */
+  fits?(entry: ExplorerEntry): boolean
 }
 
-/** The acts on one entry, in the order a menu lists them. */
-const ENTRY_ACTIONS: ExplorerAction[] = ["download", "copyLink", "rename", "move", "remove"]
+const isFile = (entry: ExplorerEntry) => entry.kind === "file"
 
-/** The acts on a folder as a place — what its toolbar offers. */
-const PLACE_ACTIONS: ExplorerAction[] = ["upload", "createFolder"]
+/**
+ * Every act's rule, in the order a menu lists them.
+ *
+ * ⚠️ `open` needs no method: a folder opens by being listed and a file by the viewer, which says so itself when the
+ * product cannot hand over its bytes. It is a rule all the same, so a product's `permits` can refuse it.
+ */
+const ACTION_RULES: Record<ExplorerAction, ActionRule> = {
+  open: { scope: "entry", fits: isFile },
+  download: { method: "read", scope: "entry", fits: isFile },
+  copyLink: { method: "shareUrl", scope: "entry" },
+  rename: { method: "rename", scope: "entry" },
+  move: { method: "move", scope: "entry" },
+  remove: { method: "remove", scope: "entry" },
+  upload: { method: "upload", scope: "place" },
+  createFolder: { method: "createFolder", scope: "place" },
+}
+
+const EVERY_ACTION = Object.keys(ACTION_RULES) as ExplorerAction[]
+
+/** The acts a "⋯" menu lists — `open` is what activating the entry does, not a menu entry. */
+const MENU_ACTIONS = EVERY_ACTION.filter((action) => ACTION_RULES[action].scope === "entry" && action !== "open")
+
+const PLACE_ACTIONS = EVERY_ACTION.filter((action) => ACTION_RULES[action].scope === "place")
 
 /**
  * Whether one act is on offer.
  *
  * @param adapter what the product can do
  * @param action the act
- * @param entry what it is done to; null for the root as a place
- * @return true when the method exists, the act fits the entry, and the product permits it
+ * @param target what it is done to
+ * @return true when the method exists, the act fits the target, and the product permits it
  */
-export function permits(adapter: ExplorerAdapter, action: ExplorerAction, entry: ExplorerEntry | null): boolean {
-  if (adapter[REQUIRED_METHOD[action]] === undefined) {
+export function permits(adapter: ExplorerAdapter, action: ExplorerAction, target: ExplorerTarget): boolean {
+  const rule = ACTION_RULES[action]
+
+  if (rule.method !== undefined && adapter[rule.method] === undefined) {
     return false
   }
 
-  if (!fitsEntry(action, entry)) {
+  if ("entry" in target) {
+    if (rule.scope !== "entry" || !(rule.fits?.(target.entry) ?? true)) {
+      return false
+    }
+  } else if (rule.scope !== "place") {
     return false
   }
 
-  return adapter.permits?.(action, entry) ?? true
-}
-
-function fitsEntry(action: ExplorerAction, entry: ExplorerEntry | null): boolean {
-  if (action === "download") {
-    return entry?.kind === "file"
-  }
-
-  if (action === "copyLink") {
-    return entry !== null
-  }
-
-  if (action === "upload" || action === "createFolder") {
-    return entry === null || entry.kind === "folder"
-  }
-
-  return entry !== null
+  return adapter.permits?.(action, target) ?? true
 }
 
 /**
- * The acts on one entry — a file or a folder in the listing or the tree.
+ * The acts a "⋯" menu offers for one entry.
  *
  * ⚠️ `copyLink` is offered only when the product actually has a link for this entry; "copy" that puts nothing on the
  * clipboard is a control that lies.
  */
 export function entryActions(adapter: ExplorerAdapter, entry: ExplorerEntry): ExplorerAction[] {
-  return ENTRY_ACTIONS.filter((action) => {
-    if (!permits(adapter, action, entry)) {
+  return MENU_ACTIONS.filter((action) => {
+    if (!permits(adapter, action, { entry })) {
       return false
     }
 
@@ -80,7 +88,12 @@ export function entryActions(adapter: ExplorerAdapter, entry: ExplorerEntry): Ex
   })
 }
 
-/** The acts on the shown folder as a place — upload into it, make a folder in it. */
-export function placeActions(adapter: ExplorerAdapter, folder: ExplorerEntry | null): ExplorerAction[] {
-  return PLACE_ACTIONS.filter((action) => permits(adapter, action, folder))
+/**
+ * The acts on the shown folder as a place.
+ *
+ * @param place the folder's ID; null is the root
+ * @param folder the folder itself, when the explorer knows it
+ */
+export function placeActions(adapter: ExplorerAdapter, place: string | null, folder?: ExplorerEntry): ExplorerAction[] {
+  return PLACE_ACTIONS.filter((action) => permits(adapter, action, { place, folder }))
 }

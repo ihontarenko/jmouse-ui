@@ -12,7 +12,7 @@ import {
   Presentation,
   type LucideIcon,
 } from "lucide-react"
-import { fileKindOf, type ViewableFile } from "@jmouse/explorer/headless"
+import { fileKindOf, type ViewableFile } from "@jmouse/file-handling"
 
 /**
  * The icon a file gets, and the colour it gets it in.

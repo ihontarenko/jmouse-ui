@@ -20,7 +20,7 @@
     "clean": "node scripts/clean.mjs"
   },
   "dependencies": {
-    "@jmouse/explorer": "^0.1.0"
+    "@jmouse/file-handling": "^0.1.0"
   },
   "peerDependencies": {
     "@jmouse/ui": ">=0.1.0",

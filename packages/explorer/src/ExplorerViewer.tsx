@@ -1,12 +1,11 @@
 import { Button, Code, EmptyState, Notice, Waiting } from "@jmouse/ui-kit"
+import { fileKindOf, readableFileSize, reasonOf, type FileKind } from "@jmouse/file-handling"
 import { useEffect, useState } from "react"
 import type { ExplorerAdapter, ExplorerEntry } from "./adapter"
-import { because } from "./headless/failures"
-import { fileKindOf, readableFileSize, type FileKind } from "./headless/fileKinds"
 
 export interface ExplorerViewerLabels {
   reading: string
-  unreadable: string
+  readFailed(name: string, reason: string): string
   notShowable: string
   notShowableDescription: string
   needsConverting: string
@@ -23,7 +22,7 @@ export interface ExplorerViewerProperties {
 
 type Reading =
   | { state: "reading" }
-  | { state: "failed"; failure: string }
+  | { state: "failed"; reason: string }
   | { state: "read"; kind: FileKind; address: string; text?: string }
 
 /**
@@ -54,15 +53,18 @@ export function ExplorerViewer({ file, adapter, labels, onDownload }: ExplorerVi
         const kind = fileKindOf({ name: file.name, contentType: file.mediaType ?? blob.type, sizeBytes: file.size ?? blob.size })
         const text = kind === "text" || kind === "markdown" ? await blob.text() : undefined
 
-        address = URL.createObjectURL(blob)
-
-        if (current) {
-          setReading({ state: "read", kind, address, text })
+        // ⚠️ Only while still shown. Unmounted before the bytes arrived, the cleanup has already run — an address made
+        // now would never be revoked and would keep the whole file alive for the life of the tab.
+        if (!current) {
+          return
         }
+
+        address = URL.createObjectURL(blob)
+        setReading({ state: "read", kind, address, text })
       })
       .catch((failure: unknown) => {
         if (current) {
-          setReading({ state: "failed", failure: `${labels.unreadable}${because(failure)}` })
+          setReading({ state: "failed", reason: reasonOf(failure) })
         }
       })
 
@@ -73,8 +75,9 @@ export function ExplorerViewer({ file, adapter, labels, onDownload }: ExplorerVi
         URL.revokeObjectURL(address)
       }
     }
-    // ⚠️ Keyed on the ID: a listing refresh hands over a new object with the same bytes, and reading it again would
-    // flash the viewer every time somebody renames a sibling.
+    // ⚠️ Keyed on the ID, and only the words are left out of the reading: a listing refresh hands over a new object
+    // with the same bytes, and reading it again would flash the viewer every time somebody renames a sibling. The
+    // failure keeps the server's reason, and the sentence around it is written at render with today's labels.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.id, read])
 
@@ -89,7 +92,7 @@ export function ExplorerViewer({ file, adapter, labels, onDownload }: ExplorerVi
   }
 
   if (reading.state === "failed") {
-    return <div className="kit-file-view" data-kind="failed"><Notice tone="danger">{reading.failure}</Notice></div>
+    return <div className="kit-file-view" data-kind="failed"><Notice tone="danger">{labels.readFailed(file.name, reading.reason)}</Notice></div>
   }
 
   const { kind, address, text } = reading

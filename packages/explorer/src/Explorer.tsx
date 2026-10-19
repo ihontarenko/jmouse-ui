@@ -1,7 +1,9 @@
+import { readableFileSize, reasonOf, saveBlob } from "@jmouse/file-handling"
 import {
   Button,
   ConfirmDialog,
   Dialog,
+  EmptyState,
   Field,
   FileWorkspace,
   IconButton,
@@ -18,11 +20,20 @@ import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "r
 import { entryActions, permits, placeActions } from "./actions"
 import type { ExplorerAction, ExplorerAdapter, ExplorerEntry } from "./adapter"
 import { ExplorerViewer, type ExplorerViewerLabels } from "./ExplorerViewer"
-import { because } from "./headless/failures"
-import { readableFileSize } from "./headless/fileKinds"
-import { saveBlob } from "./headless/saveBlob"
 import { useExplorerCatalogue } from "./useExplorerCatalogue"
 
+/** A sentence, then the server's reason in brackets when it gave one — the English default's way of placing it. */
+function withReason(sentence: string, reason: string): string {
+  return reason === "" ? `${sentence}.` : `${sentence} (${reason}).`
+}
+
+/**
+ * Every word the explorer says.
+ *
+ * ⚠️ **A sentence with a name or a reason in it is a FUNCTION, never fragments glued together.** "could not be
+ * uploaded" appended to a file name fixes English word order into every translation; a function hands the whole
+ * sentence to whoever translates it.
+ */
 const explorerLabels = {
   upload: "Upload",
   newFolder: "New folder",
@@ -32,37 +43,39 @@ const explorerLabels = {
   newName: "New name",
   saveName: "Rename",
   cancel: "Cancel",
+  open: "Open",
   download: "Download",
   copyLink: "Copy link",
   rename: "Rename",
   move: "Move to…",
-  moveTitle: "Move",
+  moveTitle: (name: string) => `Move “${name}”`,
   moveDescription: "Choose the folder it goes into.",
   moveHere: "Move here",
   remove: "Delete",
-  removeTitle: "Delete",
+  removeTitle: (name: string) => `Delete “${name}”`,
   removeFileDescription: "The file is deleted. This cannot be undone.",
   removeFolderDescription: "The folder is deleted. A folder that still holds something is refused rather than emptied.",
   nameRequired: "A name is required.",
   nameInvalid: "A name cannot contain / or \\.",
   nameTaken: "Something in this folder already has that name.",
-  uploading: "Uploading",
-  of: "of",
+  uploading: (done: number, total: number) => `Uploading ${done} of ${total}`,
   dismiss: "Dismiss",
-  unreadable: "The folder could not be read",
-  createFailed: "The folder could not be created",
-  renameFailed: "The name could not be changed",
-  moveFailed: "It could not be moved",
-  removeFailed: "It could not be deleted",
-  uploadFailed: "could not be uploaded",
-  downloadFailed: "The file could not be downloaded",
-  copyFailed: "The link could not be copied",
+  unreadable: (reason: string) => withReason("The folder could not be read", reason),
+  shapeUnreadable: (reason: string) => withReason("The folder tree could not be read", reason),
+  createFailed: (name: string, reason: string) => withReason(`The folder “${name}” could not be created`, reason),
+  renameFailed: (name: string, reason: string) => withReason(`“${name}” could not be renamed`, reason),
+  moveFailed: (name: string, reason: string) => withReason(`“${name}” could not be moved`, reason),
+  removeFailed: (name: string, reason: string) => withReason(`“${name}” could not be deleted`, reason),
+  uploadFailed: (name: string, reason: string) => withReason(`“${name}” could not be uploaded`, reason),
+  downloadFailed: (name: string, reason: string) => withReason(`“${name}” could not be downloaded`, reason),
+  copyFailed: (name: string, reason: string) => withReason(`The link to “${name}” could not be copied`, reason),
   reading: "Reading the file",
-  readFailed: "The file could not be read",
+  readFailed: (name: string, reason: string) => withReason(`“${name}” could not be read`, reason),
   notShowable: "This file cannot be shown here",
   notShowableDescription: "Download it to open it with an application.",
   needsConverting: "This document needs converting before it can be shown.",
   noBytes: "This place does not offer the file's contents.",
+  notOpenable: "This file cannot be opened here",
 }
 
 export type ExplorerLabels = typeof explorerLabels & FileWorkspaceLabels
@@ -74,7 +87,7 @@ export interface ExplorerProperties {
   onFolderChange?(folderId: string | null): void
   /** Where an uncontrolled explorer starts. */
   defaultFolderId?: string | null
-  /** A richer viewer than the default — rendered Markdown, a code editor. */
+  /** A richer viewer than the default — rendered Markdown, a code editor, a product's own reader. */
   renderFile?(file: ExplorerEntry): ReactNode
   /** The product's own entries, listed after the standard ones in every "⋯" menu. */
   extraActions?(entry: ExplorerEntry): MenuEntry[]
@@ -94,17 +107,36 @@ type Pending =
   | { act: "move"; entry: ExplorerEntry }
   | { act: "remove"; entry: ExplorerEntry }
 
-const ACTION_ICONS: Record<ExplorerAction, IconSource> = {
-  download: "download",
-  copyLink: "link",
-  rename: "edit",
-  move: "folder",
-  remove: "trash",
-  createFolder: "plus",
-  upload: "upload",
+/** What the descriptors call to carry an act out — the component's own handlers. */
+interface ActHandlers {
+  download(entry: ExplorerEntry): void
+  copyLink(entry: ExplorerEntry): void
+  startRename(entry: ExplorerEntry): void
+  ask(pending: Pending): void
+  chooseUploads(): void
 }
 
-const ROOT_NODE = "\u0000root"
+/** How an act is presented and carried out. Whether it is on offer is `actions.ts`'s answer, not this table's. */
+interface ActionPresentation {
+  icon: IconSource
+  label(text: ExplorerLabels): string
+  /** The key that does the same, shown beside the menu entry. */
+  key?: string
+  danger?: boolean
+  /** What it does to an entry; absent where the kit itself carries the act out (opening) or it is about a place. */
+  perform?(handlers: ActHandlers, entry: ExplorerEntry): void
+}
+
+const ACTIONS: Record<ExplorerAction, ActionPresentation> = {
+  open: { icon: "file", label: (text) => text.open },
+  download: { icon: "download", label: (text) => text.download, perform: (handlers, entry) => handlers.download(entry) },
+  copyLink: { icon: "link", label: (text) => text.copyLink, perform: (handlers, entry) => handlers.copyLink(entry) },
+  rename: { icon: "edit", label: (text) => text.rename, key: "F2", perform: (handlers, entry) => handlers.startRename(entry) },
+  move: { icon: "folder", label: (text) => text.move, perform: (handlers, entry) => handlers.ask({ act: "move", entry }) },
+  remove: { icon: "trash", label: (text) => text.remove, key: "Delete", danger: true, perform: (handlers, entry) => handlers.ask({ act: "remove", entry }) },
+  createFolder: { icon: "plus", label: (text) => text.newFolder },
+  upload: { icon: "upload", label: (text) => text.upload },
+}
 
 function formatIsoDate(iso: string): string {
   const date = new Date(iso)
@@ -116,6 +148,25 @@ function isTyping(event: KeyboardEvent<HTMLElement>): boolean {
   const target = event.target as HTMLElement
 
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+}
+
+/** Why a name cannot be used here, or undefined when it can. The dialog and the in-place field both ask this. */
+function nameProblem(name: string, siblings: ExplorerEntry[], text: ExplorerLabels): string | undefined {
+  const clean = name.trim()
+
+  if (!clean) {
+    return text.nameRequired
+  }
+
+  if (/[/\\]/.test(clean)) {
+    return text.nameInvalid
+  }
+
+  if (siblings.some((sibling) => sibling.name.toLocaleLowerCase() === clean.toLocaleLowerCase())) {
+    return text.nameTaken
+  }
+
+  return undefined
 }
 
 /**
@@ -131,18 +182,23 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   const text = { ...explorerLabels, ...labels } as ExplorerLabels
   const [ownFolderId, setOwnFolderId] = useState<string | null>(defaultFolderId)
   const folderId = hostFolderId === undefined ? ownFolderId : hostFolderId
-  const catalogue = useExplorerCatalogue(adapter, folderId, text.unreadable)
+  const catalogue = useExplorerCatalogue(adapter, folderId)
   const [selectedId, setSelectedId] = useState<string>()
   const [renamingId, setRenamingId] = useState<string>()
   const [pending, setPending] = useState<Pending>()
   const [problem, setProblem] = useState<string>()
   const [uploads, setUploads] = useState<{ done: number; total: number }>()
   const uploadInput = useRef<HTMLInputElement>(null)
+  // ⚠️ One upload run at a time. Files dropped while one is running join its queue — two loops over one counter
+  // would report "3 of 2" and race each other's refusals.
+  const uploadQueue = useRef<File[] | undefined>(undefined)
 
   const byId = useMemo(() => new Map(catalogue.entries.map((entry) => [entry.id, entry])), [catalogue.entries])
-  const folder = folderId === null ? null : byId.get(folderId)
+  const folder = folderId === null ? undefined : byId.get(folderId)
   const selected = selectedId === undefined ? undefined : byId.get(selectedId)
-  const offered = folder === undefined ? [] : placeActions(adapter, folder)
+  const childrenOf = (parentId: string | null) => catalogue.entries.filter((entry) => entry.parentId === parentId)
+  const listingFailed = catalogue.folder.failure !== undefined
+  const offered = listingFailed ? [] : placeActions(adapter, folderId, folder)
 
   const workspaceEntries = useMemo<FileWorkspaceEntry[]>(() => catalogue.entries.map((entry) => ({
     id: entry.id,
@@ -165,13 +221,13 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
     onFolderChange?.(next)
   }
 
-  /** Runs one act; a refusal becomes the band, in the server's words. */
-  async function attempt(failureLabel: string, act: () => Promise<void>) {
+  /** Runs one act; a refusal becomes the band, in a whole sentence that names what was refused. */
+  async function attempt(describeFailure: (reason: string) => string, act: () => Promise<void>) {
     try {
       setProblem(undefined)
       await act()
     } catch (failure) {
-      setProblem(`${failureLabel}${because(failure)}`)
+      setProblem(describeFailure(reasonOf(failure)))
     }
   }
 
@@ -188,7 +244,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
     setRenamingId(undefined)
     setPending(undefined)
 
-    return attempt(text.renameFailed, async () => {
+    return attempt((reason) => text.renameFailed(entry.name, reason), async () => {
       catalogue.record(await adapter.rename!(entry, name))
     })
   }
@@ -196,7 +252,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   function createFolder(name: string) {
     setPending(undefined)
 
-    return attempt(text.createFailed, async () => {
+    return attempt((reason) => text.createFailed(name, reason), async () => {
       const created = await adapter.createFolder!(folderId, name)
 
       catalogue.record(created)
@@ -207,7 +263,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   function move(entry: ExplorerEntry, target: string | null) {
     setPending(undefined)
 
-    return attempt(text.moveFailed, async () => {
+    return attempt((reason) => text.moveFailed(entry.name, reason), async () => {
       catalogue.record(await adapter.move!(entry, target))
       setSelectedId(undefined)
     })
@@ -215,7 +271,7 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
 
   /** ⚠️ The confirmation closes either way — a refusal is said in the band, where it stays readable. */
   async function remove(entry: ExplorerEntry) {
-    await attempt(text.removeFailed, async () => {
+    await attempt((reason) => text.removeFailed(entry.name, reason), async () => {
       await adapter.remove!(entry)
       catalogue.forget(entry.id)
       setSelectedId(undefined)
@@ -224,13 +280,13 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
   }
 
   function download(entry: ExplorerEntry) {
-    return attempt(text.downloadFailed, async () => {
+    return attempt((reason) => text.downloadFailed(entry.name, reason), async () => {
       saveBlob(await adapter.read!(entry), entry.name)
     })
   }
 
   function copyLink(entry: ExplorerEntry) {
-    return attempt(text.copyFailed, async () => {
+    return attempt((reason) => text.copyFailed(entry.name, reason), async () => {
       await navigator.clipboard.writeText(adapter.shareUrl!(entry) ?? "")
     })
   }
@@ -240,54 +296,53 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
    * first refusal would leave somebody guessing which of forty files arrived.
    */
   async function upload(files: File[]) {
-    if (files.length === 0 || !permits(adapter, "upload", folder ?? null)) {
+    if (files.length === 0 || !offered.includes("upload")) {
       return
     }
 
-    const refused: string[] = []
+    if (uploadQueue.current !== undefined) {
+      uploadQueue.current.push(...files)
+      setUploads((current) => current === undefined ? current : { ...current, total: current.total + files.length })
 
-    setProblem(undefined)
-    setUploads({ done: 0, total: files.length })
-
-    for (const [index, file] of files.entries()) {
-      try {
-        catalogue.record(await adapter.upload!(folderId, file))
-      } catch (failure) {
-        refused.push(`${file.name} ${text.uploadFailed}${because(failure)}`)
-      }
-
-      setUploads({ done: index + 1, total: files.length })
+      return
     }
 
+    const queue = [...files]
+    const refused: string[] = []
+    const destination = folderId
+    let done = 0
+
+    uploadQueue.current = queue
+    setProblem(undefined)
+    setUploads({ done, total: queue.length })
+
+    while (queue.length > 0) {
+      const file = queue.shift()!
+
+      try {
+        catalogue.record(await adapter.upload!(destination, file))
+      } catch (failure) {
+        refused.push(text.uploadFailed(file.name, reasonOf(failure)))
+      }
+
+      done += 1
+      setUploads((current) => ({ done, total: current?.total ?? done }))
+    }
+
+    uploadQueue.current = undefined
     setUploads(undefined)
 
     if (refused.length > 0) {
-      setProblem(refused.join("; "))
+      setProblem(refused.join(" "))
     }
   }
 
-  function perform(action: ExplorerAction, entry: ExplorerEntry) {
-    if (action === "download") {
-      void download(entry)
-    } else if (action === "copyLink") {
-      void copyLink(entry)
-    } else if (action === "rename") {
-      startRename(entry)
-    } else if (action === "move") {
-      setPending({ act: "move", entry })
-    } else if (action === "remove") {
-      setPending({ act: "remove", entry })
-    }
-  }
-
-  const ACTION_LABELS: Record<ExplorerAction, string> = {
-    download: text.download,
-    copyLink: text.copyLink,
-    rename: text.rename,
-    move: text.move,
-    remove: text.remove,
-    createFolder: text.newFolder,
-    upload: text.upload,
+  const handlers: ActHandlers = {
+    download: (entry) => void download(entry),
+    copyLink: (entry) => void copyLink(entry),
+    startRename,
+    ask: setPending,
+    chooseUploads: () => uploadInput.current?.click(),
   }
 
   function menuFor(workspaceEntry: FileWorkspaceEntry): MenuEntry[] {
@@ -297,14 +352,18 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
       return []
     }
 
-    const standard = entryActions(adapter, entry).map((action): MenuEntry => ({
-      label: ACTION_LABELS[action],
-      icon: ACTION_ICONS[action],
-      onSelect: () => perform(action, entry),
-      danger: action === "remove",
-      separated: action === "remove",
-      hint: action === "rename" ? "F2" : action === "remove" ? "Delete" : undefined,
-    }))
+    const standard = entryActions(adapter, entry).map((action): MenuEntry => {
+      const presentation = ACTIONS[action]
+
+      return {
+        label: presentation.label(text),
+        icon: presentation.icon,
+        onSelect: () => presentation.perform?.(handlers, entry),
+        danger: presentation.danger,
+        separated: presentation.danger,
+        hint: presentation.key,
+      }
+    })
     const extra = extraActions?.(entry) ?? []
 
     return extra.length === 0 ? standard : [...standard, { ...extra[0], separated: true }, ...extra.slice(1)]
@@ -315,9 +374,13 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
       return
     }
 
-    if (event.key === "ArrowUp" && event.altKey && folderId !== null) {
-      event.preventDefault()
-      changeFolder(folder?.parentId ?? null)
+    // ⚠️ Up only to a parent the explorer actually knows. Opened deep without `ancestors`, the parent has no name
+    // yet, and jumping to the root instead would be a silent lie about where "up" is.
+    if (event.key === "ArrowUp" && event.altKey) {
+      if (folder !== undefined) {
+        event.preventDefault()
+        changeFolder(folder.parentId)
+      }
 
       return
     }
@@ -326,19 +389,25 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
       return
     }
 
-    if (event.key === "F2" && permits(adapter, "rename", selected)) {
+    const keyed = entryActions(adapter, selected).find((action) => ACTIONS[action].key === event.key)
+
+    if (keyed !== undefined) {
       event.preventDefault()
-      startRename(selected)
-    } else if (event.key === "Delete" && permits(adapter, "remove", selected)) {
-      event.preventDefault()
-      setPending({ act: "remove", entry: selected })
+      ACTIONS[keyed].perform?.(handlers, selected)
     }
   }
 
+  // ⚠️ The selection's acts are on the toolbar too, as the same descriptors the menu and the keys read — a keyboard-
+  // less reader on a touch screen otherwise has only the "⋯" menu, and a toolbar that offered less than the menu would
+  // be a second answer to "what may be done".
+  const selectionActions = selected === undefined ? [] : entryActions(adapter, selected)
+
   const toolbar = <>
-    {offered.includes("createFolder") ? <Button size="small" icon={ACTION_ICONS.createFolder} onClick={() => setPending({ act: "createFolder" })}>{text.newFolder}</Button> : null}
+    {selected !== undefined ? selectionActions.map((action) => <IconButton key={action} size="small" icon={ACTIONS[action].icon}
+      label={`${ACTIONS[action].label(text)}: ${selected.name}`} onClick={() => ACTIONS[action].perform?.(handlers, selected)} />) : null}
+    {offered.includes("createFolder") ? <Button size="small" icon={ACTIONS.createFolder.icon} onClick={() => setPending({ act: "createFolder" })}>{ACTIONS.createFolder.label(text)}</Button> : null}
     {offered.includes("upload") ? <>
-      <Button size="small" variant="primary" icon={ACTION_ICONS.upload} busy={uploads !== undefined} onClick={() => uploadInput.current?.click()}>{text.upload}</Button>
+      <Button size="small" variant="primary" icon={ACTIONS.upload.icon} busy={uploads !== undefined} onClick={handlers.chooseUploads}>{ACTIONS.upload.label(text)}</Button>
       <input ref={uploadInput} type="file" multiple hidden tabIndex={-1} aria-hidden="true" onChange={(event) => {
         const files = Array.from(event.target.files ?? [])
 
@@ -348,13 +417,18 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
     </> : null}
   </>
 
+  const shapeProblem = catalogue.shapeFailure === undefined ? undefined : text.shapeUnreadable(catalogue.shapeFailure.reason)
+
   const notice = uploads !== undefined
-    ? <Notice tone="accent" icon="upload" aria-live="polite">{`${text.uploading} ${uploads.done} ${text.of} ${uploads.total}`}</Notice>
+    ? <Notice tone="accent" icon="upload" aria-live="polite">{text.uploading(uploads.done, uploads.total)}</Notice>
     : problem !== undefined
       ? <Notice tone="danger" actions={<IconButton icon="close" size="small" label={text.dismiss} onClick={() => setProblem(undefined)} />}>{problem}</Notice>
-      : undefined
+      : shapeProblem !== undefined
+        ? <Notice tone="danger" actions={<IconButton icon="close" size="small" label={text.dismiss} onClick={catalogue.dismissShapeFailure} />}>{shapeProblem}</Notice>
+        : undefined
 
   const renamingEntry = renamingId === undefined ? undefined : byId.get(renamingId)
+  const listingFailure = catalogue.folder.failure
 
   return <>
     <FileWorkspace
@@ -364,14 +438,20 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
       onDirectoryChange={changeFolder}
       selectedId={selectedId}
       onSelectedChange={(entry) => setSelectedId(entry?.id)}
-      renaming={renamingEntry ? { id: renamingEntry.id, onCommit: (name) => void rename(renamingEntry, name), onCancel: () => setRenamingId(undefined) } : undefined}
+      renaming={renamingEntry ? {
+        id: renamingEntry.id,
+        onCommit: (name) => void rename(renamingEntry, name),
+        onCancel: () => setRenamingId(undefined),
+        problemWith: (name) => nameProblem(name, childrenOf(renamingEntry.parentId).filter((entry) => entry.id !== renamingEntry.id), text),
+      } : undefined}
       onDropFiles={offered.includes("upload") ? (files) => void upload(files) : undefined}
       onKeyDown={onKeyDown}
       notice={notice}
       actions={toolbar}
       entryActions={menuFor}
-      loading={catalogue.folder.loading && !catalogue.entries.some((entry) => entry.parentId === folderId)}
-      error={catalogue.folder.failure}
+      loading={catalogue.folder.loading && childrenOf(folderId).length === 0}
+      unavailable={listingFailure?.gone}
+      error={listingFailure !== undefined && !listingFailure.gone ? text.unreadable(listingFailure.reason) : undefined}
       labels={text}
       formatSize={formatSize}
       defaultView={defaultView}
@@ -383,19 +463,23 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
           return null
         }
 
+        if (!permits(adapter, "open", { entry: file })) {
+          return <EmptyState flush icon="file" title={text.notOpenable} />
+        }
+
         if (renderFile) {
           return renderFile(file)
         }
 
-        return <ExplorerViewer file={file} adapter={adapter} labels={viewerLabels(text)} onDownload={permits(adapter, "download", file) ? () => void download(file) : undefined} />
+        return <ExplorerViewer file={file} adapter={adapter} labels={viewerLabels(text)} onDownload={permits(adapter, "download", { entry: file }) ? () => void download(file) : undefined} />
       }}
     />
-    {pending?.act === "createFolder" ? <NameDialog title={text.newFolder} fieldLabel={text.folderName} confirmLabel={text.createFolder} initial="" siblings={catalogue.entries.filter((entry) => entry.parentId === folderId)} text={text} onConfirm={createFolder} onClose={() => setPending(undefined)} /> : null}
-    {pending?.act === "rename" ? <NameDialog title={text.renameTitle} fieldLabel={text.newName} confirmLabel={text.saveName} initial={pending.entry.name} siblings={catalogue.entries.filter((entry) => entry.parentId === pending.entry.parentId && entry.id !== pending.entry.id)} text={text} onConfirm={(name) => rename(pending.entry, name)} onClose={() => setPending(undefined)} /> : null}
+    {pending?.act === "createFolder" ? <NameDialog title={text.newFolder} fieldLabel={text.folderName} confirmLabel={text.createFolder} initial="" siblings={childrenOf(folderId)} text={text} onConfirm={createFolder} onClose={() => setPending(undefined)} /> : null}
+    {pending?.act === "rename" ? <NameDialog title={text.renameTitle} fieldLabel={text.newName} confirmLabel={text.saveName} initial={pending.entry.name} siblings={childrenOf(pending.entry.parentId).filter((entry) => entry.id !== pending.entry.id)} text={text} onConfirm={(name) => rename(pending.entry, name)} onClose={() => setPending(undefined)} /> : null}
     {pending?.act === "move" ? <MoveDialog entry={pending.entry} folders={catalogue.entries.filter((entry) => entry.kind === "folder")} text={text} onConfirm={(target) => move(pending.entry, target)} onClose={() => setPending(undefined)} /> : null}
     <ConfirmDialog
       open={pending?.act === "remove"}
-      title={pending?.act === "remove" ? `${text.removeTitle} “${pending.entry.name}”` : text.removeTitle}
+      title={pending?.act === "remove" ? text.removeTitle(pending.entry.name) : text.remove}
       description={pending?.act === "remove" && pending.entry.kind === "folder" ? text.removeFolderDescription : text.removeFileDescription}
       confirmLabel={text.remove}
       cancelLabel={text.cancel}
@@ -409,32 +493,13 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
 function viewerLabels(text: ExplorerLabels): ExplorerViewerLabels {
   return {
     reading: text.reading,
-    unreadable: text.readFailed,
+    readFailed: text.readFailed,
     notShowable: text.notShowable,
     notShowableDescription: text.notShowableDescription,
     needsConverting: text.needsConverting,
     noBytes: text.noBytes,
     download: text.download,
   }
-}
-
-/** Why a name cannot be used here, or undefined when it can. */
-function nameProblem(name: string, siblings: ExplorerEntry[], text: ExplorerLabels): string | undefined {
-  const clean = name.trim()
-
-  if (!clean) {
-    return text.nameRequired
-  }
-
-  if (/[/\\]/.test(clean)) {
-    return text.nameInvalid
-  }
-
-  if (siblings.some((sibling) => sibling.name.toLocaleLowerCase() === clean.toLocaleLowerCase())) {
-    return text.nameTaken
-  }
-
-  return undefined
 }
 
 interface NameDialogProperties {
@@ -485,11 +550,33 @@ function NameDialog({ title, fieldLabel, confirmLabel, initial, siblings, text, 
   </Dialog>
 }
 
+/**
+ * Where a move goes: a folder, or the root.
+ *
+ * ⚠️ **The root is a choice of its own, not an ID.** The tree only speaks in string IDs, so the root's node gets one
+ * — and that string is translated at the tree's edge and nowhere else, so no adapter ID can ever be mistaken for it.
+ */
+type MoveTarget = { root: true } | { root: false; folderId: string }
+
+const ROOT_TREE_ID = "\u0000explorer-root"
+
+function treeIdOf(target: MoveTarget): string {
+  return target.root ? ROOT_TREE_ID : target.folderId
+}
+
+function moveTargetOf(treeId: string): MoveTarget {
+  return treeId === ROOT_TREE_ID ? { root: true } : { root: false, folderId: treeId }
+}
+
+function folderIdOf(target: MoveTarget): string | null {
+  return target.root ? null : target.folderId
+}
+
 interface MoveDialogProperties {
   entry: ExplorerEntry
   folders: ExplorerEntry[]
   text: ExplorerLabels
-  onConfirm(target: string | null): void
+  onConfirm(folderId: string | null): void
   onClose(): void
 }
 
@@ -500,36 +587,37 @@ interface MoveDialogProperties {
  * offered and refused.
  */
 function MoveDialog({ entry, folders, text, onConfirm, onClose }: MoveDialogProperties) {
-  const [target, setTarget] = useState<string | null>(entry.parentId)
+  const [target, setTarget] = useState<MoveTarget>(entry.parentId === null ? { root: true } : { root: false, folderId: entry.parentId })
 
   const nodes = useMemo(() => {
-    const childrenOf = new Map<string | null, ExplorerEntry[]>()
+    const foldersByParent = new Map<string | null, ExplorerEntry[]>()
 
     for (const folder of folders) {
-      const siblings = childrenOf.get(folder.parentId) ?? []
+      const siblings = foldersByParent.get(folder.parentId) ?? []
 
       siblings.push(folder)
-      childrenOf.set(folder.parentId, siblings)
+      foldersByParent.set(folder.parentId, siblings)
     }
 
     function build(parentId: string | null): TreeNode[] {
-      return (childrenOf.get(parentId) ?? [])
+      return (foldersByParent.get(parentId) ?? [])
         .filter((folder) => folder.id !== entry.id)
         .sort((first, second) => first.name.localeCompare(second.name, undefined, { numeric: true }))
         .map((folder) => ({ id: folder.id, name: folder.name, icon: "folder", expandedIcon: "folder-open", children: build(folder.id) }))
     }
 
-    return [{ id: ROOT_NODE, name: text.root, icon: "home", children: build(null) } satisfies TreeNode]
+    return [{ id: ROOT_TREE_ID, name: text.root, icon: "home", children: build(null) } satisfies TreeNode]
   }, [folders, entry.id, text.root])
 
-  const everyId = useMemo(() => [ROOT_NODE, ...folders.map((folder) => folder.id)], [folders])
+  const everyId = useMemo(() => [ROOT_TREE_ID, ...folders.map((folder) => folder.id)], [folders])
+  const unchanged = folderIdOf(target) === entry.parentId
 
-  return <Dialog open onClose={onClose} title={`${text.moveTitle} “${entry.name}”`} description={text.moveDescription}
+  return <Dialog open onClose={onClose} title={text.moveTitle(entry.name)} description={text.moveDescription}
     footer={<>
       <Button onClick={onClose}>{text.cancel}</Button>
-      <Button variant="primary" disabled={target === entry.parentId} onClick={() => onConfirm(target)}>{text.moveHere}</Button>
+      <Button variant="primary" disabled={unchanged} onClick={() => onConfirm(folderIdOf(target))}>{text.moveHere}</Button>
     </>}>
-    <Tree label={text.folders} nodes={nodes} selectedId={target ?? ROOT_NODE} defaultExpandedIds={everyId}
-      onSelect={(id) => setTarget(id === ROOT_NODE ? null : id)} />
+    <Tree label={text.folders} nodes={nodes} selectedId={treeIdOf(target)} defaultExpandedIds={everyId}
+      onSelect={(id) => setTarget(moveTargetOf(id))} />
   </Dialog>
 }

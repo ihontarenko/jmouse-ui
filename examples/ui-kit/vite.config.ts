@@ -28,6 +28,7 @@ export default defineConfig({
       { find: "@jmouse/ui-kit/code.css", replacement: source("styles/code.css") },
       { find: /^@jmouse\/ui-kit\/code$/, replacement: source("code/index.ts") },
       { find: /^@jmouse\/ui-kit$/, replacement: source("index.ts") },
+      { find: /^@jmouse\/file-handling$/, replacement: fileURLToPath(new URL("../../packages/file-handling/src/index.ts", import.meta.url)) },
       { find: /^@jmouse\/explorer$/, replacement: fileURLToPath(new URL("../../packages/explorer/src/index.ts", import.meta.url)) },
     ],
     dedupe: ["react", "react-dom", "@codemirror/state", "@codemirror/view", "@codemirror/language", "@lezer/common", "@lezer/highlight"],

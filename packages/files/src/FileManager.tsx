@@ -7,7 +7,7 @@ import { FileViewerDialog } from "./FileViewerDialog"
 import { useFileActions } from "./useFileActions"
 import { useManagerLocation } from "./managerLocation"
 import { directoryTrail, saveBlob } from "./fileDisplay"
-import { because } from "@jmouse/explorer/headless"
+import { because } from "@jmouse/file-handling"
 import type { Directory, FileLibraryPort, FileManagerNotice, FilesLayout, ManagedFile } from "./types"
 
 /**

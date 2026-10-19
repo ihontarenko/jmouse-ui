@@ -1,0 +1,29 @@
+{
+  "name": "@jmouse/file-handling",
+  "version": "0.1.0",
+  "description": "What a file is, with nothing to install for it: its family and how it may be shown, its size as people read it, why a request about it failed, and how fetched bytes are saved. No React, no kit — the decisions @jmouse/ui-kit, @jmouse/explorer and @jmouse/files all read.",
+  "license": "UNLICENSED",
+  "author": "Ivan Hontarenko",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "clean": "node scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

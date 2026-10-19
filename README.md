@@ -13,7 +13,9 @@ packages/
 ├─ ui/          @jmouse/ui         primitives, the theme mechanism, cn   ← built
 ├─ files/       @jmouse/files      the file composites (retiring)        ← built
 ├─ explorer/    @jmouse/explorer   the file manager on @jmouse/ui-kit,
-│                                  adapter-driven; ./headless is shared  ← built
+│                                  adapter-driven                        ← built
+├─ file-handling/ @jmouse/file-handling  what a file is — kind, glyph
+│                                  family, size, failure words; no React ← built
 ├─ codemirror/  @jmouse/codemirror the .jmp and jME grammars and the
 │                                  editor/static machinery around them   ← built
 ├─ access-ui/   @jmouse/access-ui  headless access client                (INVT-0049)

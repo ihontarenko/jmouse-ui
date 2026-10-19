@@ -1,4 +1,5 @@
-﻿import { useEffect, useId, useMemo, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
+﻿import { readableFileSize } from "@jmouse/file-handling"
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { Button, IconButton } from "../controls/Button"
 import { Segmented } from "../controls/Choices"
 import { Input, SearchField, Select } from "../controls/Inputs"
@@ -47,51 +48,87 @@ export interface FileWorkspaceRename {
   id: string
   onCommit(name: string): void
   onCancel(): void
+  /**
+   * Why a name cannot be used, or undefined when it can — the same check the host's own rename dialog makes.
+   *
+   * ⚠️ Enter on a refused name keeps the field open and says why; leaving the field restores the old name rather than
+   * keeping one the host would refuse.
+   */
+  problemWith?(name: string): string | undefined
 }
 
 /**
  * The field a name is edited in. The stem is selected, not the suffix — renaming `report.pdf` is almost always about
  * `report`, and a selected `.pdf` is one keystroke from a file nothing can open.
+ *
+ * ⚠️ **Settled once, and the guard is a ref.** Enter commits and then the field unmounts, which blurs it: as state the
+ * guard would still read "unsettled" in that blur, before the next render, and commit the same name twice.
  */
 function FileNameField({ entry, rename, label }: { entry: FileWorkspaceEntry; rename: FileWorkspaceRename; label: string }) {
   const [value, setValue] = useState(entry.name)
-  const [settled, setSettled] = useState(false)
+  const [shownProblem, setShownProblem] = useState<string>()
+  const settled = useRef(false)
+  const problemId = useId()
 
-  function settle(keep: boolean) {
-    if (settled) {
+  function cancel() {
+    if (settled.current) {
       return
     }
-    setSettled(true)
-    const name = value.trim()
-    if (keep && name && name !== entry.name) {
-      rename.onCommit(name)
-    } else {
-      rename.onCancel()
-    }
+    settled.current = true
+    rename.onCancel()
   }
 
-  return <Input size="small" className="kit-file-rename" aria-label={`${label}: ${entry.name}`} value={value} autoFocus
-    ref={(element) => {
-      if (element && element.dataset.selected === undefined) {
-        element.dataset.selected = ""
-        const suffix = entry.kind === "file" ? entry.name.lastIndexOf(".") : -1
-        element.setSelectionRange(0, suffix > 0 ? suffix : entry.name.length)
+  function commit(leaving: boolean) {
+    if (settled.current) {
+      return
+    }
+    const name = value.trim()
+    if (!name || name === entry.name) {
+      cancel()
+      return
+    }
+    const problem = rename.problemWith?.(name)
+    if (problem !== undefined) {
+      if (leaving) {
+        cancel()
+      } else {
+        setShownProblem(problem)
       }
-    }}
-    onChange={(event) => setValue(event.target.value)}
-    onClick={(event) => event.stopPropagation()}
-    onDoubleClick={(event) => event.stopPropagation()}
-    onBlur={() => settle(true)}
-    onKeyDown={(event) => {
-      event.stopPropagation()
-      if (event.key === "Enter") {
-        event.preventDefault()
-        settle(true)
-      } else if (event.key === "Escape") {
-        event.preventDefault()
-        settle(false)
-      }
-    }} />
+      return
+    }
+    settled.current = true
+    rename.onCommit(name)
+  }
+
+  return <span className="kit-file-rename-field">
+    <Input size="small" className="kit-file-rename" aria-label={`${label}: ${entry.name}`} value={value} autoFocus
+      aria-invalid={shownProblem === undefined ? undefined : true} aria-describedby={shownProblem === undefined ? undefined : problemId}
+      ref={(element) => {
+        if (element && element.dataset.selected === undefined) {
+          element.dataset.selected = ""
+          const suffix = entry.kind === "file" ? entry.name.lastIndexOf(".") : -1
+          element.setSelectionRange(0, suffix > 0 ? suffix : entry.name.length)
+        }
+      }}
+      onChange={(event) => {
+        setValue(event.target.value)
+        setShownProblem(undefined)
+      }}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onBlur={() => commit(true)}
+      onKeyDown={(event) => {
+        event.stopPropagation()
+        if (event.key === "Enter") {
+          event.preventDefault()
+          commit(false)
+        } else if (event.key === "Escape") {
+          event.preventDefault()
+          cancel()
+        }
+      }} />
+    {shownProblem === undefined ? null : <span id={problemId} className="kit-file-rename-problem" role="alert">{shownProblem}</span>}
+  </span>
 }
 
 export interface FileWorkspaceProperties {
@@ -105,6 +142,14 @@ export interface FileWorkspaceProperties {
   entryActions?(entry: FileWorkspaceEntry): MenuEntry[]
   loading?: boolean
   error?: ReactNode
+  /**
+   * The host knows the shown folder has gone — its listing was refused as missing. The listing then says so and offers
+   * the way back to the root.
+   *
+   * ⚠️ **A folder the entries do not include is NOT unavailable by itself.** A host opened deep, without the folders
+   * above it, still lists that folder correctly; judging it missing would hide a listing that succeeded.
+   */
+  unavailable?: boolean
   labels?: Partial<FileWorkspaceLabels>
   formatSize?(bytes: number): string
   defaultView?: "tiles" | "list"
@@ -123,18 +168,12 @@ export interface FileWorkspaceProperties {
   className?: string
 }
 
-function readableSize(bytes: number): string {
-  if (bytes < 1024) { return `${bytes} B` }
-  if (bytes < 1024 ** 2) { return `${(bytes / 1024).toFixed(1)} KB` }
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`
-}
-
 /**
  * A second file-manager presentation, composed from the kit's existing workspace parts.
  * The product owns location, data and capabilities. Tabs, selection and presentation are local UI state.
  * Entries form an acyclic tree, with stable unique IDs and folders as parents; null names the root.
  */
-export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, labels, formatSize = readableSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, onKeyDown, className }: FileWorkspaceProperties) {
+export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, unavailable, labels, formatSize = readableFileSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, onKeyDown, className }: FileWorkspaceProperties) {
   const text = { ...defaultLabels, ...labels }
   const browserId = useId()
   const [openIds, setOpenIds] = useState<string[]>([])
@@ -158,7 +197,9 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
   const [expandedIds, setExpandedIds] = useState<string[]>([])
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries])
   const directory = directoryId === null ? undefined : byId.get(directoryId)
-  const directoryAvailable = directoryId === null || directory?.kind === "folder"
+  const directoryAvailable = !unavailable && (directory === undefined || directory.kind === "folder")
+  // ⚠️ Unknown, not root: a folder opened deep without its ancestors has a parent nobody has named yet.
+  const parentKnown = directoryId !== null && directory !== undefined
   const selectedId = selection?.directoryId === directoryId ? selection.id : undefined
   const activeFile = activeFileId ? byId.get(activeFileId) : undefined
   const showingFile = activeFile?.kind === "file"
@@ -267,7 +308,9 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
         }
       },
     } : {})}>
-      {dropTargeted ? <p className="kit-file-drop-hint" aria-live="polite">{text.dropFiles}</p> : null}
+      {/* ⚠️ The live region is always there and only its words change: one inserted together with its text is
+          usually not announced at all. */}
+      <p className="kit-file-drop-hint" aria-live="polite">{dropTargeted ? text.dropFiles : ""}</p>
       {error ? <Notice tone="danger">{error}</Notice> : loading ? <Waiting label={text.loading} /> : !directoryAvailable ? <EmptyState flush icon="folder" title={text.unavailable} description={text.unavailableDescription} actions={<Button onClick={() => navigate(null)}>{text.root}</Button>} /> : rows.length === 0 ? <EmptyState flush icon={query ? "search" : "folder"} title={query ? text.noResults : text.empty} description={query ? undefined : text.emptyDescription} actions={query ? <Button onClick={() => setSearch({ directoryId, value: "" })}>{text.clearSearch}</Button> : undefined} /> : view === "list" ? <Table label={text.files} columns={columns} rows={rows} rowKey={(entry) => entry.id} sort={sort} onSortChange={setSort} selectedKey={rows.some((entry) => entry.id === selectedId) ? selectedId : undefined} onRowSelect={(entry) => setSelection({ directoryId, id: entry.id })} onRowActivate={open} /> : <TileGrid>
         {rows.map((entry) => <Tile key={entry.id} name={entry.name} glyph={glyph(entry, "large")} meta={metadata(entry)} active={selectedId === entry.id} onOpen={() => setSelection({ directoryId, id: entry.id })} onActivate={() => open(entry)} actions={menu(entry)} editor={renaming?.id === entry.id ? <FileNameField entry={entry} rename={renaming} label={text.newName} /> : undefined} />)}
       </TileGrid>}
@@ -277,7 +320,11 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
   return <section className={joinClassNames("kit-file-workspace", className)} aria-label={text.files} data-tree-visible={treeVisible ? "" : undefined} onKeyDown={onKeyDown}>
     <div className="kit-file-location">
       <IconButton icon="folder" size="small" label={treeVisible ? text.hideFolders : text.showFolders} aria-expanded={treeVisible} onClick={() => setTreeVisible(!treeVisible)} />
-      <IconButton icon="arrow-up" size="small" label={text.up} disabled={directoryId === null} onClick={() => navigate(directory?.parentId ?? null)} />
+      <IconButton icon="arrow-up" size="small" label={text.up} disabled={!parentKnown} onClick={() => {
+        if (directory !== undefined) {
+          navigate(directory.parentId)
+        }
+      }} />
       <Crumbs label={text.path} items={[{ label: text.root, onNavigate: () => navigate(null) }, ...ancestors.map((entry) => ({ label: entry.name, onNavigate: () => navigate(entry.id) }))]} renderLink={(crumb, className) => <button className={className} type="button" onClick={crumb.onNavigate}>{crumb.label}</button>} />
     </div>
     {notice ? <div className="kit-file-notice">{notice}</div> : null}
