@@ -1,0 +1,36 @@
+/*
+ * `@jmouse/ui-kit/structure.css` — the kit's components WITHOUT its look, for a host that already has one.
+ *
+ * ⚠️ **No theme, no typefaces, no reader axes, no element base.** Those are a product's whole look, and a host that
+ * embeds a kit component (an explorer inside its own pages) keeps its own: its theme decides the colours, its fonts
+ * the faces, its element styles its headings and links. What remains here is the vocabulary's defaults and every
+ * `.kit-*` component rule — nothing that reaches an element the kit did not render.
+ *
+ * ⚠️ **The host bridges the colours.** The defaults below derive the colour roles from bases a THEME names
+ * (`--kit-accent-base`, `--kit-bg`, `--kit-ink`, …); with no theme loaded, the host maps those roles onto its own
+ * tokens — `--kit-surface: var(--surface)` — in one file, in both of its modes. Every other value has a default.
+ *
+ * ⚠️ **Put the layer above the host's element base.** A component rule in a layer BELOW a host's element reset loses
+ * to it whatever its specificity (Tailwind's preflight strips every button's border), so a host declares, before its
+ * own layers: `@layer theme, base, jmouse-ui-kit, components, utilities;`.
+ */
+@layer jmouse-ui-kit.tokens, jmouse-ui-kit.themes, jmouse-ui-kit.axes, jmouse-ui-kit.base, jmouse-ui-kit.components;
+
+@import "./tokens.css" layer(jmouse-ui-kit.tokens);
+@import "./helpers.css" layer(jmouse-ui-kit.base);
+@import "./controls.css" layer(jmouse-ui-kit.components);
+@import "./navigation.css" layer(jmouse-ui-kit.components);
+@import "./containers.css" layer(jmouse-ui-kit.components);
+@import "./data.css" layer(jmouse-ui-kit.components);
+@import "./feedback.css" layer(jmouse-ui-kit.components);
+@import "./shell.css" layer(jmouse-ui-kit.components);
+@import "./ide.css" layer(jmouse-ui-kit.components);
+@import "./code-view.css" layer(jmouse-ui-kit.components);
+@import "./media.css" layer(jmouse-ui-kit.components);
+@import "./roles.css" layer(jmouse-ui-kit.components);
+@import "./listing.css" layer(jmouse-ui-kit.components);
+@import "./data-table.css" layer(jmouse-ui-kit.components);
+@import "./records.css" layer(jmouse-ui-kit.components);
+@import "./charts.css" layer(jmouse-ui-kit.components);
+@import "./screens.css" layer(jmouse-ui-kit.components);
+@import "./files.css" layer(jmouse-ui-kit.components);

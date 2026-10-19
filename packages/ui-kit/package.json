@@ -17,6 +17,7 @@
       "default": "./dist/index.js"
     },
     "./styles.css": "./dist/styles/index.css",
+    "./structure.css": "./dist/styles/structure.css",
     "./themes/*.css": "./dist/themes/*.css",
     "./instruments": {
       "types": "./dist/instruments/index.d.ts",

@@ -36,10 +36,11 @@ type Reading =
  */
 export function ExplorerViewer({ file, adapter, labels, onDownload }: ExplorerViewerProperties) {
   const [reading, setReading] = useState<Reading>({ state: "reading" })
-  const read = adapter.read
+  // ⚠️ Called ON the adapter, never detached from it: an adapter written as a class reads its own state through `this`.
+  const readable = adapter.read !== undefined
 
   useEffect(() => {
-    if (!read) {
+    if (!readable) {
       return
     }
 
@@ -48,7 +49,7 @@ export function ExplorerViewer({ file, adapter, labels, onDownload }: ExplorerVi
 
     setReading({ state: "reading" })
 
-    read(file)
+    adapter.read!(file)
       .then(async (blob) => {
         const kind = fileKindOf({ name: file.name, contentType: file.mediaType ?? blob.type, sizeBytes: file.size ?? blob.size })
         const text = kind === "text" || kind === "markdown" ? await blob.text() : undefined
@@ -79,11 +80,11 @@ export function ExplorerViewer({ file, adapter, labels, onDownload }: ExplorerVi
     // with the same bytes, and reading it again would flash the viewer every time somebody renames a sibling. The
     // failure keeps the server's reason, and the sentence around it is written at render with today's labels.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file.id, read])
+  }, [file.id, adapter, readable])
 
   const download = onDownload ? <Button icon="download" onClick={onDownload}>{labels.download}</Button> : undefined
 
-  if (!read) {
+  if (!readable) {
     return <EmptyState flush icon="file" title={labels.notShowable} description={labels.noBytes} />
   }
 

@@ -20,6 +20,7 @@
 @import "../themes/innoventa.css" layer(jmouse-ui-kit.themes);
 @import "./axes.css" layer(jmouse-ui-kit.axes);
 @import "./base.css" layer(jmouse-ui-kit.base);
+@import "./helpers.css" layer(jmouse-ui-kit.base);
 @import "./controls.css" layer(jmouse-ui-kit.components);
 @import "./navigation.css" layer(jmouse-ui-kit.components);
 @import "./containers.css" layer(jmouse-ui-kit.components);

@@ -61,6 +61,13 @@ export interface ExplorerAdapter {
   ancestors?(folderId: string): Promise<ExplorerEntry[]>
 
   /**
+   * One entry by its ID, wherever it is filed — for a file opened from a link before its folder was ever listed.
+   *
+   * ⚠️ Without it, a file the host names as open is shown only once somebody lists the folder it is in.
+   */
+  find?(entryId: string): Promise<ExplorerEntry>
+
+  /**
    * A file's bytes, fetched the way this product authenticates.
    *
    * ⚠️ **A fetch, not a URL.** An `<img src>` pointed at an authenticated route carries no credentials, answers 401

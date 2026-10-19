@@ -33,7 +33,7 @@ export function FileGlyph({ name, mediaType, kind = fileGlyphKind(name, mediaTyp
         <path d="M31 2v11h10" fill="var(--kit-surface-2)" stroke="var(--kit-line-strong)" strokeWidth="2" />
         {kind === "image" ? <path d="m12 32 8-9 6 6 4-4 6 7M16 18h.1" fill="none" stroke="currentColor" strokeWidth="3" /> : kind === "audio" || kind === "video" ? <path d="m20 18 12 8-12 8Z" fill="currentColor" /> : kind === "archive" ? <path d="M22 14h5v5h-5v5h5v5h-5v5h5" fill="none" stroke="currentColor" strokeWidth="3" /> : kind === "code" || kind === "data" ? <path d="m18 18-7 7 7 7m12-14 7 7-7 7m-4-16-4 20" fill="none" stroke="currentColor" strokeWidth="2.5" /> : kind === "sheet" ? <path d="M13 17h22v16H13Zm0 8h22M23 17v16" fill="none" stroke="currentColor" strokeWidth="2" /> : <path d="M15 19h18M15 25h18M15 31h12" stroke="currentColor" strokeWidth="2.5" />}
         <path d="M6 37h36v17H6Z" fill="currentColor" />
-        <text x="24" y="49" textAnchor="middle" fill="var(--kit-on-accent)" fontFamily="var(--kit-font-technical)" fontSize="10" fontWeight="700">{label}</text>
+        <text x="24" y="49" textAnchor="middle" fill="var(--kit-file-label)" fontFamily="var(--kit-font-technical)" fontSize="10" fontWeight="700">{label}</text>
       </>}
     </svg>
   )
