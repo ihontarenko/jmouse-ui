@@ -163,6 +163,14 @@ export interface FileWorkspaceProperties {
   onDropFiles?(files: File[]): void
   /** A band above the panes — an act that failed, an upload in progress. The listing stays usable under it. */
   notice?: ReactNode
+  /**
+   * Given, the opened files are the host's — kept in its address, usually, so a link can reopen a document. Every ID
+   * named must be among the entries for its tab to be drawn; one the host has not supplied yet waits, unshown.
+   */
+  openFileIds?: string[]
+  /** The opened file in front; undefined shows the folder. */
+  activeFileId?: string
+  onOpenFilesChange?(openFileIds: string[], activeFileId: string | undefined): void
   /** Keys pressed anywhere inside — where a host binds F2 or Delete to the selection. */
   onKeyDown?(event: KeyboardEvent<HTMLElement>): void
   className?: string
@@ -173,11 +181,22 @@ export interface FileWorkspaceProperties {
  * The product owns location, data and capabilities. Tabs, selection and presentation are local UI state.
  * Entries form an acyclic tree, with stable unique IDs and folders as parents; null names the root.
  */
-export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, unavailable, labels, formatSize = readableFileSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, onKeyDown, className }: FileWorkspaceProperties) {
+export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderFile, actions, entryActions, loading, error, unavailable, labels, formatSize = readableFileSize, defaultView = "tiles", storageKey, selectedId: hostSelectedId, onSelectedChange, renaming, onDropFiles, notice, openFileIds: hostOpenFileIds, activeFileId: hostActiveFileId, onOpenFilesChange, onKeyDown, className }: FileWorkspaceProperties) {
   const text = { ...defaultLabels, ...labels }
   const browserId = useId()
-  const [openIds, setOpenIds] = useState<string[]>([])
-  const [activeFileId, setActiveFileId] = useState<string>()
+  const [ownOpenIds, setOwnOpenIds] = useState<string[]>([])
+  const [ownActiveFileId, setOwnActiveFileId] = useState<string>()
+  const openFilesControlled = onOpenFilesChange !== undefined
+  const openIds = openFilesControlled ? (hostOpenFileIds ?? []) : ownOpenIds
+  const activeFileId = openFilesControlled ? hostActiveFileId : ownActiveFileId
+  function setOpenFiles(nextOpenIds: string[], nextActiveId: string | undefined) {
+    if (openFilesControlled) {
+      onOpenFilesChange(nextOpenIds, nextActiveId)
+    } else {
+      setOwnOpenIds(nextOpenIds)
+      setOwnActiveFileId(nextActiveId)
+    }
+  }
   const [ownSelection, setOwnSelection] = useState<{ directoryId: string | null; id: string }>()
   const [dropTargeted, setDropTargeted] = useState(false)
   const selectionControlled = onSelectedChange !== undefined
@@ -249,7 +268,9 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
   })
 
   function navigate(id: string | null) {
-    setActiveFileId(undefined)
+    if (activeFileId !== undefined) {
+      setOpenFiles(openIds, undefined)
+    }
     setSelection(undefined)
     setSearch({ directoryId: id, value: "" })
     onDirectoryChange(id)
@@ -258,15 +279,13 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
     if (entry.kind === "folder") {
       navigate(entry.id)
     } else {
-      setOpenIds((current) => current.includes(entry.id) ? current : [...current, entry.id])
-      setActiveFileId(entry.id)
+      setOpenFiles(openIds.includes(entry.id) ? openIds : [...openIds, entry.id], entry.id)
     }
   }
   function close(id: string) {
     if (id === browserId) { return }
-    const remaining = openedFiles.filter((entry) => entry.id !== id)
-    setOpenIds(remaining.map((entry) => entry.id))
-    if (activeFileId === id) { setActiveFileId(remaining.at(-1)?.id) }
+    const remaining = openIds.filter((openId) => openId !== id)
+    setOpenFiles(remaining, activeFileId === id ? remaining.at(-1) : activeFileId)
   }
   const tabs: OpenFile[] = [
     { id: browserId, name: directory?.name ?? text.root, icon: "folder", pinned: true },
@@ -333,7 +352,7 @@ export function FileWorkspace({ entries, directoryId, onDirectoryChange, renderF
         <ToolWindow title={text.folders} onHide={() => setTreeVisible(false)} hideLabel={text.hideFolders} toolbar={<Button variant="quiet" size="small" icon="folder" onClick={() => navigate(null)}>{text.root}</Button>}>
           <Tree label={text.folders} nodes={treeNodes(null)} selectedId={directoryId ?? undefined} expandedIds={expandedIds} onExpandedChange={setExpandedIds} onSelect={navigate} />
         </ToolWindow>
-        <Editor tabs={<EditorTabs label={text.files} files={tabs} activeId={showingFile ? activeFile.id : browserId} onActivate={(id) => setActiveFileId(id === browserId ? undefined : id)} onClose={close} closeLabel={text.close} />}>
+        <Editor tabs={<EditorTabs label={text.files} files={tabs} activeId={showingFile ? activeFile.id : browserId} onActivate={(id) => setOpenFiles(openIds, id === browserId ? undefined : id)} onClose={close} closeLabel={text.close} />}>
           {showingFile ? <section className="kit-file-preview" aria-label={`${text.preview}: ${activeFile.name}`}>{renderFile(activeFile)}</section> : browser}
         </Editor>
       </Split>

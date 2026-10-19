@@ -316,4 +316,6 @@
   --kit-file-archive: var(--kit-warn);
   --kit-file-sheet: var(--kit-good);
   --kit-file-file: var(--kit-muted);
+  /* the extension stamped on a glyph's band — a host whose bands keep white text in both modes says so here */
+  --kit-file-label: var(--kit-on-accent);
 }

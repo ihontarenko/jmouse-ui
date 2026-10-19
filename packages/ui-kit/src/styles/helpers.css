@@ -1,0 +1,35 @@
+/*
+ * jMouse UI-kit — the helper classes and keyframes the components reach for.
+ *
+ * ⚠️ Split from base.css because these are CLASSES, scoped to `.kit-*`, and a host that keeps its own element styles
+ * (structure.css) still needs them; the element base beside them would restyle that host's every heading and link.
+ */
+
+/* Text helpers every component and page reaches for */
+.kit-technical { font-family: var(--kit-font-technical); font-variant-numeric: tabular-nums; }
+.kit-muted { color: var(--kit-muted); }
+.kit-secondary { color: var(--kit-secondary); }
+.kit-micro-label {
+  font: var(--kit-micro-label-weight) var(--kit-micro-label-size) / 1.2 var(--kit-micro-label-font);
+  letter-spacing: var(--kit-micro-label-tracking);
+  text-transform: uppercase;
+  color: var(--kit-micro-label-ink);
+}
+.kit-visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+.kit-skip-link {
+  position: absolute; left: var(--kit-space-2); top: var(--kit-space-2); z-index: 100;
+  padding: var(--kit-space-2) var(--kit-space-3);
+  background: var(--kit-surface); border: var(--kit-border-width) solid var(--kit-accent); border-radius: var(--kit-radius-control);
+  transform: translateY(-200%);
+}
+.kit-skip-link:focus { transform: none; }
+
+@keyframes kit-spin { to { transform: rotate(360deg); } }
+@keyframes kit-pulse { 50% { opacity: 0.3; } }
+@keyframes kit-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }

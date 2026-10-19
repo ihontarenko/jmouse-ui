@@ -87,6 +87,10 @@ export interface ExplorerProperties {
   onFolderChange?(folderId: string | null): void
   /** Where an uncontrolled explorer starts. */
   defaultFolderId?: string | null
+  /** The files open as tabs, when the host keeps them — so a link reopens a document. Left out, the explorer keeps its own. */
+  openFileIds?: string[]
+  activeFileId?: string
+  onOpenFilesChange?(openFileIds: string[], activeFileId: string | undefined): void
   /** A richer viewer than the default — rendered Markdown, a code editor, a product's own reader. */
   renderFile?(file: ExplorerEntry): ReactNode
   /** The product's own entries, listed after the standard ones in every "⋯" menu. */
@@ -178,11 +182,11 @@ function nameProblem(name: string, siblings: ExplorerEntry[], text: ExplorerLabe
  * ⚠️ **A failed act leaves the listing usable.** It is said in a band above the panes, in the server's own words, and
  * the band can be dismissed — a failure that replaced the listing would punish a refused rename with a lost place.
  */
-export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defaultFolderId = null, renderFile, extraActions, labels, formatDate = formatIsoDate, formatSize = readableFileSize, defaultView, storageKey, className }: ExplorerProperties) {
+export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defaultFolderId = null, openFileIds, activeFileId, onOpenFilesChange, renderFile, extraActions, labels, formatDate = formatIsoDate, formatSize = readableFileSize, defaultView, storageKey, className }: ExplorerProperties) {
   const text = { ...explorerLabels, ...labels } as ExplorerLabels
   const [ownFolderId, setOwnFolderId] = useState<string | null>(defaultFolderId)
   const folderId = hostFolderId === undefined ? ownFolderId : hostFolderId
-  const catalogue = useExplorerCatalogue(adapter, folderId)
+  const catalogue = useExplorerCatalogue(adapter, folderId, openFileIds)
   const [selectedId, setSelectedId] = useState<string>()
   const [renamingId, setRenamingId] = useState<string>()
   const [pending, setPending] = useState<Pending>()
@@ -445,6 +449,9 @@ export function Explorer({ adapter, folderId: hostFolderId, onFolderChange, defa
         problemWith: (name) => nameProblem(name, childrenOf(renamingEntry.parentId).filter((entry) => entry.id !== renamingEntry.id), text),
       } : undefined}
       onDropFiles={offered.includes("upload") ? (files) => void upload(files) : undefined}
+      openFileIds={openFileIds}
+      activeFileId={activeFileId}
+      onOpenFilesChange={onOpenFilesChange}
       onKeyDown={onKeyDown}
       notice={notice}
       actions={toolbar}

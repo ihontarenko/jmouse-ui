@@ -44,6 +44,9 @@ export interface ExplorerCatalogue {
 
 const GONE_STATUSES = new Set([404, 410])
 
+/** Joins entry IDs into one dependency key; a character no ID carries. */
+const ID_SEPARATOR = "\u0000"
+
 function catalogueFailureOf(failure: unknown): CatalogueFailure {
   const status = failureStatus(failure)
 
@@ -53,8 +56,9 @@ function catalogueFailureOf(failure: unknown): CatalogueFailure {
 /**
  * @param adapter how this product reaches its files
  * @param folderId the folder being looked at; null is the root
+ * @param wantedIds entries the host names — opened files — that must be known whatever folder is shown
  */
-export function useExplorerCatalogue(adapter: ExplorerAdapter, folderId: string | null): ExplorerCatalogue {
+export function useExplorerCatalogue(adapter: ExplorerAdapter, folderId: string | null, wantedIds: readonly string[] = []): ExplorerCatalogue {
   const [entries, setEntries] = useState<Map<string, ExplorerEntry>>(() => new Map())
   const [folder, setFolder] = useState<FolderState>({ loading: true })
   const [shapeFailure, setShapeFailure] = useState<CatalogueFailure>()
@@ -147,6 +151,34 @@ export function useExplorerCatalogue(adapter: ExplorerAdapter, folderId: string 
       current = false
     }
   }, [adapter, folderId, known, learn])
+
+  // ⚠️ Keyed on the IDs as one string: the host hands over a new array on every render, and a lookup per render would
+  // ask for the same entry again whenever anything else changed.
+  const missing = wantedIds.filter((entryId) => !entries.has(entryId)).join(ID_SEPARATOR)
+
+  useEffect(() => {
+    if (missing === "" || !adapter.find) {
+      return
+    }
+
+    let current = true
+
+    for (const entryId of missing.split(ID_SEPARATOR)) {
+      adapter.find(entryId).then((found) => {
+        if (current) {
+          learn([found])
+        }
+      }, (failure: unknown) => {
+        if (current) {
+          setShapeFailure(catalogueFailureOf(failure))
+        }
+      })
+    }
+
+    return () => {
+      current = false
+    }
+  }, [adapter, missing, learn])
 
   const record = useCallback((entry: ExplorerEntry) => learn([entry]), [learn])
 
